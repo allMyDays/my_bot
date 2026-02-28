@@ -4,6 +4,8 @@ import api.longpoll.bots.LongPollBot;
 import api.longpoll.bots.exceptions.VkApiException;
 import api.longpoll.bots.model.events.messages.MessageNew;
 import api.longpoll.bots.model.objects.basic.Message;
+import com.example.my_bot.api.MessageSender;
+import com.example.my_bot.command.CommandDispatcher;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,13 +14,16 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
-public class VkBot extends LongPollBot {
+public class VkBot extends LongPollBot implements MessageSender {
 
     private final String accessToken;
+    private final CommandDispatcher commandDispatcher;
 
     @Autowired
-    public VkBot(@Value("${vk.access-token}") String accessToken) {
+    public VkBot(@Value("${vk.access-token}") String accessToken,
+                 CommandDispatcher commandDispatcher) {
         this.accessToken = accessToken;
+        this.commandDispatcher = commandDispatcher;
     }
 
     @PostConstruct
@@ -42,16 +47,19 @@ public class VkBot extends LongPollBot {
     public void onMessageNew(MessageNew messageNew) {
         try {
             Message message = messageNew.getMessage();
-            if (message.hasText()) {
-                // Используем сервис для обработки текста
-               // String reply = messageService.processMessage(message.getText());
-                vk.messages.send()
-                        .setPeerId(message.getPeerId())
-                        .setMessage("hello")
-                        .execute();
-            }
-        } catch (VkApiException e) {
-            log.error("Ошибка отправки сообщения", e);
+            commandDispatcher.dispatch(message);
+
+        } catch (Exception e) {
+            log.error("Произошла ошибка.", e);
         }
+    }
+
+    @Override
+    public void sendText(int peerId, String text) throws VkApiException {
+        vk.messages.send()
+                .setPeerId(peerId)
+                .setMessage(text)
+                .execute();
+
     }
 }
