@@ -1,9 +1,10 @@
 package com.example.my_bot.command.impl;
 
-import api.longpoll.bots.exceptions.VkApiException;
-import api.longpoll.bots.model.objects.basic.Message;
-import com.example.my_bot.api.MessageSender;
+
+import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.BotCommand;
+import com.vk.api.sdk.exceptions.ApiException;
+import com.vk.api.sdk.exceptions.ClientException;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -15,13 +16,14 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class PingCommand implements BotCommand {
 
-    private MessageSender messageSender;
+    private VkChatClient vkChatClient;
 
     @Autowired
     @Lazy
-    public void setMessageSender(MessageSender messageSender) {
-        this.messageSender = messageSender;
+    public void setVkChatClient(VkChatClient vkChatClient) {
+        this.vkChatClient = vkChatClient;
     }
+
 
     @Override
     public String getCommand() {
@@ -29,12 +31,9 @@ public class PingCommand implements BotCommand {
     }
 
     @Override
-    public void execute(Message message, String[] args) throws VkApiException {
+    public void execute(String message, long peerId, long fromId, String[] args) throws ClientException, ApiException {
 
-        messageSender.sendText(message.getPeerId(), "ПОНГ");
-
-
-
+        vkChatClient.sendText(peerId, "ПОНГ");
 
     }
 }

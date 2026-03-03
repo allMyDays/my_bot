@@ -1,12 +1,13 @@
 package com.example.my_bot.command;
 
-import api.longpoll.bots.exceptions.VkApiException;
-import api.longpoll.bots.model.objects.basic.Message;
+
+import com.vk.api.sdk.exceptions.ApiException;
+import com.vk.api.sdk.exceptions.ClientException;
 
 public interface BotCommand {
 
     String getCommand();
-    void execute(Message message, String[] args) throws VkApiException;
+    void execute(String message, long peerId, long fromId, String[] args) throws ClientException, ApiException;
 
 
 

@@ -1,0 +1,43 @@
+
+services:
+  redis:
+    restart: unless-stopped
+    image: redis
+    container_name: my_redis
+    ports:
+      - "46379:6379"
+    volumes:
+      - ./config/redis/import:/data
+
+
+  postgres:
+      restart: unless-stopped
+      image: postgres:latest
+      environment:
+        POSTGRES_USER: ${POSTGRES_USER}
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        POSTGRES_DB: ${POSTGRES_DB}
+      ports:
+        - "5434:5432"
+      volumes:
+        - ./config/postgres/import:/var/lib/postgresql/18/main
+
+
+  localTunnel:
+    image: boro/localtunnel-client:latest
+    container_name: lt-for-bot
+    restart: unless-stopped
+    command: --local-host host.docker.internal --port 6480 --subdomain mycoolbot
+    network_mode: "host"
+
+
+
+
+
+
+
+
+
+
+
+

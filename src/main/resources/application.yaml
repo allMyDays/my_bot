@@ -1,9 +1,35 @@
+server:
+  port: 6480
+
 spring:
   application:
     name:
       my_bot
 
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5434}/${POSTGRES_DB_NAME:postgres}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
 
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+
+#vk:
+# group-id: 194191149
+# access-token: vk1.a.2eXAaw-0fKXjILCQrVtywe_Itf-I9N9uJY5rXZAA-PSNOvUXA6KGA8ZqaPj9GaLH1UEjzGXnxFrHdInuIbO7hfNgfLFgsM_v9_2ovTsYj97cadVOYaAugljO3Iy8O6Y08lpdbpjPUNs7qvc5PpBzOvhLCwPPxhSXL8EeocxpLfugvy16KadQA4pEQ6hfD7y5
 
 vk:
- access-token: vk1.a.2eXAaw-0fKXjILCQrVtywe_Itf-I9N9uJY5rXZAA-PSNOvUXA6KGA8ZqaPj9GaLH1UEjzGXnxFrHdInuIbO7hfNgfLFgsM_v9_2ovTsYj97cadVOYaAugljO3Iy8O6Y08lpdbpjPUNs7qvc5PpBzOvhLCwPPxhSXL8EeocxpLfugvy16KadQA4pEQ6hfD7y5
+  group:
+   id: 194191149
+   token: vk1.a.2eXAaw-0fKXjILCQrVtywe_Itf-I9N9uJY5rXZAA-PSNOvUXA6KGA8ZqaPj9GaLH1UEjzGXnxFrHdInuIbO7hfNgfLFgsM_v9_2ovTsYj97cadVOYaAugljO3Iy8O6Y08lpdbpjPUNs7qvc5PpBzOvhLCwPPxhSXL8EeocxpLfugvy16KadQA4pEQ6hfD7y5
+   confirmation: 895ed82b
+
