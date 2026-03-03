@@ -2,17 +2,26 @@ package com.example.my_bot.utils;
 
 public class VkChatUtils {
 
+    public static final long PEER_ID_CHAT_OFFSET = 2_000_000_000L;
+
 
     public static long extractConversationId(long peerId){
-        if (peerId >= 2000000000) {
-            return peerId - 2000000000L;
-        } else throw new RuntimeException("Cannot extract ChatId because peerId belongs to personal conversation");
+        if (peerId >= PEER_ID_CHAT_OFFSET) {
+            return peerId - PEER_ID_CHAT_OFFSET;
+        } else throw new IllegalArgumentException("Cannot extract ChatId because peerId belongs to personal conversation");
 
     }
 
     public static boolean isPersonalChat(long peerId){
-        return peerId<2000000000;
+        return peerId<PEER_ID_CHAT_OFFSET;
     }
+
+    public static long extractPeerId(long chatId){
+        if(chatId<0||chatId>1_000_000_000){
+            throw new IllegalArgumentException("ChatId is invalid, cannot extract PeerId");
+        } return chatId+PEER_ID_CHAT_OFFSET;
+
+     }
 
 
 

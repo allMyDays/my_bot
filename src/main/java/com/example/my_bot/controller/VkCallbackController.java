@@ -4,17 +4,15 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.vk.api.sdk.client.TransportClient;
-import com.vk.api.sdk.client.VkApiClient;
-import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
-import com.vk.api.sdk.httpclient.HttpTransportClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
 
 @RestController
 @Slf4j
@@ -61,7 +59,7 @@ public class VkCallbackController {
                     String actionType = action.get("type").getAsString();
                     long memberId = action.get("member_id").getAsLong();
                     if ("chat_invite_user".equals(actionType) && memberId == -groupId) {
-                        vkChatClient.sendWelcomeMessage(peerId);
+                        vkChatClient.sendWelcomeMessage(extractConversationId(peerId));
                         return "ok";
                     }
 
@@ -73,7 +71,7 @@ public class VkCallbackController {
                 log.error("Произошла ошибка: ",e);
 
                 try {
-                    vkChatClient.sendUnknownErrorException(peerId);
+                    vkChatClient.sendUnknownErrorException(extractConversationId(peerId));
                 } catch (ClientException|ApiException e2) {
                     log.error("Ошибка при попытке отправить сообщение об ошибке в чат: ",e2);
 
