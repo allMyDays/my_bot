@@ -28,13 +28,8 @@ public class ChatService {
 
     private final ChatRepository chatRepository;
 
-    private VkChatClient vkChatClient;
+    private final ChatMemberService memberService;
 
-    @Autowired
-    @Lazy
-    public void setVkChatClient(VkChatClient vkChatClient) {
-        this.vkChatClient = vkChatClient;
-    }
 
     public Optional<ChatEntity> getChatEntity(long chatId){
         return chatRepository.findById(chatId);
@@ -93,11 +88,15 @@ public class ChatService {
         chat.setChatId(chatId);
         chat.setPrefix(prefix==null?DEFAULT_CHAT_PREFIX:prefix);
         chat = chatRepository.save(chat);
-        try {
-            vkChatClient.synchronizeChatMembers(chatId);
-        } catch (ClientException | ApiException  e) {
-            log.warn("error synchronizing members in new chat with id {}:",chat, e);
-        }
+
+        Runnable task = () -> {
+            try {
+                memberService.synchronizeChatMembers(chatId);
+            } catch (Exception  e) {
+                log.warn("error synchronizing members in new chat with id {}:",chatId, e);
+            }
+        };
+        new Thread(task).start();
 
         return chat;
 

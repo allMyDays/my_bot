@@ -25,8 +25,6 @@ import static com.example.my_bot.utils.VkChatUtils.extractPeerId;
 public class VkChatClient{
     private final VkApiClient vkApiClient;
     private final GroupActor groupActor;
-    private final ChatService chatService;
-    private final ChatMemberService memberService;
 
 
 
@@ -41,61 +39,14 @@ public class VkChatClient{
 
     }
 
-    @Transactional
-    public void synchronizeChatMembers(long chatId) throws ClientException, ApiException {
+    public List<ConversationMember> getAllConversationMembers(long chatId) throws ClientException, ApiException {
 
         GetConversationMembersResponse membersResponse =
                 vkApiClient.messages()
                         .getConversationMembers(groupActor, extractPeerId(chatId))
                         .execute();
+        return membersResponse.getItems();
 
-        Map<Long, ChatMemberEntity> existing =
-                memberService.findByChatId(chatId).stream()
-                        .collect(Collectors.toMap(ChatMemberEntity::getUserId, Function.identity()));
-
-        Set<Long> currentVkIds = new HashSet<>();
-
-        List<ChatMemberEntity> newMembers = new ArrayList<>();
-
-        for (ConversationMember vkMember : membersResponse.getItems()) {
-
-            long id = vkMember.getMemberId();
-            currentVkIds.add(id);
-
-            ChatMemberEntity entity = existing.get(id);
-
-            if (entity == null) {
-                entity = new ChatMemberEntity();
-                entity.setUserId(id);
-                entity.setChatId(chatId);
-                newMembers.add(entity);
-            }
-
-            entity.setInvitedById(vkMember.getInvitedBy());
-            entity.setInChat(true);
-
-            if (Boolean.TRUE.equals(vkMember.getIsOwner())) {
-                entity.setRolePriority(CHAT_CREATOR.getRolePriority());
-                entity.setChatAdmin(true);
-            } else if (Boolean.TRUE.equals(vkMember.getIsAdmin())) {
-                entity.setRolePriority(SENIOR_ADMINISTRATOR.getRolePriority());
-                entity.setChatAdmin(true);
-            } else {
-                entity.setChatAdmin(false);
-            }
-        }
-
-        // помечаю вышедших
-        for (ChatMemberEntity entity : existing.values()) {
-            if (!currentVkIds.contains(entity.getUserId())) {
-                entity.setInChat(false);
-                entity.setChatAdmin(false);
-            }
-        }
-
-        if (!newMembers.isEmpty()) {
-            memberService.save(newMembers);
-        }
     }
 
 
