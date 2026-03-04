@@ -18,7 +18,7 @@ public class ChatEntity {
     private Long chatId;
 
     @Column(nullable = false)
-    private char prefix = '!';
+    private char prefix;
 
 
 

@@ -3,7 +3,7 @@ services:
   redis:
     restart: unless-stopped
     image: redis
-    container_name: my_redis
+    container_name: my-redis
     ports:
       - "46379:6379"
     volumes:

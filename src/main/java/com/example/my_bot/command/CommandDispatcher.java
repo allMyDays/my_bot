@@ -14,13 +14,13 @@ import static com.example.my_bot.utils.VkChatUtils.isPersonalChat;
 
 @Component
 public class CommandDispatcher {
-    private final Map<String, BotCommand> commands = new HashMap<>();
+    private final Map<String, ChatCommand> commands = new HashMap<>();
     private final ChatService chatService;
 
     @Autowired
-    public CommandDispatcher(List<BotCommand> commandList, ChatService chatService) {
+    public CommandDispatcher(List<ChatCommand> commandList, ChatService chatService) {
         this.chatService = chatService;
-        for (BotCommand cmd : commandList) {
+        for (ChatCommand cmd : commandList) {
             commands.put(cmd.getCommand(), cmd);
         }
     }
@@ -35,12 +35,11 @@ public class CommandDispatcher {
 
              long chatId = extractConversationId(peerId);
 
-             ChatEntity currentChat = chatService.getChatEntity(chatId).orElseGet(()->
-                     chatService.createChatEntity(chatId,null));
+             char prefix = chatService.getCachedChatPrefix(chatId, true);
 
              String text = message.trim();
 
-             if(text.charAt(0)!=currentChat.getPrefix()) return;
+             if(text.charAt(0)!=prefix) return;
 
              String[] parts = text.split("\\s+");
              String commandName = parts[0].substring(1).toLowerCase();
@@ -48,7 +47,7 @@ public class CommandDispatcher {
              String[] args = Arrays.copyOfRange(parts, 1, parts.length);
 
 
-        BotCommand cmd = commands.get(commandName);
+        ChatCommand cmd = commands.get(commandName);
         if (cmd != null) {
             cmd.execute(message, peerId, fromId, args);
         } else {
