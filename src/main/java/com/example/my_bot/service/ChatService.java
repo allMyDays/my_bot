@@ -15,11 +15,14 @@ import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatService {
-    private final static char DEFAULT_CHAT_PREFIX = '!';
+
+    private final static int PREFIX_CACHE_TTL_SECONDS = 600;
 
     private final RedisService redisService;
 
@@ -31,10 +34,6 @@ public class ChatService {
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
         this.vkChatClient = vkChatClient;
-    }
-
-    public static char getDefaultChatPrefix(){
-        return DEFAULT_CHAT_PREFIX;
     }
 
     public Optional<ChatEntity> getChatEntity(long chatId){
@@ -64,11 +63,25 @@ public class ChatService {
         } else{
             chat = optionalChat.get();
         }
-        redisService.saveTemp(redisKey, String.valueOf(chat.getPrefix()), 60 * 7);
+        redisService.saveTemp(redisKey, String.valueOf(chat.getPrefix()), PREFIX_CACHE_TTL_SECONDS);
         return chat.getPrefix();
 
     }
 
+    public void setChatPrefix(long chatId, char newPrefix){
+
+        String redisKey = "prefix:"+chatId;
+
+        ChatEntity chat = getChatEntity(chatId).orElseThrow(()->
+                new ChatEntityNotFoundException(chatId));
+
+        chat.setPrefix(newPrefix);
+
+        chatRepository.save(chat);
+
+        redisService.saveTemp(redisKey, String.valueOf(newPrefix), PREFIX_CACHE_TTL_SECONDS);
+
+    }
 
     public ChatEntity createNewChat(long chatId, @Nullable Character prefix){
 
@@ -78,7 +91,7 @@ public class ChatService {
 
         ChatEntity chat = new ChatEntity();
         chat.setChatId(chatId);
-        chat.setPrefix(prefix==null?getDefaultChatPrefix():prefix);
+        chat.setPrefix(prefix==null?DEFAULT_CHAT_PREFIX:prefix);
         chat = chatRepository.save(chat);
         try {
             vkChatClient.synchronizeChatMembers(chatId);

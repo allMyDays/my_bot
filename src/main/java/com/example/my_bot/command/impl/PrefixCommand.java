@@ -1,0 +1,59 @@
+package com.example.my_bot.command.impl;
+
+import com.example.my_bot.client.VkChatClient;
+import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.service.ChatService;
+import com.vk.api.sdk.client.VkApiClient;
+import com.vk.api.sdk.exceptions.ApiException;
+import com.vk.api.sdk.exceptions.ClientException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Component;
+
+import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
+import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
+import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
+
+@Component
+public class PrefixCommand implements ChatCommand {
+
+    private ChatService chatService;
+
+    private VkChatClient vkChatClient;
+
+    @Autowired
+    @Lazy
+    public void setChatService(ChatService chatService, VkChatClient vkChatClient) {
+        this.chatService = chatService;
+        this.vkChatClient = vkChatClient;
+    }
+
+    @Override
+    public String getCommand() {
+        return "префикс";
+    }
+
+    @Override
+    public void execute(String message, long peerId, long fromId, String[] args) throws ClientException, ApiException {
+
+        if(args.length==0){
+            vkChatClient.sendText(peerId, NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            return;
+        }
+
+        if(args[0].toLowerCase().matches("(?iu)дефолт")){
+            chatService.setChatPrefix(extractConversationId(peerId), DEFAULT_CHAT_PREFIX);
+            vkChatClient.sendText(peerId, "✅Префикс чата был сброшен на стандартный: «%s»".formatted(DEFAULT_CHAT_PREFIX));
+            return;
+        }
+
+        if(args[0].length()>1){
+            vkChatClient.sendText(peerId, "В качестве префикса можно установить только один символ.");
+            return;
+        }
+        chatService.setChatPrefix(extractConversationId(peerId), args[0].charAt(0));
+
+        vkChatClient.sendText(peerId, "✅Префикс чата был установлен на «%s»".formatted(args[0]));
+
+    }
+}

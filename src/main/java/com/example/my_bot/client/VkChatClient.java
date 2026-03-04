@@ -41,17 +41,6 @@ public class VkChatClient{
 
     }
 
-    public void sendWelcomeMessage(long chatId) throws ClientException, ApiException {
-      sendText(extractPeerId(chatId), "Меня добавили! Отлично! Для моей полноценной работы нужно нажать на название чата " +
-              "и кликнуть по кнопке «Назначить администратором» напротив меня в списке участников. " );
-
-    }
-
-    public void sendUnknownErrorException(long chatId) throws ClientException, ApiException {
-        sendText(extractPeerId(chatId), "При обработке запроса произошла ошибка. Пожалуйста, сообщите разработчику." );
-
-    }
-
     @Transactional
     public void synchronizeChatMembers(long chatId) throws ClientException, ApiException {
 

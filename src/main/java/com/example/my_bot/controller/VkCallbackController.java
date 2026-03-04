@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import static com.example.my_bot.constant.MessageConstant.UNKNOWN_ERROR_MESSAGE;
+import static com.example.my_bot.constant.MessageConstant.WELCOME_MESSAGE;
 import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
 
 @RestController
@@ -59,7 +61,7 @@ public class VkCallbackController {
                     String actionType = action.get("type").getAsString();
                     long memberId = action.get("member_id").getAsLong();
                     if ("chat_invite_user".equals(actionType) && memberId == -groupId) {
-                        vkChatClient.sendWelcomeMessage(extractConversationId(peerId));
+                        vkChatClient.sendText(extractConversationId(peerId), WELCOME_MESSAGE);
                         return "ok";
                     }
 
@@ -71,7 +73,7 @@ public class VkCallbackController {
                 log.error("Произошла ошибка: ",e);
 
                 try {
-                    vkChatClient.sendUnknownErrorException(extractConversationId(peerId));
+                    vkChatClient.sendText(extractConversationId(peerId),UNKNOWN_ERROR_MESSAGE);
                 } catch (ClientException|ApiException e2) {
                     log.error("Ошибка при попытке отправить сообщение об ошибке в чат: ",e2);
 
