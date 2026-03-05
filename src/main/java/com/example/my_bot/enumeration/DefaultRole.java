@@ -1,5 +1,7 @@
 package com.example.my_bot.enumeration;
 
+import java.util.Optional;
+
 public enum DefaultRole {
 
     MEMBER("Участник", 0), MODERATOR("Модератор", 20), SENIOR_MODERATOR("Ст.модератор", 40),
@@ -22,5 +24,24 @@ public enum DefaultRole {
 
     public int getRolePriority() {
         return rolePriority;
+    }
+
+    public static Optional<String> getRoleNameByPriority(int priority) {
+        for (DefaultRole role : DefaultRole.values()) {
+            if (role.getRolePriority() == priority) {
+                return Optional.of(role.getRoleName());
+            }
+        }
+        return Optional.empty();
+    }
+
+    public static boolean isDefaultRole(int priority) {
+        for (DefaultRole role : DefaultRole.values()) {
+            if (role.getRolePriority() == priority) {
+                return true;
+            }
+        }
+        return false;
+
     }
 }

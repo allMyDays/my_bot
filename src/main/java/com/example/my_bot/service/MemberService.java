@@ -1,12 +1,14 @@
 package com.example.my_bot.service;
 
 import com.example.my_bot.client.VkChatClient;
-import com.example.my_bot.entity.ChatMemberEntity;
-import com.example.my_bot.repository.ChatMemberRepository;
+import com.example.my_bot.dto.MemberWithRoleDto;
+import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.mapper.MemberMapper;
+import com.example.my_bot.mapper.json.MemberJsonMapper;
+import com.example.my_bot.repository.MemberRepository;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ConversationMember;
-import com.vk.api.sdk.objects.messages.responses.GetConversationMembersResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,22 +19,29 @@ import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.CHAT_CREATOR;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
-import static com.example.my_bot.utils.VkChatUtils.extractPeerId;
 
 @Service
 @RequiredArgsConstructor
-public class ChatMemberService {
+public class MemberService {
 
-    private final ChatMemberRepository memberRepository;
+    private final MemberRepository memberRepository;
 
     private final VkChatClient vkChatClient;
 
+    private final MemberMapper memberMapper;
 
-   public List<ChatMemberEntity> findByChatId(long chatId){
+    private final MemberJsonMapper memberJsonMapper;
+
+    private final RedisService redisService;
+
+    private final static int STAFF_CACHE_TTL_SECONDS = 600;
+
+
+   public List<MemberEntity> findByChatId(long chatId){
         return memberRepository.findByChatId(chatId);
     }
 
-    public void save(List<ChatMemberEntity> memberEntities){
+    public void save(List<MemberEntity> memberEntities){
        memberRepository.saveAll(memberEntities);
 
     }
@@ -42,22 +51,22 @@ public class ChatMemberService {
 
         List<ConversationMember> vkMemberList = vkChatClient.getAllConversationMembers(chatId);
 
-        Map<Long, ChatMemberEntity> existing = findByChatId(chatId).stream()
-                        .collect(Collectors.toMap(ChatMemberEntity::getUserId, Function.identity()));
+        Map<Long, MemberEntity> existing = findByChatId(chatId).stream()
+                        .collect(Collectors.toMap(MemberEntity::getUserId, Function.identity()));
 
         Set<Long> currentVkIds = new HashSet<>();
 
-        List<ChatMemberEntity> newMembers = new ArrayList<>();
+        List<MemberEntity> newMembers = new ArrayList<>();
 
         for (ConversationMember vkMember : vkMemberList) {
 
             long id = vkMember.getMemberId();
             currentVkIds.add(id);
 
-            ChatMemberEntity entity = existing.get(id);
+            MemberEntity entity = existing.get(id);
 
             if (entity == null) {
-                entity = new ChatMemberEntity();
+                entity = new MemberEntity();
                 entity.setUserId(id);
                 entity.setChatId(chatId);
                 newMembers.add(entity);
@@ -78,7 +87,7 @@ public class ChatMemberService {
         }
 
         // помечаю вышедших
-        for (ChatMemberEntity entity : existing.values()) {
+        for (MemberEntity entity : existing.values()) {
             if (!currentVkIds.contains(entity.getUserId())) {
                 entity.setInChat(false);
                 entity.setChatAdmin(false);
@@ -89,6 +98,33 @@ public class ChatMemberService {
               save(newMembers);
         }
     }
+
+    public List<MemberWithRoleDto> getMembersWithRole(long chatId){
+
+       String redisKey = "staff:"+chatId;
+
+       Map<String, String> hash = redisService.getHash(redisKey);
+
+       if(!hash.isEmpty()){
+           return memberJsonMapper.fromJson(hash.values().stream().toList());
+       }
+
+       List<MemberWithRoleDto> memberDtoList = memberMapper.toMemberWithRoleDtoList(
+               memberRepository.findMembersWithRole(chatId));
+
+
+        Map<String, String> mapToSave = new HashMap<>();
+        for (MemberWithRoleDto dto : memberDtoList) {
+            mapToSave.put(String.valueOf(dto.getUserId()), memberJsonMapper.toJson(dto));
+        }
+        redisService.setHash(redisKey, mapToSave, STAFF_CACHE_TTL_SECONDS);
+
+        return memberDtoList;
+
+    }
+
+
+
 
 
 

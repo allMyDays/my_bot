@@ -13,7 +13,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @Table(name = "chat_member",
         uniqueConstraints = @UniqueConstraint(columnNames = {"chat_id", "user_id"}))
-public class ChatMemberEntity {
+public class MemberEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

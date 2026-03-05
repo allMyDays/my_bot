@@ -23,6 +23,13 @@ public class VkChatUtils {
 
      }
 
+     public static String createMention(long memberId){
+
+        if(memberId<0) {
+            return "@club"+(memberId*-1);
+        } return "@id"+memberId;
+    }
+
 
 
 

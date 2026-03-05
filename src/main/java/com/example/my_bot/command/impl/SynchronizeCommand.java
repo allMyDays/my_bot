@@ -3,8 +3,7 @@ package com.example.my_bot.command.impl;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
-import com.example.my_bot.enumeration.DefaultRole;
-import com.example.my_bot.service.ChatMemberService;
+import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +21,7 @@ public class SynchronizeCommand implements ChatCommand {
 
     private VkChatClient vkChatClient;
 
-    private final ChatMemberService memberService;
+    private final MemberService memberService;
 
     @Autowired
     @Lazy

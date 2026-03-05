@@ -1,16 +1,11 @@
 package com.example.my_bot.service;
 
-import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.entity.ChatEntity;
 import com.example.my_bot.exception.ChatEntityNotFoundException;
 import com.example.my_bot.repository.ChatRepository;
-import com.vk.api.sdk.exceptions.ApiException;
-import com.vk.api.sdk.exceptions.ClientException;
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -28,7 +23,7 @@ public class ChatService {
 
     private final ChatRepository chatRepository;
 
-    private final ChatMemberService memberService;
+    private final MemberService memberService;
 
 
     public Optional<ChatEntity> getChatEntity(long chatId){
