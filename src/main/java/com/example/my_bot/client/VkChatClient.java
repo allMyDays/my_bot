@@ -41,6 +41,12 @@ public class VkChatClient{
         return membersResponse.getItems();
 
     }
+    public void changeChatTitle(long chatId, String newTitle) throws ClientException, ApiException {
+        vkApiClient.messages().editChat(groupActor)
+                .chatId((int)chatId)
+                .title(newTitle)
+                .execute();
+    }
 
 
 }

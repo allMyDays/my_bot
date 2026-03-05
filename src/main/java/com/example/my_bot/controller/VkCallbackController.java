@@ -2,6 +2,7 @@ package com.example.my_bot.controller;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -59,10 +60,12 @@ public class VkCallbackController {
                 JsonObject action = message.getAsJsonObject("action");
                 if (action != null) {
                     String actionType = action.get("type").getAsString();
-                    long memberId = action.get("member_id").getAsLong();
-                    if ("chat_invite_user".equals(actionType) && memberId == -groupId) {
+                    JsonElement memberEl = action.get("member_id");
+                    if(memberEl!=null){
+                    if ("chat_invite_user".equals(actionType) && memberEl.getAsLong()== -groupId) {
                         vkChatClient.sendText(extractConversationId(peerId), WELCOME_MESSAGE);
                         return "ok";
+                     }
                     }
 
 
