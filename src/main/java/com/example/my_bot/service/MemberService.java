@@ -3,6 +3,7 @@ package com.example.my_bot.service;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.dto.MemberWithRoleDto;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.mapper.json.MemberJsonMapper;
 import com.example.my_bot.repository.MemberRepository;
@@ -17,8 +18,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.example.my_bot.enumeration.DefaultRole.CHAT_CREATOR;
-import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
+import static com.example.my_bot.enumeration.DefaultRole.*;
 
 @Service
 @RequiredArgsConstructor
@@ -120,6 +120,17 @@ public class MemberService {
         redisService.setHash(redisKey, mapToSave, STAFF_CACHE_TTL_SECONDS);
 
         return memberDtoList;
+
+    }
+
+    public int getUserRolePriority(long chatId, long userId){
+
+       Optional<Integer> priorityOptional =  getMembersWithRole(chatId).stream()
+               .filter(m->m.getUserId()==userId)
+               .map(MemberWithRoleDto::getRolePriority)
+               .findFirst();
+
+        return priorityOptional.orElseGet(MEMBER::getRolePriority);
 
     }
 

@@ -22,10 +22,10 @@ public class VkChatClient{
 
 
 
-    public void sendText(long peerId, String text) throws ClientException, ApiException {
+    public void sendText(long chatId, String text) throws ClientException, ApiException {
         vkApiClient.messages()
                 .sendDeprecated(groupActor)
-                .peerId(peerId)
+                .peerId(extractPeerId(chatId))
                 .message(text)
                 .randomId((int) (System.currentTimeMillis() & 0xFFFFFFFFL))
                 .execute();

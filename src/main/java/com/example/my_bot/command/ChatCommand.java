@@ -10,7 +10,7 @@ public interface ChatCommand {
     String getCommand();
 
 
-    void execute(String message, long peerId, long fromId, String[] args) throws ClientException, ApiException;
+    void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException;
 
 
 

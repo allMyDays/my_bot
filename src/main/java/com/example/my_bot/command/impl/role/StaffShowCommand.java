@@ -1,11 +1,9 @@
-package com.example.my_bot.command.impl;
+package com.example.my_bot.command.impl.role;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.dto.MemberWithRoleDto;
-import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.enumeration.DefaultRole;
-import com.example.my_bot.service.ChatService;
 import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -13,18 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
-import javax.swing.text.html.parser.Entity;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
-import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.utils.VkChatUtils.createMention;
 import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
 
 @Component
-public class StaffCommand implements ChatCommand {
+public class StaffShowCommand implements ChatCommand {
 
     private MemberService memberService;
     private VkChatClient vkChatClient;
@@ -42,10 +36,10 @@ public class StaffCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(String message, long peerId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
         StringBuilder sb = new StringBuilder();
-        List<MemberWithRoleDto> staffList = memberService.getMembersWithRole(extractConversationId(peerId));
+        List<MemberWithRoleDto> staffList = memberService.getMembersWithRole(chatId);
 
         Map<Integer, List<MemberWithRoleDto>> staffMap = staffList.stream()  // сортировка по приоритету, от большего приоритета к меньшему
                 .collect(Collectors.groupingBy(
@@ -75,7 +69,7 @@ public class StaffCommand implements ChatCommand {
             }sb.append("\n");
         }
 
-        vkChatClient.sendText(peerId,sb.toString());
+        vkChatClient.sendText(chatId,sb.toString());
 
     }
 }

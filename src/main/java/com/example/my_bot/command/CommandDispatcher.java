@@ -49,7 +49,7 @@ public class CommandDispatcher {
 
         ChatCommand cmd = commands.get(commandName);
         if (cmd != null) {
-            cmd.execute(message, peerId, fromId, args);
+            cmd.execute(message, extractConversationId(peerId), fromId, args);
         } else {
            // Неизвестная команда??
 

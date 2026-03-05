@@ -3,7 +3,6 @@ package com.example.my_bot.command.impl;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.service.ChatService;
-import com.vk.api.sdk.client.VkApiClient;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +14,7 @@ import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
 
 @Component
-public class PrefixCommand implements ChatCommand {
+public class PrefixChangeCommand implements ChatCommand {
 
     private ChatService chatService;
 
@@ -34,26 +33,26 @@ public class PrefixCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(String message, long peerId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
         if(args.length==0){
-            vkChatClient.sendText(peerId, NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE);
             return;
         }
 
         if(args[0].toLowerCase().matches("(?iu)дефолт")){
-            chatService.setChatPrefix(extractConversationId(peerId), DEFAULT_CHAT_PREFIX);
-            vkChatClient.sendText(peerId, "✅Префикс чата был сброшен на стандартный: «%s»".formatted(DEFAULT_CHAT_PREFIX));
+            chatService.setChatPrefix(chatId, DEFAULT_CHAT_PREFIX);
+            vkChatClient.sendText(chatId, "✅Префикс чата был сброшен на стандартный: «%s»".formatted(DEFAULT_CHAT_PREFIX));
             return;
         }
 
         if(args[0].length()>1){
-            vkChatClient.sendText(peerId, "В качестве префикса можно установить только один символ.");
+            vkChatClient.sendText(chatId, "В качестве префикса можно установить только один символ.");
             return;
         }
-        chatService.setChatPrefix(extractConversationId(peerId), args[0].charAt(0));
+        chatService.setChatPrefix(chatId, args[0].charAt(0));
 
-        vkChatClient.sendText(peerId, "✅Префикс чата был установлен на «%s»".formatted(args[0]));
+        vkChatClient.sendText(chatId, "✅Префикс чата был установлен на «%s»".formatted(args[0]));
 
     }
 }
