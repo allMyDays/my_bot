@@ -133,7 +133,7 @@ public class MemberService {
 
     }
 
-    public List<MemberWithRoleDto> getMembersWithRoleCached(long chatId){
+    public List<MemberWithRoleDto> getCachedMembersWithRole(long chatId){
 
        Map<String, String> hash = redisService.getHash(STAFF.buildKey(chatId));
 
@@ -155,9 +155,9 @@ public class MemberService {
 
     }
 
-    public int getUserRolePriorityCached(long chatId, long userId){
+    public int getCachedRolePriority(long chatId, long userId){
 
-       Optional<Integer> priorityOptional =  getMembersWithRoleCached(chatId).stream()
+       Optional<Integer> priorityOptional =  getCachedMembersWithRole(chatId).stream()
                .filter(m->m.getUserId()==userId)
                .map(MemberWithRoleDto::getRolePriority)
                .findFirst();

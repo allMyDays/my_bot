@@ -34,7 +34,7 @@ public class RoleShowCommand implements ChatCommand {
     public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
         if(args.length==0){
-            int priority =  memberService.getUserRolePriorityCached(chatId, fromId);
+            int priority =  memberService.getCachedRolePriority(chatId, fromId);
             vkChatClient.sendText(chatId, "Ваша роль в чате — «%s». Приоритет роли: %d"
                     .formatted(getRoleNameByPriority(priority).orElse("Неизвестная роль"), priority),true);
             return;

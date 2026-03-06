@@ -34,7 +34,7 @@ public class StaffShowCommand implements ChatCommand {
     public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
         StringBuilder sb = new StringBuilder();
-        List<MemberWithRoleDto> staffList = memberService.getMembersWithRoleCached(chatId);
+        List<MemberWithRoleDto> staffList = memberService.getCachedMembersWithRole(chatId);
 
         Map<Integer, List<MemberWithRoleDto>> staffMap = staffList.stream()  // сортировка по приоритету, от большего приоритета к меньшему
                 .collect(Collectors.groupingBy(
