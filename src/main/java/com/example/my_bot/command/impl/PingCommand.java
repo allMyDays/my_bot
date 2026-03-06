@@ -33,7 +33,7 @@ public class PingCommand implements ChatCommand {
     @Override
     public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
-        vkChatClient.sendText(chatId, "ПОНГ");
+        vkChatClient.sendText(chatId, "ПОНГ", true);
 
     }
 }

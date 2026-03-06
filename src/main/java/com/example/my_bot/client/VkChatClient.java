@@ -22,11 +22,12 @@ public class VkChatClient{
 
 
 
-    public void sendText(long chatId, String text) throws ClientException, ApiException {
+    public void sendText(long chatId, String text, boolean disableMentions) throws ClientException, ApiException {
         vkApiClient.messages()
                 .sendDeprecated(groupActor)
                 .peerId(extractPeerId(chatId))
                 .message(text)
+                .disableMentions(disableMentions)
                 .randomId((int) (System.currentTimeMillis() & 0xFFFFFFFFL))
                 .execute();
 

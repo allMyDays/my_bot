@@ -69,7 +69,7 @@ public class StaffShowCommand implements ChatCommand {
             }sb.append("\n");
         }
 
-        vkChatClient.sendText(chatId,sb.toString());
+        vkChatClient.sendText(chatId,sb.toString(),true);
 
     }
 }

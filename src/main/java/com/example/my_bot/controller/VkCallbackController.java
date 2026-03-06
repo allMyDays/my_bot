@@ -63,7 +63,7 @@ public class VkCallbackController {
                     JsonElement memberEl = action.get("member_id");
                     if(memberEl!=null){
                     if ("chat_invite_user".equals(actionType) && memberEl.getAsLong()== -groupId) {
-                        vkChatClient.sendText(extractConversationId(peerId), WELCOME_MESSAGE);
+                        vkChatClient.sendText(extractConversationId(peerId), WELCOME_MESSAGE,true);
                         return "ok";
                      }
                     }
@@ -76,7 +76,7 @@ public class VkCallbackController {
                 log.error("Произошла ошибка: ",e);
 
                 try {
-                    vkChatClient.sendText(extractConversationId(peerId),UNKNOWN_ERROR_MESSAGE);
+                    vkChatClient.sendText(extractConversationId(peerId),UNKNOWN_ERROR_MESSAGE,true);
                 } catch (ClientException|ApiException e2) {
                     log.error("Ошибка при попытке отправить сообщение об ошибке в чат: ",e2);
 

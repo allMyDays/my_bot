@@ -41,7 +41,7 @@ public class SynchronizeCommand implements ChatCommand {
 
         memberService.synchronizeChatMembers(chatId);
 
-        vkChatClient.sendText(chatId, "Данные участников были обновлены.");
+        vkChatClient.sendText(chatId, "Данные участников были обновлены.",true);
 
     }
 }

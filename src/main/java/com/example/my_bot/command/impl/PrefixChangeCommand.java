@@ -36,23 +36,23 @@ public class PrefixChangeCommand implements ChatCommand {
     public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
         if(args.length==0){
-            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE,true);
             return;
         }
 
         if(args[0].toLowerCase().matches("(?iu)дефолт")){
             chatService.setChatPrefix(chatId, DEFAULT_CHAT_PREFIX);
-            vkChatClient.sendText(chatId, "✅Префикс чата был сброшен на стандартный: «%s»".formatted(DEFAULT_CHAT_PREFIX));
+            vkChatClient.sendText(chatId, "✅Префикс чата был сброшен на стандартный: «%s»".formatted(DEFAULT_CHAT_PREFIX),true);
             return;
         }
 
         if(args[0].length()>1){
-            vkChatClient.sendText(chatId, "В качестве префикса можно установить только один символ.");
+            vkChatClient.sendText(chatId, "В качестве префикса можно установить только один символ.",true);
             return;
         }
         chatService.setChatPrefix(chatId, args[0].charAt(0));
 
-        vkChatClient.sendText(chatId, "✅Префикс чата был установлен на «%s»".formatted(args[0]));
+        vkChatClient.sendText(chatId, "✅Префикс чата был установлен на «%s»".formatted(args[0]),true);
 
     }
 }

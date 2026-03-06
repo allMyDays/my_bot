@@ -42,7 +42,7 @@ public class RoleShowCommand implements ChatCommand {
         if(args.length==0){
             int priority =  memberService.getUserRolePriority(chatId, fromId);
             vkChatClient.sendText(chatId, "Ваша роль в чате — «%s». Приоритет роли: %d"
-                    .formatted(getRoleNameByPriority(priority).orElse("Неизвестная роль"), priority));
+                    .formatted(getRoleNameByPriority(priority).orElse("Неизвестная роль"), priority),true);
             return;
         }
 
