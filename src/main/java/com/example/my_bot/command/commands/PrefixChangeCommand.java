@@ -1,4 +1,4 @@
-package com.example.my_bot.command.impl;
+package com.example.my_bot.command.commands;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
@@ -8,14 +8,11 @@ import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Component;
 
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.enumeration.DefaultRole.*;
-import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
 
-@Component
 @Command(commands = {"префикс", "prefix"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
 public class PrefixChangeCommand implements ChatCommand {
 

@@ -37,17 +37,11 @@ public class CommandDispatcher {
         }
     }
 
-
-
-    public void dispatch(String message, long peerId, long fromId) throws ClientException, ApiException {
-
-             if(isPersonalChat(peerId)) return;
+    public void dispatch(String message, long chatId, long fromId) throws ClientException, ApiException {
 
              if(message==null||message.trim().isEmpty()) return;
 
-             long chatId = extractConversationId(peerId);
-
-             char prefix = chatService.getCachedChatPrefix(chatId, true);
+             char prefix = chatService.getCachedChatDetails(chatId, true).getPrefix();
 
              String text = message.trim();
 
@@ -61,10 +55,7 @@ public class CommandDispatcher {
 
         ChatCommand cmd = commands.get(commandName);
         if (cmd != null) {
-            cmd.execute(message, extractConversationId(peerId), fromId, args);
-        } else {
-           // Неизвестная команда??
-
+            cmd.execute(message,chatId, fromId, args);
         }
 
 

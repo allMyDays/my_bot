@@ -1,75 +1,101 @@
 package com.example.my_bot.service;
 
+import com.example.my_bot.dto.ChatDetailsDto;
+import com.example.my_bot.dto.MemberWithRoleDto;
 import com.example.my_bot.entity.ChatEntity;
 import com.example.my_bot.exception.ChatEntityNotFoundException;
+import com.example.my_bot.mapper.ChatMapper;
+import com.example.my_bot.mapper.json.ChatJsonMapper;
 import com.example.my_bot.repository.ChatRepository;
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
+import static com.example.my_bot.enumeration.RedisKeyBuilder.CHAT;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatService {
 
-    private final static int PREFIX_CACHE_TTL_SECONDS = 600;
+    private final static int CHAT_CACHE_TTL_SECONDS = 600;
 
     private final RedisService redisService;
 
     private final ChatRepository chatRepository;
 
-    private final MemberService memberService;
+    private final ChatJsonMapper chatJsonMapper;
+
+    private final ChatMapper chatMapper;
 
 
     public Optional<ChatEntity> getChatEntity(long chatId){
         return chatRepository.findById(chatId);
     }
 
-    public char getCachedChatPrefix(long chatId, boolean createAbsentChat){
+    public ChatEntity findByChatIdOrThrow(long chatId){
+        return getChatEntity(chatId).orElseThrow(()->
+                new ChatEntityNotFoundException(chatId));
 
-        String redisKey = "prefix:"+chatId;
+    }
 
-        Optional<String> prefixOptional = redisService.get(redisKey);
+    public ChatDetailsDto getCachedChatDetails(long chatId, boolean createIfAbsents){
 
-        if(prefixOptional.isPresent()) {
-            String prefix = prefixOptional.get().trim();
-            if (prefix.length() != 1) {
-                log.warn("could not get cached prefix because its length wasn't 1: {}", prefix);
-                redisService.delete(redisKey);
-            } else return prefix.charAt(0);
+        Optional<String> valueOptional = redisService.get(CHAT.buildKey(chatId));
+
+        if(valueOptional.isPresent()){
+            return chatJsonMapper.fromJson(valueOptional.get());
         }
+
+        Optional<ChatEntity> chatOptional = getChatEntity(chatId);
 
         ChatEntity chat;
-        Optional<ChatEntity> optionalChat = getChatEntity(chatId);
-        if(optionalChat.isEmpty()){
-            if(createAbsentChat){
+
+        if(chatOptional.isEmpty()){
+            if(createIfAbsents){
                 chat = createNewChat(chatId, null);
             } else throw new ChatEntityNotFoundException(chatId);
-        } else{
-            chat = optionalChat.get();
+
+        }else{
+            chat=chatOptional.get();
         }
-        redisService.saveTemp(redisKey, String.valueOf(chat.getPrefix()), PREFIX_CACHE_TTL_SECONDS);
-        return chat.getPrefix();
+
+        return updateChatCache(CHAT.buildKey(chatId), chat);
 
     }
 
     public void setChatPrefix(long chatId, char newPrefix){
 
-        String redisKey = "prefix:"+chatId;
-
-        ChatEntity chat = getChatEntity(chatId).orElseThrow(()->
-                new ChatEntityNotFoundException(chatId));
+        ChatEntity chat = findByChatIdOrThrow(chatId);
 
         chat.setPrefix(newPrefix);
 
-        chatRepository.save(chat);
+        updateChatCache(CHAT.buildKey(chatId), chatRepository.save(chat));
+    }
+    public void setLastSyncToNow(long chatId){
 
-        redisService.saveTemp(redisKey, String.valueOf(newPrefix), PREFIX_CACHE_TTL_SECONDS);
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+
+        chat.setLastSyncTime(Instant.now());
+
+        updateChatCache(CHAT.buildKey(chatId), chatRepository.save(chat));
+    }
+
+    public ChatDetailsDto updateChatCache(String redisKey, ChatEntity chat){
+
+        ChatDetailsDto chatDto = chatMapper.toChatDetailsDto(chat);
+
+        redisService.saveTemp(redisKey, chatJsonMapper.toJson(chatDto), CHAT_CACHE_TTL_SECONDS);
+
+        return chatDto;
 
     }
 
@@ -82,18 +108,7 @@ public class ChatService {
         ChatEntity chat = new ChatEntity();
         chat.setChatId(chatId);
         chat.setPrefix(prefix==null?DEFAULT_CHAT_PREFIX:prefix);
-        chat = chatRepository.save(chat);
-
-        Runnable task = () -> {
-            try {
-                memberService.synchronizeChatMembers(chatId);
-            } catch (Exception  e) {
-                log.warn("error synchronizing members in new chat with id {}:",chatId, e);
-            }
-        };
-        new Thread(task).start();
-
-        return chat;
+        return chatRepository.save(chat);
 
     }
 

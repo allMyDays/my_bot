@@ -1,4 +1,4 @@
-package com.example.my_bot.command.impl.role;
+package com.example.my_bot.command.commands.role;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
@@ -10,16 +10,13 @@ import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 import static com.example.my_bot.utils.VkChatUtils.createMention;
-import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
 
-@Component
 @Command(commands = {"управляющие", "staff", "админы"}, defaultRole = MEMBER, eventable = true)
 public class StaffShowCommand implements ChatCommand {
 
@@ -37,7 +34,7 @@ public class StaffShowCommand implements ChatCommand {
     public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
         StringBuilder sb = new StringBuilder();
-        List<MemberWithRoleDto> staffList = memberService.getMembersWithRole(chatId);
+        List<MemberWithRoleDto> staffList = memberService.getMembersWithRoleCached(chatId);
 
         Map<Integer, List<MemberWithRoleDto>> staffMap = staffList.stream()  // сортировка по приоритету, от большего приоритета к меньшему
                 .collect(Collectors.groupingBy(

@@ -1,9 +1,9 @@
 package com.example.my_bot.service;
 
 import com.example.my_bot.client.VkChatClient;
+import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.MemberWithRoleDto;
 import com.example.my_bot.entity.MemberEntity;
-import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.mapper.json.MemberJsonMapper;
 import com.example.my_bot.repository.MemberRepository;
@@ -12,13 +12,18 @@ import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ConversationMember;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.*;
+import static com.example.my_bot.enumeration.RedisKeyBuilder.STAFF;
 
 @Service
 @RequiredArgsConstructor
@@ -34,14 +39,26 @@ public class MemberService {
 
     private final RedisService redisService;
 
+    private final ChatService chatService;
+
+    private MemberService selfLink;
+
+    private static final long AUTO_SYNC_INTERVAL_MINUTES = 15;
+
     private final static int STAFF_CACHE_TTL_SECONDS = 600;
+
+    @Autowired
+    @Lazy
+    public void setSelfLink(MemberService selfLink) {
+        this.selfLink = selfLink;
+    }
 
 
    public List<MemberEntity> findByChatId(long chatId){
         return memberRepository.findByChatId(chatId);
     }
 
-    public void save(List<MemberEntity> memberEntities){
+    private void save(List<MemberEntity> memberEntities){
        memberRepository.saveAll(memberEntities);
 
     }
@@ -97,13 +114,28 @@ public class MemberService {
         if (!newMembers.isEmpty()) {
               save(newMembers);
         }
+
+        chatService.setLastSyncToNow(chatId);
+        redisService.delete(STAFF.buildKey(chatId));
+
+
     }
 
-    public List<MemberWithRoleDto> getMembersWithRole(long chatId){
+    public void checkLastSyncAndPerform(long chatId) throws ClientException, ApiException {
 
-       String redisKey = "staff:"+chatId;
+        ChatDetailsDto chatDto = chatService.getCachedChatDetails(chatId, false);
 
-       Map<String, String> hash = redisService.getHash(redisKey);
+        if (chatDto.getLastSyncTime()==null||
+                Duration.between(chatDto.getLastSyncTime(), Instant.now()).toMinutes() >= AUTO_SYNC_INTERVAL_MINUTES) {
+
+            selfLink.synchronizeChatMembers(chatId);
+        }
+
+    }
+
+    public List<MemberWithRoleDto> getMembersWithRoleCached(long chatId){
+
+       Map<String, String> hash = redisService.getHash(STAFF.buildKey(chatId));
 
        if(!hash.isEmpty()){
            return memberJsonMapper.fromJson(hash.values().stream().toList());
@@ -117,15 +149,15 @@ public class MemberService {
         for (MemberWithRoleDto dto : memberDtoList) {
             mapToSave.put(String.valueOf(dto.getUserId()), memberJsonMapper.toJson(dto));
         }
-        redisService.setHash(redisKey, mapToSave, STAFF_CACHE_TTL_SECONDS);
+        redisService.setHash(STAFF.buildKey(chatId), mapToSave, STAFF_CACHE_TTL_SECONDS);
 
         return memberDtoList;
 
     }
 
-    public int getUserRolePriority(long chatId, long userId){
+    public int getUserRolePriorityCached(long chatId, long userId){
 
-       Optional<Integer> priorityOptional =  getMembersWithRole(chatId).stream()
+       Optional<Integer> priorityOptional =  getMembersWithRoleCached(chatId).stream()
                .filter(m->m.getUserId()==userId)
                .map(MemberWithRoleDto::getRolePriority)
                .findFirst();

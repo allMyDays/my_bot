@@ -2,6 +2,7 @@ package com.example.my_bot.controller;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
+import com.example.my_bot.service.MemberService;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import static com.example.my_bot.constant.MessageConstant.UNKNOWN_ERROR_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.WELCOME_MESSAGE;
 import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
+import static com.example.my_bot.utils.VkChatUtils.isPersonalChat;
 
 @RestController
 @Slf4j
@@ -29,14 +31,17 @@ public class VkCallbackController {
 
     private final VkChatClient vkChatClient;
 
+    private final MemberService memberService;
+
     public VkCallbackController(
             @Value("${vk.group.confirmation}") String confirmationCode,
             @Value("${vk.group.id}") long groupId,
-            CommandDispatcher commandDispatcher, VkChatClient vkChatClient) {
+            CommandDispatcher commandDispatcher, VkChatClient vkChatClient, MemberService memberService) {
         this.confirmationCode = confirmationCode;
         this.commandDispatcher=commandDispatcher;
         this.groupId = groupId;
         this.vkChatClient = vkChatClient;
+        this.memberService = memberService;
     }
 
     @PostMapping("/callback")
@@ -56,21 +61,23 @@ public class VkCallbackController {
             long peerId = message.get("peer_id").getAsLong();
             long fromId = message.get("from_id").getAsLong();
 
-            try {
+            if(!isPersonalChat(peerId)){
+                long chatId = extractConversationId(peerId);
+                try {
+
                 JsonObject action = message.getAsJsonObject("action");
                 if (action != null) {
                     String actionType = action.get("type").getAsString();
                     JsonElement memberEl = action.get("member_id");
                     if(memberEl!=null){
                     if ("chat_invite_user".equals(actionType) && memberEl.getAsLong()== -groupId) {
-                        vkChatClient.sendText(extractConversationId(peerId), WELCOME_MESSAGE,true);
+                        vkChatClient.sendText(chatId, WELCOME_MESSAGE,true);
                         return "ok";
                      }
                     }
-
-
-                }
-                commandDispatcher.dispatch(text, peerId, fromId);
+                  }
+                 commandDispatcher.dispatch(text, chatId, fromId);
+                 memberService.checkLastSyncAndPerform(chatId);
 
             }catch (Exception e) {
                 log.error("Произошла ошибка: ",e);
@@ -80,6 +87,7 @@ public class VkCallbackController {
                 } catch (ClientException|ApiException e2) {
                     log.error("Ошибка при попытке отправить сообщение об ошибке в чат: ",e2);
 
+                  }
                 }
             }
         }

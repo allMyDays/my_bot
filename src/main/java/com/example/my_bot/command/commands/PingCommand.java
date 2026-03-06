@@ -1,31 +1,22 @@
-package com.example.my_bot.command.impl;
+package com.example.my_bot.command.commands;
 
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
-import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Component;
 
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
-import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
-import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
 
-@Component
 @Slf4j
-@RequiredArgsConstructor
-@Command(commands = {"синхронизация", "resync"}, defaultRole = MODERATOR, eventable = true)
-public class SynchronizeCommand implements ChatCommand {
+@Command(commands = {"пинг", "ping"}, defaultRole = MEMBER, eventable = true)
+public class PingCommand implements ChatCommand {
 
     private VkChatClient vkChatClient;
-
-    private final MemberService memberService;
 
     @Autowired
     @Lazy
@@ -38,9 +29,7 @@ public class SynchronizeCommand implements ChatCommand {
     @Override
     public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
-        memberService.synchronizeChatMembers(chatId);
-
-        vkChatClient.sendText(chatId, "Данные участников были обновлены.",true);
+        vkChatClient.sendText(chatId, "ПОНГ", true);
 
     }
 }

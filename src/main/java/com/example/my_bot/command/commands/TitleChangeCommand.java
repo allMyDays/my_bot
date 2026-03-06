@@ -1,23 +1,22 @@
-package com.example.my_bot.command.impl;
+package com.example.my_bot.command.commands;
 
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
-import com.example.my_bot.enumeration.DefaultRole;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Component;
 
-import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
+import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
+import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 
-@Component
+
+@Command(commands = {"название", "title"}, defaultRole = ADMINISTRATOR, eventable = true)
 @Slf4j
-@Command(commands = {"пинг", "ping"}, defaultRole = MEMBER, eventable = true)
-public class PingCommand implements ChatCommand {
+public class TitleChangeCommand implements ChatCommand {
 
     private VkChatClient vkChatClient;
 
@@ -28,11 +27,14 @@ public class PingCommand implements ChatCommand {
     }
 
 
-
     @Override
     public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
-        vkChatClient.sendText(chatId, "ПОНГ", true);
+        if(args.length==0){
+            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE,true);
+            return;
+        }
+        vkChatClient.changeChatTitle(chatId, String.join(" ", args));
 
     }
 }

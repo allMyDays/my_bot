@@ -6,6 +6,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
 
+import java.time.Instant;
+
 @Entity
 @Getter
 @Setter
@@ -19,6 +21,9 @@ public class ChatEntity {
 
     @Column(nullable = false)
     private char prefix;
+
+    @Column(nullable = true)
+    private Instant lastSyncTime;
 
 
 
