@@ -1,5 +1,6 @@
 package com.example.my_bot.command.impl.role;
 
+import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.dto.MemberWithRoleDto;
@@ -14,10 +15,12 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 import static com.example.my_bot.utils.VkChatUtils.createMention;
 import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
 
 @Component
+@Command(commands = {"управляющие", "staff", "админы"}, defaultRole = MEMBER, eventable = true)
 public class StaffShowCommand implements ChatCommand {
 
     private MemberService memberService;
@@ -28,11 +31,6 @@ public class StaffShowCommand implements ChatCommand {
     public void setChatService(MemberService memberService, VkChatClient vkChatClient) {
        this.memberService = memberService;
         this.vkChatClient = vkChatClient;
-    }
-
-    @Override
-    public String getCommand() {
-        return "управляющие";
     }
 
     @Override

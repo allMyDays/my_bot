@@ -1,6 +1,7 @@
 package com.example.my_bot.command.impl;
 
 
+import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.enumeration.DefaultRole;
@@ -11,8 +12,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
+
 @Component
 @Slf4j
+@Command(commands = {"пинг", "ping"}, defaultRole = MEMBER, eventable = true)
 public class PingCommand implements ChatCommand {
 
     private VkChatClient vkChatClient;
@@ -23,11 +27,6 @@ public class PingCommand implements ChatCommand {
         this.vkChatClient = vkChatClient;
     }
 
-
-    @Override
-    public String getCommand() {
-        return "пинг";
-    }
 
 
     @Override

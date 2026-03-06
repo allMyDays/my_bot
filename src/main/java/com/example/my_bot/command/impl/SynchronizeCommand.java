@@ -1,6 +1,7 @@
 package com.example.my_bot.command.impl;
 
 
+import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.service.MemberService;
@@ -12,11 +13,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
+import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
 
 @Component
 @Slf4j
 @RequiredArgsConstructor
+@Command(commands = {"синхронизация", "resync"}, defaultRole = MODERATOR, eventable = true)
 public class SynchronizeCommand implements ChatCommand {
 
     private VkChatClient vkChatClient;
@@ -29,11 +33,6 @@ public class SynchronizeCommand implements ChatCommand {
         this.vkChatClient = vkChatClient;
     }
 
-
-    @Override
-    public String getCommand() {
-        return "синхронизация";
-    }
 
 
     @Override

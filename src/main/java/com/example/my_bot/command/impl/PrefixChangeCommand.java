@@ -1,5 +1,6 @@
 package com.example.my_bot.command.impl;
 
+import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.service.ChatService;
@@ -11,9 +12,11 @@ import org.springframework.stereotype.Component;
 
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
+import static com.example.my_bot.enumeration.DefaultRole.*;
 import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
 
 @Component
+@Command(commands = {"префикс", "prefix"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
 public class PrefixChangeCommand implements ChatCommand {
 
     private ChatService chatService;
@@ -27,10 +30,6 @@ public class PrefixChangeCommand implements ChatCommand {
         this.vkChatClient = vkChatClient;
     }
 
-    @Override
-    public String getCommand() {
-        return "префикс";
-    }
 
     @Override
     public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {

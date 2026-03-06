@@ -1,5 +1,6 @@
 package com.example.my_bot.command.impl.role;
 
+import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.enumeration.DefaultRole;
@@ -11,11 +12,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 import static com.example.my_bot.enumeration.DefaultRole.getRoleNameByPriority;
 import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
 
 @Component
 @Slf4j
+@Command(commands = {"роль", "role", "ктоя"}, defaultRole = MEMBER, eventable = true)
 public class RoleShowCommand implements ChatCommand {
 
     private VkChatClient vkChatClient;
@@ -27,12 +30,6 @@ public class RoleShowCommand implements ChatCommand {
     public void setVkChatClient(VkChatClient vkChatClient, MemberService memberService) {
         this.vkChatClient = vkChatClient;
         this.memberService = memberService;
-    }
-
-
-    @Override
-    public String getCommand() {
-        return "роль";
     }
 
 
