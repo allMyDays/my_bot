@@ -13,7 +13,7 @@ import java.time.Instant;
 @NoArgsConstructor
 public class ChatDetailsDto {
 
-    private char prefix;
+    private Character prefix;
 
 
     private Instant lastSyncTime;

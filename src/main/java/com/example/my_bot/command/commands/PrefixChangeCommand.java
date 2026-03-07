@@ -36,19 +36,26 @@ public class PrefixChangeCommand implements ChatCommand {
             return;
         }
 
-        if(args[0].toLowerCase().matches("(?iu)дефолт")){
+        if(args[0].matches("(?iu)дефолт")){
             chatService.setChatPrefix(chatId, DEFAULT_CHAT_PREFIX);
             vkChatClient.sendText(chatId, "✅Префикс чата был сброшен на стандартный: «%s»".formatted(DEFAULT_CHAT_PREFIX),true);
             return;
         }
-
+        if(args[0].matches("(?iu)удалить|отключить")){
+            chatService.disableChatPrefix(chatId);
+            vkChatClient.sendText(chatId, "✅Префикс чата был отключён. " +
+                    "Теперь команды в чате можно писать как без префикса, так и со стандартным префиксом: «%s»"
+                    .formatted(DEFAULT_CHAT_PREFIX),true);
+            return;
+        }
         if(args[0].length()>1){
             vkChatClient.sendText(chatId, "В качестве префикса можно установить только один символ.",true);
             return;
         }
         chatService.setChatPrefix(chatId, args[0].charAt(0));
 
-        vkChatClient.sendText(chatId, "✅Префикс чата был установлен на «%s»".formatted(args[0]),true);
+        vkChatClient.sendText(chatId, (("✅Префикс чата был установлен на «%s». " +
+                "Теперь команды в чате можно писать ТОЛЬКО с этим префиксом.").formatted(args[0])),true);
 
     }
 }

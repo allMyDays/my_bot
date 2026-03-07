@@ -19,8 +19,8 @@ public class ChatEntity {
     @Id
     private Long chatId;
 
-    @Column(nullable = false)
-    private char prefix;
+    @Column(nullable = true)
+    private Character prefix;
 
     @Column(nullable = true)
     private Instant lastSyncTime;

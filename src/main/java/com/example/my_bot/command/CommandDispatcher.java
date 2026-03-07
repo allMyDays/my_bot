@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
+import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
+
 
 @Component
 @Slf4j
@@ -49,24 +51,36 @@ public class CommandDispatcher {
 
     public void dispatch(String message, long chatId, long fromId) throws ClientException, ApiException {
 
-             if(message==null||message.trim().isEmpty()) return;
+             String text;
 
-             char prefix = chatService.getCachedChatDetails(chatId, true).getPrefix();
+             if(message==null||(text=message.trim()).isEmpty()) return;
 
-             String text = message.trim();
+             Character chatPrefix = chatService.getCachedChatDetails(chatId, true).getPrefix();
 
-             if(text.charAt(0)!=prefix) return;
+             boolean mustCutPrefix=true;
+
+             if(chatPrefix!=null){
+                 if(text.charAt(0)!=chatPrefix) return;
+             }else{
+                 if(text.charAt(0)!=DEFAULT_CHAT_PREFIX){
+                     mustCutPrefix=false;
+
+                 }
+             }
 
              String[] parts = text.split("\\s+");
-             String commandName = parts[0].substring(1).toLowerCase();
+             String commandName = parts[0].toLowerCase();
+              if(mustCutPrefix){
+                  commandName = commandName.substring(1);
+              }
 
-             String[] args = Arrays.copyOfRange(parts, 1, parts.length);
+             String[] arguments = Arrays.copyOfRange(parts, 1, parts.length);
 
 
         ChatCommand cmd = commands.get(commandName);
         if (cmd != null) {
             if(memberService.getCachedRolePriority(chatId,fromId)>=commandAnnotations.get(cmd).defaultRole().getRolePriority()){
-                cmd.execute(message,chatId, fromId, args);
+                cmd.execute(message,chatId, fromId, arguments);
             }else{
                 vkChatClient.sendText(chatId,"Ваша роль недостаточно высока для применения этой команды.", true);
 

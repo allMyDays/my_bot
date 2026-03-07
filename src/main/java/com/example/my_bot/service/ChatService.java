@@ -80,6 +80,16 @@ public class ChatService {
 
         updateChatCache(CHAT.buildKey(chatId), chatRepository.save(chat));
     }
+
+    public void disableChatPrefix(long chatId){
+
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+
+        chat.setPrefix(null);
+
+        updateChatCache(CHAT.buildKey(chatId), chatRepository.save(chat));
+    }
+
     public void setLastSyncToNow(long chatId){
 
         ChatEntity chat = findByChatIdOrThrow(chatId);
@@ -89,7 +99,7 @@ public class ChatService {
         updateChatCache(CHAT.buildKey(chatId), chatRepository.save(chat));
     }
 
-    public ChatDetailsDto updateChatCache(String redisKey, ChatEntity chat){
+    private ChatDetailsDto updateChatCache(String redisKey, ChatEntity chat){
 
         ChatDetailsDto chatDto = chatMapper.toChatDetailsDto(chat);
 

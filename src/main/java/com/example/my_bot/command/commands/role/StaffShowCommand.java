@@ -47,7 +47,7 @@ public class StaffShowCommand implements ChatCommand {
                 .filter(m -> !m.isInChat())
                 .count();
 
-        sb.append("В чате %d участников имеют роль (из них %d отсутствует в чате)\n\n".formatted(staffList.size(), exitedMembers));
+        sb.append("В чате %d участников имеют роль (из них %d сейчас отсутствует).\n\n".formatted(staffList.size(), exitedMembers));
 
         for(Map.Entry<Integer, List<MemberWithRoleDto>> entry: staffMap.entrySet()){
             String roleName = DefaultRole.getRoleNameByPriority(entry.getKey())
