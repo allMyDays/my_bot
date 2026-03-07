@@ -8,15 +8,13 @@ import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.entity.RoleEntity;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.exception.ChatEntityNotFoundException;
-import com.example.my_bot.exception.role.DuplicateRoleNameException;
-import com.example.my_bot.exception.role.DuplicateRolePriorityException;
-import com.example.my_bot.exception.role.RoleNameLengthOutOfBoundsException;
-import com.example.my_bot.exception.role.RolePriorityOutOfBoundsException;
+import com.example.my_bot.exception.role.*;
 import com.example.my_bot.mapper.ChatMapper;
 import com.example.my_bot.mapper.RoleMapper;
 import com.example.my_bot.mapper.json.ChatJsonMapper;
 import com.example.my_bot.repository.ChatRepository;
 import com.example.my_bot.repository.RoleRepository;
+import com.vdurmont.emoji.EmojiManager;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -59,7 +57,9 @@ public class RoleService {
         if(roleName.length()<MIN_CREATABLE_ROLE_NAME_LENGTH||roleName.length()>MAX_CREATABLE_ROLE_NAME_LENGTH){
             throw new RoleNameLengthOutOfBoundsException(MIN_CREATABLE_ROLE_NAME_LENGTH, MAX_CREATABLE_ROLE_NAME_LENGTH);
         }
-
+        if(EmojiManager.containsEmoji(roleName)){
+            throw new RoleNameCannotContainEmojiException();
+        }
         if(rolePriority>memberService.getCachedRolePriority(chatId, fromId)){
             throw new CannotCreateRoleHigherThanOwnRoleException();
         }
