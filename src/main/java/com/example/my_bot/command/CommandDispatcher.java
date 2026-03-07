@@ -80,7 +80,7 @@ public class CommandDispatcher {
         ChatCommand cmd = commands.get(commandName);
         if (cmd != null) {
             if(memberService.getCachedRolePriority(chatId,fromId)>=commandAnnotations.get(cmd).defaultRole().getRolePriority()){
-                cmd.execute(message,chatId, fromId, arguments);
+                cmd.execute(chatId, fromId, arguments);
             }else{
                 vkChatClient.sendText(chatId,"Ваша роль недостаточно высока для применения этой команды.", true);
 

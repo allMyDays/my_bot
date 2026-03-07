@@ -8,7 +8,7 @@ import com.vk.api.sdk.exceptions.ClientException;
 public interface ChatCommand {
 
 
-    void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException;
+    void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException;
 
 
 

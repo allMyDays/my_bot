@@ -31,6 +31,19 @@ public class VkChatUtils {
     }
 
 
+    public static boolean isValidInteger(String str) {
+        if (str == null || !str.matches("-?\\d+")) {
+            return false;
+        }
+        try {
+            Integer.parseInt(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+
 
 
 

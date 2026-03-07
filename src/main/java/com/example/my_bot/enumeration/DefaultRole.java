@@ -1,5 +1,7 @@
 package com.example.my_bot.enumeration;
 
+import lombok.NonNull;
+
 import java.util.Optional;
 
 public enum DefaultRole {
@@ -38,6 +40,16 @@ public enum DefaultRole {
     public static boolean isDefaultRole(int priority) {
         for (DefaultRole role : DefaultRole.values()) {
             if (role.getRolePriority() == priority) {
+                return true;
+            }
+        }
+        return false;
+
+    }
+    public static boolean isDefaultRole(@NonNull String name) {
+           name=name.trim();
+        for (DefaultRole role : DefaultRole.values()) {
+            if (role.getRoleName().equalsIgnoreCase(name)) {
                 return true;
             }
         }

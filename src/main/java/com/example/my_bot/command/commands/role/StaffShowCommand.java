@@ -31,7 +31,7 @@ public class StaffShowCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
         StringBuilder sb = new StringBuilder();
         List<MemberWithRoleDto> staffList = memberService.getCachedMembersWithRole(chatId);

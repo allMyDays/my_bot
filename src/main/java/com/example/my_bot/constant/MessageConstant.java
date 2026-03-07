@@ -9,7 +9,7 @@ public class MessageConstant {
 
     public static String NOT_ENOUGH_ARGUMENTS_MESSAGE = "Вы ввели недостаточно аргументов для обработки этой команды.";
 
-
+    public static String NOT_VALID_INTEGER_MESSAGE = "Вы ввели некорректное число в качестве аргумента.";
 
 
 

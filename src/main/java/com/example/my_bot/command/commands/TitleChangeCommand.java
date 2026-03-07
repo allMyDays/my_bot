@@ -28,7 +28,7 @@ public class TitleChangeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
         if(args.length==0){
             vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE,true);

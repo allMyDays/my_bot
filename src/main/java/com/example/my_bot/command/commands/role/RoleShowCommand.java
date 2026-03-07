@@ -31,7 +31,7 @@ public class RoleShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
         if(args.length==0){
             int priority =  memberService.getCachedRolePriority(chatId, fromId);

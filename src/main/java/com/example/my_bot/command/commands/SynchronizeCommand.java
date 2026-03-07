@@ -32,11 +32,11 @@ public class SynchronizeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(String message, long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
         memberService.synchronizeChatMembers(chatId);
 
-        vkChatClient.sendText(chatId, "Данные участников были обновлены.",true);
+        vkChatClient.sendText(chatId, "✅Данные участников были обновлены.",true);
 
     }
 }
