@@ -16,10 +16,11 @@ import java.util.Arrays;
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_VALID_INTEGER_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
+import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
 import static com.example.my_bot.utils.VkChatUtils.isValidInteger;
 
 @Slf4j
-@Command(commands = {"новаяроль", "создатьроль", "рольсоздать"}, defaultRole = MEMBER, eventable = false)
+@Command(commands = {"новаяроль", "создатьроль", "рольсоздать"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
 @RequiredArgsConstructor
 public class RoleCreateCommand implements ChatCommand {
 
@@ -43,7 +44,7 @@ public class RoleCreateCommand implements ChatCommand {
 
         RoleEntity createdRole;
         try{
-            createdRole =  roleService.createRole(chatId, Integer.parseInt(args[0]),
+            createdRole =  roleService.createRole(chatId, fromId, Integer.parseInt(args[0]),
                    String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
 
         }catch (RoleException e){

@@ -1,7 +1,10 @@
 package com.example.my_bot.service;
 
+import com.example.my_bot.command.commands.role.CannotCreateRoleHigherThanOwnRoleException;
 import com.example.my_bot.dto.ChatDetailsDto;
+import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.entity.ChatEntity;
+import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.entity.RoleEntity;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.exception.ChatEntityNotFoundException;
@@ -10,6 +13,7 @@ import com.example.my_bot.exception.role.DuplicateRolePriorityException;
 import com.example.my_bot.exception.role.RoleNameLengthOutOfBoundsException;
 import com.example.my_bot.exception.role.RolePriorityOutOfBoundsException;
 import com.example.my_bot.mapper.ChatMapper;
+import com.example.my_bot.mapper.RoleMapper;
 import com.example.my_bot.mapper.json.ChatJsonMapper;
 import com.example.my_bot.repository.ChatRepository;
 import com.example.my_bot.repository.RoleRepository;
@@ -20,10 +24,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
@@ -36,14 +38,18 @@ import static com.example.my_bot.enumeration.RedisKeyBuilder.CHAT;
 public class RoleService {
     private final RoleRepository roleRepository;
 
+    private final RoleMapper roleMapper;
+
+    private final MemberService memberService;
+
     private final int MIN_CREATABLE_ROLE_PRIORITY = -100;
     private final int MAX_CREATABLE_ROLE_PRIORITY =  99;
     private final int MIN_CREATABLE_ROLE_NAME_LENGTH = 3;
-    private final int MAX_CREATABLE_ROLE_NAME_LENGTH = 20;
+    private final int MAX_CREATABLE_ROLE_NAME_LENGTH = 30;
 
 
 
-    public RoleEntity createRole(long chatId, int rolePriority, @NonNull String roleName){
+    public RoleEntity createRole(long chatId, long fromId, int rolePriority, @NonNull String roleName){
 
         roleName=roleName.trim();
 
@@ -52,6 +58,10 @@ public class RoleService {
         }
         if(roleName.length()<MIN_CREATABLE_ROLE_NAME_LENGTH||roleName.length()>MAX_CREATABLE_ROLE_NAME_LENGTH){
             throw new RoleNameLengthOutOfBoundsException(MIN_CREATABLE_ROLE_NAME_LENGTH, MAX_CREATABLE_ROLE_NAME_LENGTH);
+        }
+
+        if(rolePriority>memberService.getCachedRolePriority(chatId, fromId)){
+            throw new CannotCreateRoleHigherThanOwnRoleException();
         }
 
         Set<Integer> existingPriorities = new HashSet<>();
@@ -73,7 +83,24 @@ public class RoleService {
 
     }
 
-    public List<RoleEntity> getRoles(long chatId){
+    public Set<RoleDto> getAllSortedChatRoles(long chatId){
+
+        Set<RoleDto> sortedRoleSet = new TreeSet<>(
+                Comparator.comparingInt(RoleDto::getRolePriority).reversed()
+        );
+        sortedRoleSet.addAll(roleMapper.toDto(getRoles(chatId)));
+
+
+        for(DefaultRole defRole: DefaultRole.values()){
+            sortedRoleSet.add(roleMapper.toDto(defRole));   // дубликаты не добавятся из-за equals & hashcode
+
+        } return sortedRoleSet;
+
+    }
+
+
+
+    private List<RoleEntity> getRoles(long chatId){
         return roleRepository.findByChatId(chatId);
 
     }

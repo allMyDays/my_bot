@@ -16,7 +16,7 @@ import static com.example.my_bot.enumeration.DefaultRole.getRoleNameByPriority;
 
 @Slf4j
 @Command(commands = {"роль", "role", "ктоя"}, defaultRole = MEMBER, eventable = true)
-public class RoleShowCommand implements ChatCommand {
+public class UserRoleShowCommand implements ChatCommand {
 
     private VkChatClient vkChatClient;
 
