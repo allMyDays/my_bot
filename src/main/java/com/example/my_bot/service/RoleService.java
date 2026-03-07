@@ -1,34 +1,23 @@
 package com.example.my_bot.service;
 
-import com.example.my_bot.command.commands.role.CannotCreateRoleHigherThanOwnRoleException;
-import com.example.my_bot.dto.ChatDetailsDto;
-import com.example.my_bot.dto.RoleDto;
-import com.example.my_bot.entity.ChatEntity;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.exception.role.RolePriorityAccessDeniedException;
+import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.entity.RoleEntity;
 import com.example.my_bot.enumeration.DefaultRole;
-import com.example.my_bot.exception.ChatEntityNotFoundException;
 import com.example.my_bot.exception.role.*;
-import com.example.my_bot.mapper.ChatMapper;
 import com.example.my_bot.mapper.RoleMapper;
-import com.example.my_bot.mapper.json.ChatJsonMapper;
-import com.example.my_bot.repository.ChatRepository;
 import com.example.my_bot.repository.RoleRepository;
 import com.vdurmont.emoji.EmojiManager;
-import jakarta.annotation.Nullable;
+import jakarta.transaction.Transactional;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
-import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.enumeration.DefaultRole.isDefaultRole;
-import static com.example.my_bot.enumeration.RedisKeyBuilder.CHAT;
 
 @Slf4j
 @Service
@@ -60,9 +49,7 @@ public class RoleService {
         if(EmojiManager.containsEmoji(roleName)){
             throw new RoleNameCannotContainEmojiException();
         }
-        if(rolePriority>memberService.getCachedRolePriority(chatId, fromId)){
-            throw new CannotCreateRoleHigherThanOwnRoleException();
-        }
+        checkRoleInteractionAbility(rolePriority, chatId, fromId);
 
         Set<Integer> existingPriorities = new HashSet<>();
         Set<String> existingNames = new HashSet<>();
@@ -83,6 +70,64 @@ public class RoleService {
 
     }
 
+    @Transactional
+    public RoleDto deleteCustomRole(long chatId, long fromId, int rolePriority){
+
+        if(isDefaultRole(rolePriority)){
+            throw new CannotDeleteDefaultRoleException();
+        }
+        RoleEntity role = roleRepository.findByChatIdAndRolePriority(chatId, rolePriority)
+                .orElseThrow(RoleNotFoundException::new);
+
+        checkRoleInteractionAbility(rolePriority, chatId, fromId);
+
+        RoleDto assignedRole = assignNearestRoleToMembers(role,chatId);
+
+        roleRepository.delete(role);
+
+        return assignedRole;
+
+    }
+
+    @Transactional
+    public RoleDto deleteCustomRole(long chatId, long fromId, @NonNull String roleName){
+
+        if(isDefaultRole(roleName)){
+            throw new CannotDeleteDefaultRoleException();
+        }
+        RoleEntity role = roleRepository.findByChatIdAndRoleName(chatId, roleName)
+                .orElseThrow(RoleNotFoundException::new);
+
+        checkRoleInteractionAbility(role.getRolePriority(), chatId, fromId);
+
+        RoleDto assignedRole = assignNearestRoleToMembers(role,chatId);
+
+        roleRepository.delete(role);
+
+        return assignedRole;
+
+
+    }
+
+    private RoleDto assignNearestRoleToMembers(RoleEntity roleToDelete, long chatId){
+
+       List<RoleDto> allSortedRoles = new ArrayList<>(getAllSortedChatRoles(chatId));
+
+       int roleToDeleteIndex =  allSortedRoles.indexOf(roleMapper.toDto(roleToDelete));  // найдётся нужный индекс из-за equals & hashcode по priorityRole
+
+       RoleDto roleToAssign =
+               allSortedRoles.get(roleToDeleteIndex!=allSortedRoles.size()-1?roleToDeleteIndex+1:roleToDeleteIndex-1); // нахожу самую ближайшую наименьшую роль, если её нет - нахожу самую наибольшую ближайшую
+
+        List<MemberEntity> requiredMembers = memberService.getMembersWithRequiredRole(chatId, roleToDelete.getRolePriority());
+
+        for(MemberEntity member: requiredMembers){
+            member.setRolePriority(roleToAssign.getRolePriority());
+        }
+        memberService.invalidateStaffMembersCache(chatId);
+
+        return roleToAssign;
+    }
+
     public Set<RoleDto> getAllSortedChatRoles(long chatId){
 
         Set<RoleDto> sortedRoleSet = new TreeSet<>(
@@ -92,16 +137,32 @@ public class RoleService {
 
 
         for(DefaultRole defRole: DefaultRole.values()){
-            sortedRoleSet.add(roleMapper.toDto(defRole));   // дубликаты не добавятся из-за equals & hashcode
+            sortedRoleSet.add(roleMapper.toDto(defRole));   // дубликаты не добавятся из-за equals & hashcode по priorityRole
 
         } return sortedRoleSet;
 
     }
 
+    public Optional<String> getRoleName(long chatId, int rolePriority){
+
+        Optional<RoleEntity> optionalRole = roleRepository.findByChatIdAndRolePriority(chatId, rolePriority);
+
+        if(optionalRole.isEmpty()){
+            return DefaultRole.getRoleNameByPriority(rolePriority);
+        }return Optional.of(optionalRole.get().getRoleName());
+
+    }
 
 
     private List<RoleEntity> getRoles(long chatId){
         return roleRepository.findByChatId(chatId);
+
+    }
+
+    private void checkRoleInteractionAbility(int rolePriority, long chatId, long fromId){
+        if(rolePriority>memberService.getCachedRolePriority(chatId, fromId)){
+            throw new RolePriorityAccessDeniedException();
+        }
 
     }
 

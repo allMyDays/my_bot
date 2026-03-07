@@ -4,6 +4,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.MemberWithRoleDto;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.enumeration.RedisKeyBuilder;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.mapper.json.MemberJsonMapper;
 import com.example.my_bot.repository.MemberRepository;
@@ -116,7 +117,7 @@ public class MemberService {
         }
 
         chatService.setLastSyncToNow(chatId);
-        redisService.delete(STAFF.buildKey(chatId));
+        invalidateStaffMembersCache(chatId);
 
 
     }
@@ -142,7 +143,7 @@ public class MemberService {
        }
 
        List<MemberWithRoleDto> memberDtoList = memberMapper.toMemberWithRoleDtoList(
-               memberRepository.findMembersWithRole(chatId));
+               memberRepository.findMembersWithNotZeroRole(chatId));
 
 
         Map<String, String> mapToSave = new HashMap<>();
@@ -164,6 +165,16 @@ public class MemberService {
 
         return priorityOptional.orElseGet(MEMBER::getRolePriority);
 
+    }
+
+    public void invalidateStaffMembersCache(long chatId){
+        redisService.delete(STAFF.buildKey(chatId));
+
+    }
+
+    public List<MemberEntity> getMembersWithRequiredRole(long chatId, long rolePriority){
+
+       return memberRepository.findMembersWithRequiredRole(chatId, rolePriority);
     }
 
 

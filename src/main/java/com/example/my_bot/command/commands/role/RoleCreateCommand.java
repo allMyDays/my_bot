@@ -13,8 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
 
-import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
-import static com.example.my_bot.constant.MessageConstant.NOT_VALID_INTEGER_MESSAGE;
+import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
 import static com.example.my_bot.utils.VkChatUtils.isValidInteger;
@@ -42,7 +41,7 @@ public class RoleCreateCommand implements ChatCommand {
             return;
         }
 
-        RoleEntity createdRole;
+        RoleEntity createdRole=null;
         try{
             createdRole =  roleService.createRole(chatId, fromId, Integer.parseInt(args[0]),
                    String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
@@ -51,9 +50,8 @@ public class RoleCreateCommand implements ChatCommand {
             vkChatClient.sendText(chatId, e.getMessage(), true);
             return;
         }
-        if(createdRole!=null){
             vkChatClient.sendText(chatId, "✅Вы создали новую роль «%s» с приоритетом %d."
                     .formatted(createdRole.getRoleName(), createdRole.getRolePriority()), true);
-        }
+
     }
 }

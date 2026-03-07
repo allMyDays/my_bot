@@ -15,6 +15,9 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
     List<MemberEntity> findByChatId(@Param("chatId") Long chatId);
 
     @Query("SELECT c FROM MemberEntity c WHERE c.chatId = :chatId AND c.rolePriority!=0")
-    List<MemberEntity> findMembersWithRole(@Param("chatId") Long chatId);
+    List<MemberEntity> findMembersWithNotZeroRole(@Param("chatId") Long chatId);
+
+    @Query("SELECT c FROM MemberEntity c WHERE c.chatId = :chatId AND c.rolePriority=:rolePriority")
+    List<MemberEntity> findMembersWithRequiredRole(@Param("chatId") Long chatId,@Param("rolePriority") Long rolePriority);
 
 }

@@ -1,5 +1,7 @@
 package com.example.my_bot.utils;
 
+import lombok.NonNull;
+
 public class VkChatUtils {
 
     public static final long PEER_ID_CHAT_OFFSET = 2_000_000_000L;
@@ -41,6 +43,9 @@ public class VkChatUtils {
         } catch (NumberFormatException e) {
             return false;
         }
+    }
+    public static boolean isNumber(@NonNull String str) {
+        return str.matches("-?\\d+");
     }
 
 

@@ -4,29 +4,34 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.dto.MemberWithRoleDto;
+import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 import static com.example.my_bot.utils.VkChatUtils.createMention;
 
 @Command(commands = {"управляющие", "staff", "админы"}, defaultRole = MEMBER, eventable = true)
+@RequiredArgsConstructor
 public class StaffShowCommand implements ChatCommand {
 
-    private MemberService memberService;
+    private final MemberService memberService;
+    private final RoleService roleService;
     private VkChatClient vkChatClient;
 
     @Autowired
     @Lazy
-    public void setChatService(MemberService memberService, VkChatClient vkChatClient) {
-       this.memberService = memberService;
+    public void setVkChatService(VkChatClient vkChatClient) {
         this.vkChatClient = vkChatClient;
     }
 
@@ -49,10 +54,12 @@ public class StaffShowCommand implements ChatCommand {
 
         sb.append("В чате %d участников имеют роль (из них %d сейчас отсутствует).\n\n".formatted(staffList.size(), exitedMembers));
 
+        Map<Integer, String> roleMap = roleService.getAllSortedChatRoles(chatId).stream()
+                .collect(Collectors.toMap(RoleDto::getRolePriority, RoleDto::getRoleName));
+
+
         for(Map.Entry<Integer, List<MemberWithRoleDto>> entry: staffMap.entrySet()){
-            String roleName = DefaultRole.getRoleNameByPriority(entry.getKey())
-                    .orElse("Неизвестная роль");
-            sb.append(roleName).append(" ").append("(%d):\n".formatted(entry.getKey()));
+            sb.append(roleMap.get(entry.getKey())).append(" ").append("(%d):\n".formatted(entry.getKey()));
             for(MemberWithRoleDto member:entry.getValue()){
             if(member.isChatAdmin()){
                 sb.append("\uD83D\uDCA0 ");
