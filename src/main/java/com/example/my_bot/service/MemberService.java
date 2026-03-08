@@ -4,7 +4,6 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.MemberWithRoleDto;
 import com.example.my_bot.entity.MemberEntity;
-import com.example.my_bot.enumeration.RedisKeyBuilder;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.mapper.json.MemberJsonMapper;
 import com.example.my_bot.repository.MemberRepository;
@@ -67,25 +66,27 @@ public class MemberService {
     @Transactional
     public void synchronizeChatMembers(long chatId) throws ClientException, ApiException {
 
-        List<ConversationMember> vkMemberList = vkChatClient.getAllConversationMembers(chatId);
 
-        Map<Long, MemberEntity> existing = findByChatId(chatId).stream()
-                        .collect(Collectors.toMap(MemberEntity::getUserId, Function.identity()));
+        List<ConversationMember> membersWhoAreInChat = vkChatClient.getAllConversationMembers(chatId);
+        Set<Long> vkUserIds = membersWhoAreInChat.stream()
+                .map(ConversationMember::getMemberId)
+                .collect(Collectors.toSet());
 
-        Set<Long> currentVkIds = new HashSet<>();
+        memberRepository.markMembersAsLeft(chatId, vkUserIds);
+
+
+        Map<Long, MemberEntity> dbMembersMap =  memberRepository.findByChatIdAndUserIdIn(chatId, vkUserIds).stream()
+                .collect(Collectors.toMap(MemberEntity::getUserId, Function.identity()));
+
 
         List<MemberEntity> newMembers = new ArrayList<>();
-
-        for (ConversationMember vkMember : vkMemberList) {
-
-            long id = vkMember.getMemberId();
-            currentVkIds.add(id);
-
-            MemberEntity entity = existing.get(id);
+        for (ConversationMember vkMember : membersWhoAreInChat) {
+            long userId = vkMember.getMemberId();
+            MemberEntity entity = dbMembersMap.get(userId);
 
             if (entity == null) {
                 entity = new MemberEntity();
-                entity.setUserId(id);
+                entity.setUserId(userId);
                 entity.setChatId(chatId);
                 newMembers.add(entity);
             }
@@ -104,21 +105,12 @@ public class MemberService {
             }
         }
 
-        // помечаю вышедших
-        for (MemberEntity entity : existing.values()) {
-            if (!currentVkIds.contains(entity.getUserId())) {
-                entity.setInChat(false);
-                entity.setChatAdmin(false);
-            }
-        }
-
         if (!newMembers.isEmpty()) {
-              save(newMembers);
+            memberRepository.saveAll(newMembers);
         }
 
         chatService.setLastSyncToNow(chatId);
         invalidateStaffMembersCache(chatId);
-
 
     }
 
@@ -156,7 +148,7 @@ public class MemberService {
 
     }
 
-    public int getCachedRolePriority(long chatId, long userId){
+    public int getCachedMemberRolePriority(long chatId, long userId){
 
        Optional<Integer> priorityOptional =  getCachedMembersWithRole(chatId).stream()
                .filter(m->m.getUserId()==userId)
@@ -167,15 +159,22 @@ public class MemberService {
 
     }
 
-    public void invalidateStaffMembersCache(long chatId){
+    private void invalidateStaffMembersCache(long chatId){
         redisService.delete(STAFF.buildKey(chatId));
 
     }
 
-    public List<MemberEntity> getMembersWithRequiredRole(long chatId, long rolePriority){
+    public boolean updateRolePriorityForMembers(long chatId, int oldRolePriority, int newOldPriority){
 
-       return memberRepository.findMembersWithRequiredRole(chatId, rolePriority);
+        int changedRows = memberRepository.updateRolePriorityForMembers(chatId, oldRolePriority, newOldPriority);
+
+        invalidateStaffMembersCache(chatId);
+
+        return changedRows>0;
+
     }
+
+
 
 
 

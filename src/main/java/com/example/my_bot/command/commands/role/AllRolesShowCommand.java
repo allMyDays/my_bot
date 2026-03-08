@@ -4,7 +4,6 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.dto.RoleDto;
-import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -38,7 +37,7 @@ public class AllRolesShowCommand implements ChatCommand {
 
         StringBuilder sb = new StringBuilder();
 
-        Set<RoleDto> roles = roleService.getAllSortedChatRoles(chatId);
+        Set<RoleDto> roles = roleService.getAllRolesSortedInDescendingOrder(chatId);
 
         long customRoles = roles.stream()
                 .filter(r->!isDefaultRole(r.getRolePriority()))

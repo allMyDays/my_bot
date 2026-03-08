@@ -5,7 +5,6 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.dto.MemberWithRoleDto;
 import com.example.my_bot.dto.RoleDto;
-import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -15,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
@@ -54,7 +52,7 @@ public class StaffShowCommand implements ChatCommand {
 
         sb.append("В чате %d участников имеют роль (из них %d сейчас отсутствует).\n\n".formatted(staffList.size(), exitedMembers));
 
-        Map<Integer, String> roleMap = roleService.getAllSortedChatRoles(chatId).stream()
+        Map<Integer, String> roleMap = roleService.getAllRolesSortedInDescendingOrder(chatId).stream()
                 .collect(Collectors.toMap(RoleDto::getRolePriority, RoleDto::getRoleName));
 
 

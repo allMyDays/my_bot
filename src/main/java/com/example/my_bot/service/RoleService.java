@@ -76,16 +76,18 @@ public class RoleService {
         if(isDefaultRole(rolePriority)){
             throw new CannotDeleteDefaultRoleException();
         }
-        RoleEntity role = roleRepository.findByChatIdAndRolePriority(chatId, rolePriority)
+        RoleEntity roleToDelete = roleRepository.findByChatIdAndRolePriority(chatId, rolePriority)
                 .orElseThrow(RoleNotFoundException::new);
 
         checkRoleInteractionAbility(rolePriority, chatId, fromId);
 
-        RoleDto assignedRole = assignNearestRoleToMembers(role,chatId);
+        RoleDto roleToReAssign = findTheNearestLowestRole(chatId, roleToDelete.getRolePriority());
 
-        roleRepository.delete(role);
+        memberService.updateRolePriorityForMembers(chatId, roleToDelete.getRolePriority(), roleToReAssign.getRolePriority());
 
-        return assignedRole;
+        roleRepository.delete(roleToDelete);
+
+        return roleToReAssign;
 
     }
 
@@ -95,42 +97,42 @@ public class RoleService {
         if(isDefaultRole(roleName)){
             throw new CannotDeleteDefaultRoleException();
         }
-        RoleEntity role = roleRepository.findByChatIdAndRoleName(chatId, roleName)
+        RoleEntity roleToDelete = roleRepository.findByChatIdAndRoleName(chatId, roleName)
                 .orElseThrow(RoleNotFoundException::new);
 
-        checkRoleInteractionAbility(role.getRolePriority(), chatId, fromId);
+        checkRoleInteractionAbility(roleToDelete.getRolePriority(), chatId, fromId);
 
-        RoleDto assignedRole = assignNearestRoleToMembers(role,chatId);
+        RoleDto roleToReAssign = findTheNearestLowestRole(chatId, roleToDelete.getRolePriority());
 
-        roleRepository.delete(role);
+        memberService.updateRolePriorityForMembers(chatId, roleToDelete.getRolePriority(), roleToReAssign.getRolePriority());
 
-        return assignedRole;
+        roleRepository.delete(roleToDelete);
 
+        return roleToReAssign;
 
     }
 
-    private RoleDto assignNearestRoleToMembers(RoleEntity roleToDelete, long chatId){
+    public RoleDto findTheNearestLowestRole(long chatId, int inputRolePriority){
 
-       List<RoleDto> allSortedRoles = new ArrayList<>(getAllSortedChatRoles(chatId));
+        TreeSet<RoleDto> allSortedRoles = getAllRolesSortedInDescendingOrder(chatId);
 
-       int roleToDeleteIndex =  allSortedRoles.indexOf(roleMapper.toDto(roleToDelete));  // найдётся нужный индекс из-за equals & hashcode по priorityRole
+        RoleDto currentTempRoleDto = new RoleDto(null, inputRolePriority);
 
-       RoleDto roleToAssign =
-               allSortedRoles.get(roleToDeleteIndex!=allSortedRoles.size()-1?roleToDeleteIndex+1:roleToDeleteIndex-1); // нахожу самую ближайшую наименьшую роль, если её нет - нахожу самую наибольшую ближайшую
+        RoleDto foundRole = allSortedRoles.higher(currentTempRoleDto);
 
-        List<MemberEntity> requiredMembers = memberService.getMembersWithRequiredRole(chatId, roleToDelete.getRolePriority());
-
-        for(MemberEntity member: requiredMembers){
-            member.setRolePriority(roleToAssign.getRolePriority());
+        if(foundRole==null){
+            foundRole = allSortedRoles.lower(currentTempRoleDto);
+            if(foundRole==null){
+                throw new RoleNotFoundException();
+            }
         }
-        memberService.invalidateStaffMembersCache(chatId);
-
-        return roleToAssign;
+        return foundRole;
     }
 
-    public Set<RoleDto> getAllSortedChatRoles(long chatId){
 
-        Set<RoleDto> sortedRoleSet = new TreeSet<>(
+    public TreeSet<RoleDto> getAllRolesSortedInDescendingOrder(long chatId){
+
+        TreeSet<RoleDto> sortedRoleSet = new TreeSet<>(
                 Comparator.comparingInt(RoleDto::getRolePriority).reversed()
         );
         sortedRoleSet.addAll(roleMapper.toDto(getRoles(chatId)));
@@ -160,7 +162,7 @@ public class RoleService {
     }
 
     private void checkRoleInteractionAbility(int rolePriority, long chatId, long fromId){
-        if(rolePriority>memberService.getCachedRolePriority(chatId, fromId)){
+        if(rolePriority>memberService.getCachedMemberRolePriority(chatId, fromId)){
             throw new RolePriorityAccessDeniedException();
         }
 

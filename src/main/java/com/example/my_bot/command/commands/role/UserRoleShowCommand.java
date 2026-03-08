@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
-import static com.example.my_bot.enumeration.DefaultRole.getRoleNameByPriority;
 
 
 @Slf4j
@@ -38,7 +37,7 @@ public class UserRoleShowCommand implements ChatCommand {
     public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
 
         if(args.length==0){
-            int priority =  memberService.getCachedRolePriority(chatId, fromId);
+            int priority =  memberService.getCachedMemberRolePriority(chatId, fromId);
             vkChatClient.sendText(chatId, "Ваша роль в чате — «%s». Приоритет роли: %d"
                     .formatted(roleService.getRoleName(chatId, priority).orElse("Неизвестная роль"), priority),true);
             return;
