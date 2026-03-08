@@ -37,6 +37,18 @@ public enum DefaultRole {
         return Optional.empty();
     }
 
+    public static Optional<DefaultRole> getRoleByName(@NonNull String name) {
+         name=name.trim();
+        for (DefaultRole role : DefaultRole.values()) {
+            if (role.getRoleName().equalsIgnoreCase(name)) {
+                return Optional.of(role);
+            }
+        }
+        return Optional.empty();
+    }
+
+
+
     public static boolean isDefaultRole(int priority) {
         for (DefaultRole role : DefaultRole.values()) {
             if (role.getRolePriority() == priority) {

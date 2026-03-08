@@ -10,14 +10,17 @@ import java.util.Objects;
 
 
 @Getter
-@Setter
+//@Setter
 @AllArgsConstructor
-@NoArgsConstructor
 public class RoleDto {
 
-    private String roleName;
+    private final String roleName;
 
-    private int rolePriority;
+    private final int rolePriority;
+
+    private final boolean isRoleInDataBase;
+
+
 
 
     @Override
