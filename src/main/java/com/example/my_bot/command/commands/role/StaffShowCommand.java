@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 import static com.example.my_bot.utils.VkChatUtils.createMention;
 
-@Command(commands = {"управляющие", "staff", "админы"}, defaultRole = MEMBER, eventable = true)
+@Command(mainCommandName = "управляющие", alternativeCommandNames = {"staff", "админы"}, defaultRole = MEMBER, eventable = true)
 @RequiredArgsConstructor
 public class StaffShowCommand implements ChatCommand {
 

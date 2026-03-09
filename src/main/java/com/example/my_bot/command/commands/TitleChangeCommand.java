@@ -14,7 +14,7 @@ import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_M
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 
 
-@Command(commands = {"название", "title"}, defaultRole = ADMINISTRATOR, eventable = true)
+@Command(mainCommandName = "название", alternativeCommandNames = {"title"}, defaultRole = ADMINISTRATOR, eventable = true)
 @Slf4j
 public class TitleChangeCommand implements ChatCommand {
 

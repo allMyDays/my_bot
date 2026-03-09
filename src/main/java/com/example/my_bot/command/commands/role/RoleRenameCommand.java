@@ -21,7 +21,7 @@ import static com.example.my_bot.utils.VkChatUtils.isNumber;
 import static com.example.my_bot.utils.VkChatUtils.isValidInteger;
 
 @Slf4j
-@Command(commands = {"переименовать", "renamerole"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
+@Command(mainCommandName ="переименовать", alternativeCommandNames = {"renamerole"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
 @RequiredArgsConstructor
 public class RoleRenameCommand implements ChatCommand {
 
@@ -50,7 +50,7 @@ public class RoleRenameCommand implements ChatCommand {
             if(isNumber(args[0])){
                 editedRole = roleService.renameRole(chatId, fromId, Integer.parseInt(args[0]),newRoleName);
             }else{
-                editedRole = roleService.renameRole(chatId, fromId, args[0],newRoleName);
+                editedRole = roleService.renameRole(chatId, fromId, args[0], newRoleName);
             }
 
         } catch (RoleException e) {

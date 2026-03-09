@@ -12,7 +12,8 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 @Component
 public @interface Command {
-    String[] commands();
+    String mainCommandName();
+    String[] alternativeCommandNames();
     DefaultRole defaultRole();
     boolean eventable();
 }

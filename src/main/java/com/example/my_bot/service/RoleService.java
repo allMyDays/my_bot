@@ -1,6 +1,6 @@
 package com.example.my_bot.service;
 
-import com.example.my_bot.exception.role.RolePriorityAccessDeniedException;
+import com.example.my_bot.exception.role.RoleAccessDeniedException;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.entity.RoleEntity;
 import com.example.my_bot.enumeration.DefaultRole;
@@ -51,28 +51,27 @@ public class RoleService {
         }
         checkRoleInteractionAbility(rolePriority, chatId, fromId);
 
-        Set<Integer> existingPriorities = new HashSet<>();
-        Set<String> existingNames = new HashSet<>();
+        if(isDefaultRole(rolePriority)){
+            throw new DuplicateRolePriorityException(rolePriority);
+        }if(isDefaultRole(roleName.toLowerCase())){
+            throw new DuplicateRoleNameException(
+                    "Данное Название является зарезервированным для системной роли, вы не можете создать роль с таким названием."
+            );
+        }
 
-
-        int createdRoles=0;
+        int createdRolesCounter=0;
         for(RoleEntity existingRole: roleRepository.findByChatId(chatId)){
-            existingPriorities.add(existingRole.getRolePriority());
-            existingNames.add(existingRole.getRoleName().toLowerCase());
-            if(!isDefaultRole(existingRole.getRolePriority())){
-                createdRoles++;
 
+            if(!isDefaultRole(existingRole.getRolePriority())){
+                createdRolesCounter++;
+            }if(existingRole.getRolePriority()==rolePriority){
+                throw new DuplicateRolePriorityException(rolePriority);
+            }if(existingRole.getRoleName().equalsIgnoreCase(roleName)){
+                throw new DuplicateRoleNameException("Роль с названием «%s» уже существует.".formatted(roleName));
             }
         }
-        if(createdRoles>=MAX_ROLES_COUNT){
+        if(createdRolesCounter>=MAX_ROLES_COUNT){
             throw new RoleCreationLimitReachedException();
-        }
-
-        if(existingPriorities.contains(rolePriority)||isDefaultRole(rolePriority)){
-            throw new DuplicateRolePriorityException(rolePriority);
-        }
-        if(existingNames.contains(roleName.toLowerCase())||isDefaultRole(roleName)){
-            throw new DuplicateRoleNameException("Роль с названием «%s» уже существует.".formatted(roleName));
         }
 
         return roleRepository.save(new RoleEntity(chatId, rolePriority, roleName));
@@ -80,6 +79,8 @@ public class RoleService {
     }
     @Transactional
     public RoleDto renameRole(long chatId, long fromId, int existingRolePriority, @NonNull String newRoleName){
+
+        newRoleName=newRoleName.trim();
 
         if(newRoleName.length()<MIN_CREATABLE_ROLE_NAME_LENGTH||newRoleName.length()>MAX_CREATABLE_ROLE_NAME_LENGTH){
             throw new RoleNameLengthOutOfBoundsException(MIN_CREATABLE_ROLE_NAME_LENGTH, MAX_CREATABLE_ROLE_NAME_LENGTH);
@@ -89,11 +90,11 @@ public class RoleService {
         }
         checkRoleInteractionAbility(existingRolePriority, chatId, fromId);
 
-        RoleDto roleToEdit = getExistingChatRole(chatId, existingRolePriority)
+        RoleDto roleToEdit = getRoleByPriority(chatId, existingRolePriority)
                 .orElseThrow(RoleNotFoundException::new);
 
-        if(roleToEdit.getRoleName().equalsIgnoreCase(newRoleName)){
-            throw new DuplicateRoleNameException("Данная роль с приоритетом %d уже имеет указанное название."
+        if(roleToEdit.getRoleName().equals(newRoleName)){    // можно изменить регистр роли
+            throw new DuplicateRoleNameException("Данная роль с приоритетом %d уже имеет точно такое же название."
                     .formatted(existingRolePriority));
 
         }
@@ -101,19 +102,21 @@ public class RoleService {
 
         if(systemRole.isPresent()&&systemRole.get().getRolePriority()!=existingRolePriority){
             // роль нельзя переименовать в системную, даже если эта системная роль переименована, за исключением если системную роль переименовывают в своё изначальное имя
-            throw new DuplicateRoleNameException("Роль с названием «%s» уже существует.".formatted(newRoleName));
+            throw new DuplicateRoleNameException("Название «%s» является зарезервированным для системной роли, вы не можете переименовать роль в такое название."
+                    .formatted(systemRole.get().getRoleName()));
         }
 
         HashSet<RoleDto> existingRoles = getAllRolesWithNoSorting(chatId);
 
 
         for(RoleDto roleDto: existingRoles){
-            if(roleDto.getRoleName().equalsIgnoreCase(newRoleName)){
+            if(roleDto.getRoleName().equalsIgnoreCase(newRoleName)&&roleDto.getRolePriority()!=existingRolePriority){
+                // можно изменить регистр названия существующей роли, но нельзя переименовать роль в название другой роли, даже если регистр различается
                 throw new DuplicateRoleNameException("Роль с названием «%s» уже существует.".formatted(newRoleName));
             }
         }
 
-        if(!roleToEdit.isRoleInDataBase()){
+        if(!roleToEdit.isRoleInDataBase()){    // хотят переименовать системную роль которая еще никогда не была изменена и не находится в бд
             RoleEntity roleToSave = new RoleEntity(chatId, roleToEdit.getRolePriority(),newRoleName);
             roleRepository.save(roleToSave);
             return roleMapper.toDto(roleToSave,true);
@@ -128,8 +131,8 @@ public class RoleService {
     @Transactional
     public RoleDto renameRole(long chatId, long fromId, @NonNull String existingRoleName, @NonNull String newRoleName){
 
-           Integer rolePriority = getRolePriority(chatId, existingRoleName)
-                .orElseThrow(RoleNotFoundException::new);
+           int rolePriority = getRoleByNameIgnoreCase(chatId, existingRoleName)
+                .orElseThrow(RoleNotFoundException::new).getRolePriority();
 
         return renameRole(chatId, fromId, rolePriority, newRoleName);
 
@@ -162,7 +165,7 @@ public class RoleService {
         if(isDefaultRole(roleName)){
             throw new CannotDeleteDefaultRoleException();
         }
-        RoleEntity roleToDelete = roleRepository.findByChatIdAndRoleName(chatId, roleName)
+        RoleEntity roleToDelete = roleRepository.findByChatIdAndRoleNameIgnoreCase(chatId, roleName)
                 .orElseThrow(RoleNotFoundException::new);
 
         checkRoleInteractionAbility(roleToDelete.getRolePriority(), chatId, fromId);
@@ -224,16 +227,16 @@ public class RoleService {
 
     public Optional<String> getRoleName(long chatId, int rolePriority){
 
-       return getExistingChatRole(chatId, rolePriority).map(RoleDto::getRoleName);
+       return getRoleByPriority(chatId, rolePriority).map(RoleDto::getRoleName);
 
     }
-    public Optional<Integer> getRolePriority(long chatId, @NonNull String roleName){
+ /*   public Optional<Integer> getRolePriority(long chatId, @NonNull String roleName){
 
-        return getExistingChatRole(chatId, roleName).map(RoleDto::getRolePriority);
+        return getRoleByNameIgnoreCase(chatId, roleName).map(RoleDto::getRolePriority);
 
-    }
+    }*/
 
-    public Optional<RoleDto> getExistingChatRole(long chatId, int rolePriority){
+    public Optional<RoleDto> getRoleByPriority(long chatId, int rolePriority){
 
         Optional<RoleEntity> optionalRole = roleRepository.findByChatIdAndRolePriority(chatId, rolePriority);
 
@@ -245,10 +248,36 @@ public class RoleService {
 
     }
 
-    public Optional<RoleDto> getExistingChatRole(long chatId, @NonNull String roleName){
+    public boolean roleExistsByPriority(long chatId, int rolePriority){
+
+        if(rolePriority<MIN_CREATABLE_ROLE_PRIORITY||rolePriority>MAX_CREATABLE_ROLE_PRIORITY){
+            return false;
+        }
+
+        if(isDefaultRole(rolePriority)){
+            return true;
+        }
+        return roleRepository.findByChatIdAndRolePriority(chatId, rolePriority).isPresent();
+
+    }
+
+    public boolean roleExistsByNameIgnoreCase(long chatId, @NonNull String roleName){
 
         roleName=roleName.trim();
-        Optional<RoleEntity> optionalRole = roleRepository.findByChatIdAndRoleName(chatId, roleName);
+
+        if(isDefaultRole(roleName)){
+            return true;
+        }
+        return roleRepository.findByChatIdAndRoleNameIgnoreCase(chatId, roleName).isPresent();
+
+    }
+
+
+
+    public Optional<RoleDto> getRoleByNameIgnoreCase(long chatId, @NonNull String roleName){
+
+        roleName=roleName.trim();
+        Optional<RoleEntity> optionalRole = roleRepository.findByChatIdAndRoleNameIgnoreCase(chatId, roleName);
 
         if(optionalRole.isEmpty()){
             Optional<DefaultRole> defRole = DefaultRole.getRoleByName(roleName);
@@ -261,7 +290,7 @@ public class RoleService {
 
     private void checkRoleInteractionAbility(int rolePriority, long chatId, long fromId){
         if(rolePriority>memberService.getCachedMemberRolePriority(chatId, fromId)){
-            throw new RolePriorityAccessDeniedException();
+            throw new RoleAccessDeniedException();
         }
 
     }

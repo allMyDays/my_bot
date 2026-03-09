@@ -16,7 +16,7 @@ import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 
 
 @Slf4j
-@Command(commands = {"роль", "role", "ктоя"}, defaultRole = MEMBER, eventable = true)
+@Command(mainCommandName = "роль", alternativeCommandNames = {"role", "ктоя"}, defaultRole = MEMBER, eventable = true)
 @RequiredArgsConstructor
 public class UserRoleShowCommand implements ChatCommand {
 

@@ -4,6 +4,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.MemberWithRoleDto;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.mapper.json.MemberJsonMapper;
 import com.example.my_bot.repository.MemberRepository;
@@ -43,6 +44,8 @@ public class MemberService {
 
     private MemberService selfLink;
 
+    private RoleService roleService;
+
     private static final long AUTO_SYNC_INTERVAL_MINUTES = 15;
 
     private final static int STAFF_CACHE_TTL_SECONDS = 600;
@@ -51,6 +54,12 @@ public class MemberService {
     @Lazy
     public void setSelfLink(MemberService selfLink) {
         this.selfLink = selfLink;
+    }
+
+    @Autowired
+    @Lazy
+    public void setRoleService(RoleService roleService) {
+        this.roleService = roleService;
     }
 
 
@@ -164,9 +173,13 @@ public class MemberService {
 
     }
 
-    public boolean updateRolePriorityForMembers(long chatId, int oldRolePriority, int newOldPriority){
+    public boolean updateRolePriorityForMembers(long chatId, int oldRolePriority, int newRolePriority){
 
-        int changedRows = memberRepository.updateRolePriorityForMembers(chatId, oldRolePriority, newOldPriority);
+        if(roleService.getRoleByPriority(chatId,newRolePriority).isEmpty()){
+            throw new RoleNotFoundException();
+        }
+
+        int changedRows = memberRepository.updateRolePriorityForMembers(chatId, oldRolePriority, newRolePriority);
 
         invalidateStaffMembersCache(chatId);
 

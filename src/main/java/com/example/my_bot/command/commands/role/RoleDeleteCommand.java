@@ -21,7 +21,7 @@ import static com.example.my_bot.utils.VkChatUtils.isNumber;
 import static com.example.my_bot.utils.VkChatUtils.isValidInteger;
 
 @Slf4j
-@Command(commands = {"удалитьроль", "remrole"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "удалитьроль", alternativeCommandNames = {"remrole"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
 @RequiredArgsConstructor
 public class RoleDeleteCommand implements ChatCommand {
 

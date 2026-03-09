@@ -16,7 +16,7 @@ import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(commands = {"синхронизация", "resync"}, defaultRole = MODERATOR, eventable = true)
+@Command(mainCommandName ="синхронизация", alternativeCommandNames = {"resync"}, defaultRole = MODERATOR, eventable = true)
 public class SynchronizeCommand implements ChatCommand {
 
     private VkChatClient vkChatClient;

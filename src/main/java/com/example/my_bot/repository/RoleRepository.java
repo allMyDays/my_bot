@@ -26,4 +26,6 @@ public interface RoleRepository extends JpaRepository<RoleEntity, Long> {
             "WHERE r.chatId = :chatId AND r.rolePriority = :rolePriority")
     int updateRoleName(@Param("chatId") long chatId, @Param("rolePriority") long rolePriority, @Param("newName") String newName);
 
+    Optional<RoleEntity> findByChatIdAndRoleNameIgnoreCase(Long chatId, String roleName);
+
 }

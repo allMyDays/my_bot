@@ -13,7 +13,7 @@ import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_M
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.enumeration.DefaultRole.*;
 
-@Command(commands = {"префикс", "prefix"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "префикс",alternativeCommandNames = {"prefix"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
 public class PrefixChangeCommand implements ChatCommand {
 
     private ChatService chatService;

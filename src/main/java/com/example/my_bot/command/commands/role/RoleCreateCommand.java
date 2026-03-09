@@ -19,7 +19,7 @@ import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
 import static com.example.my_bot.utils.VkChatUtils.isValidInteger;
 
 @Slf4j
-@Command(commands = {"новаяроль", "создатьроль", "рольсоздать"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "создатьроль", alternativeCommandNames = {"новаяроль", "рольсоздать"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
 @RequiredArgsConstructor
 public class RoleCreateCommand implements ChatCommand {
 
