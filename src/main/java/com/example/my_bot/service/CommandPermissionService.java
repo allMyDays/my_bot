@@ -1,9 +1,12 @@
 package com.example.my_bot.service;
 
 import com.example.my_bot.command.CommandRegistry;
+import com.example.my_bot.dto.permission.RoleCommandPermissionDto;
 import com.example.my_bot.entity.CommandPermissionEntity;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.exception.role.RoleAccessDeniedException;
+import com.example.my_bot.mapper.CommandPermissionMapper;
+import com.example.my_bot.mapper.json.CommandPermissionJsonMapper;
 import com.example.my_bot.repository.CommandPermissionRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -11,8 +14,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static com.example.my_bot.enumeration.RedisKeyBuilder.ROLE_CMD_PERMISSION;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +33,14 @@ public class CommandPermissionService {
     private final RoleService roleService;
 
     private final CommandPermissionRepository permissionRepository;
+
+    private final RedisService redisService;
+
+    private final CommandPermissionJsonMapper permissionJsonMapper;
+
+    private final CommandPermissionMapper permissionMapper;
+
+    private final static int PERMISSIONS_CACHE_TTL_SECONDS = 600;
 
 
     @Autowired
@@ -57,6 +73,35 @@ public class CommandPermissionService {
         permissionRepository.saveAll(permissionsToSave);
 
         return mainCmdNames;
+
+    }
+
+    public Map<String, RoleCommandPermissionDto> getCachedCustomRolePermissions(long chatId){
+
+        Map<String, String> hash = redisService.getHash(ROLE_CMD_PERMISSION.buildKey(chatId));
+
+        if(!hash.isEmpty()){
+            return hash.entrySet().stream()
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry-> permissionJsonMapper.fromJson(entry.getValue()))
+                    );
+        }
+
+        List<RoleCommandPermissionDto> rolePermissionDTOs = permissionMapper.toPermissionDtoList(
+                permissionRepository.findByChatIdAndUserIdIsNull(chatId)
+        );
+
+        Map<String, RoleCommandPermissionDto> mapToReturn = new HashMap<>();
+        Map<String, String> mapToSave = new HashMap<>();
+        for (RoleCommandPermissionDto dto : rolePermissionDTOs) {
+            mapToReturn.put(dto.getCommandName(), dto);
+            mapToSave.put(dto.getCommandName(), permissionJsonMapper.toJson(dto));
+        }
+
+        redisService.setHash(ROLE_CMD_PERMISSION.buildKey(chatId), mapToSave, PERMISSIONS_CACHE_TTL_SECONDS);
+
+        return mapToReturn;
 
     }
 

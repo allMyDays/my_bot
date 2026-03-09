@@ -3,6 +3,8 @@ package com.example.my_bot.mapper.json;
 
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.MemberWithRoleDto;
+import com.example.my_bot.exception.JSONDeserializationException;
+import com.example.my_bot.exception.JSONSerializationException;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +24,7 @@ public abstract class ChatJsonMapper {
        try{
            return objectMapper.writeValueAsString(dto);
        }catch (Exception e){
-           throw new RuntimeException("Ошибка сериализации",e );
+           throw new JSONSerializationException(ChatDetailsDto.class, e);
        }
     }
 
@@ -30,7 +32,7 @@ public abstract class ChatJsonMapper {
         try{
             return objectMapper.readValue(json, ChatDetailsDto.class);
         }catch (Exception e){
-            throw new RuntimeException("Ошибка десериализации",e );
+            throw new JSONDeserializationException(ChatDetailsDto.class, json, e);
 
 
         }

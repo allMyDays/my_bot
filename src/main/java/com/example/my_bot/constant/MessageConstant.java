@@ -11,7 +11,7 @@ public class MessageConstant {
 
     public static String NOT_VALID_INTEGER_MESSAGE = "Вы ввели некорректное число в качестве аргумента.";
 
-
+    public static String NOT_ENOUGH_ROLE_TO_EXECUTE_CMD = "Ваша роль недостаточно высока для применения этой команды.";
 
 
 
