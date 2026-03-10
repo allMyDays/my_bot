@@ -115,6 +115,13 @@ public class CommandPermissionService {
         return result;
 
     }
+    @Transactional
+    public SetCommandPermissionResult allowCommandForRole(long chatId, long fromId, @NonNull Set<String> userCommands, @NonNull String roleName){
+        int rolePriority = roleService.getRoleByNameIgnoreCase(chatId, roleName)
+                .orElseThrow(RoleNotFoundException::new).getRolePriority();
+
+        return allowCommandForRole(chatId, fromId, userCommands, rolePriority);
+    }
 
     public Map<String, RolePermissionDto> getCachedCustomRolePermissions(long chatId){
 

@@ -64,6 +64,8 @@ public class RolePermissionCreateCommand implements ChatCommand {
             }
             if(isNumber(args[1])){
                 permissionResult = permissionService.allowCommandForRole(chatId, fromId, userCommandsToProcess,Integer.parseInt(args[1]));
+            }else{
+                permissionResult = permissionService.allowCommandForRole(chatId, fromId, userCommandsToProcess,args[1]);
             }
         }catch (PermissionException | RoleException | CommandException e){
             vkChatClient.sendText(chatId, e.getMessage(), true);
