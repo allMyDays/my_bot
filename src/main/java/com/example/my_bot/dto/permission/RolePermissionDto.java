@@ -14,6 +14,6 @@ public class RolePermissionDto {
 
     private String commandName;
 
-    private Integer rolePriority;
+    private int rolePriority;
 
 }

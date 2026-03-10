@@ -222,6 +222,15 @@ public class RoleService {
         } return roles;
 
     }
+    public HashSet<RoleDto> getRequiredRolesWithNoSorting(long chatId, @NonNull Set<Integer> rolePriorities){
+
+        HashSet<RoleDto> roles = new HashSet<>(roleMapper.toDto(roleRepository.findByChatIdAndRolePriorityIn(chatId, rolePriorities),true));
+        for(DefaultRole defRole: DefaultRole.values()){
+            roles.add(roleMapper.toDto(defRole,false));   // дубликаты не добавятся из-за equals & hashcode по priorityRole
+
+        } return roles;
+
+    }
 
 
 

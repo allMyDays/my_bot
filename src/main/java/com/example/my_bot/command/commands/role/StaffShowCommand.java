@@ -52,7 +52,7 @@ public class StaffShowCommand implements ChatCommand {
 
         sb.append("В чате %d участников имеют роль (из них %d сейчас отсутствует).\n\n".formatted(staffList.size(), exitedMembers));
 
-        Map<Integer, String> roleMap = roleService.getAllRolesWithNoSorting(chatId).stream()
+        Map<Integer, String> roleMap = roleService.getRequiredRolesWithNoSorting(chatId, staffMap.keySet()).stream()
                 .collect(Collectors.toMap(RoleDto::getRolePriority, RoleDto::getRoleName));
 
 
