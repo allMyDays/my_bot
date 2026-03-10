@@ -3,6 +3,7 @@ package com.example.my_bot.command.commands;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.exception.chat.ForbiddenPrefixException;
 import com.example.my_bot.service.ChatService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -52,7 +53,12 @@ public class PrefixChangeCommand implements ChatCommand {
             vkChatClient.sendText(chatId, "В качестве префикса можно установить только один символ.",true);
             return;
         }
-        chatService.setChatPrefix(chatId, args[0].charAt(0));
+        try{
+         chatService.setChatPrefix(chatId, args[0].charAt(0));
+        }catch (ForbiddenPrefixException e){
+            vkChatClient.sendText(chatId, e.getMessage(), true);
+            return;
+        }
 
         vkChatClient.sendText(chatId, (("✅Префикс чата был установлен на «%s». " +
                 "Теперь команды в чате можно писать ТОЛЬКО с этим префиксом.").formatted(args[0])),true);

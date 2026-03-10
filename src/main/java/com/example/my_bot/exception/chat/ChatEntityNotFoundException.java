@@ -1,4 +1,4 @@
-package com.example.my_bot.exception;
+package com.example.my_bot.exception.chat;
 
 
 public class ChatEntityNotFoundException extends RuntimeException{

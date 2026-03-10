@@ -2,7 +2,8 @@ package com.example.my_bot.service;
 
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.entity.ChatEntity;
-import com.example.my_bot.exception.ChatEntityNotFoundException;
+import com.example.my_bot.exception.chat.ChatEntityNotFoundException;
+import com.example.my_bot.exception.chat.ForbiddenPrefixException;
 import com.example.my_bot.mapper.ChatMapper;
 import com.example.my_bot.mapper.json.ChatJsonMapper;
 import com.example.my_bot.repository.ChatRepository;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Set;
 
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.enumeration.RedisKeyBuilder.CHAT;
@@ -31,6 +33,8 @@ public class ChatService {
     private final ChatJsonMapper chatJsonMapper;
 
     private final ChatMapper chatMapper;
+
+    public final static Set<Character> FORBIDDEN_PREFIXES = Set.of('*','@');
 
 
     private Optional<ChatEntity> getChatEntity(long chatId){
@@ -69,6 +73,11 @@ public class ChatService {
     }
 
     public void setChatPrefix(long chatId, char newPrefix){
+
+        if(FORBIDDEN_PREFIXES.contains(newPrefix)){
+            throw new ForbiddenPrefixException(newPrefix);
+
+        }
 
         ChatEntity chat = findByChatIdOrThrow(chatId);
 
