@@ -2,8 +2,8 @@ package com.example.my_bot.mapper.json;
 
 
 import com.example.my_bot.dto.permission.RoleCommandPermissionDto;
-import com.example.my_bot.exception.JSONDeserializationException;
-import com.example.my_bot.exception.JSONSerializationException;
+import com.example.my_bot.exception.json.JSONDeserializationException;
+import com.example.my_bot.exception.json.JSONSerializationException;
 import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.Mapper;
 import tools.jackson.databind.ObjectMapper;

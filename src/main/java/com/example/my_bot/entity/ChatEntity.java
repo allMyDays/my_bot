@@ -7,10 +7,11 @@ import jakarta.persistence.Table;
 import lombok.*;
 
 import java.time.Instant;
+import java.util.Optional;
 
 @Entity
-@Getter
 @Setter
+@Getter
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "chat")
@@ -24,9 +25,6 @@ public class ChatEntity {
 
     @Column(nullable = true)
     private Instant lastSyncTime;
-
-
-
 
 
 }

@@ -127,8 +127,10 @@ public class MemberService {
 
         ChatDetailsDto chatDto = chatService.getCachedChatDetails(chatId, false);
 
-        if (chatDto.getLastSyncTime()==null||
-                Duration.between(chatDto.getLastSyncTime(), Instant.now()).toMinutes() >= AUTO_SYNC_INTERVAL_MINUTES) {
+        Optional<Instant> lastSync = chatDto.getOptionalLastSyncTime();
+
+        if (lastSync.isEmpty()||
+                Duration.between(lastSync.get(), Instant.now()).toMinutes() >= AUTO_SYNC_INTERVAL_MINUTES) {
 
             selfLink.synchronizeChatMembers(chatId);
         }

@@ -1,14 +1,11 @@
 package com.example.my_bot.mapper.json;
 
 
-import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.MemberWithRoleDto;
-import com.example.my_bot.exception.JSONDeserializationException;
-import com.example.my_bot.exception.JSONSerializationException;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.example.my_bot.exception.json.JSONDeserializationException;
+import com.example.my_bot.exception.json.JSONSerializationException;
 import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.Mapper;
-import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;

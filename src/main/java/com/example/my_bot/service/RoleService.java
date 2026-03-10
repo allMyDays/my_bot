@@ -32,7 +32,7 @@ public class RoleService {
     private final int MAX_CREATABLE_ROLE_PRIORITY =  99;
     private final int MIN_CREATABLE_ROLE_NAME_LENGTH = 3;
     private final int MAX_CREATABLE_ROLE_NAME_LENGTH = 30;
-    private final int MAX_ROLES_COUNT = 10;
+    private final int MAX_CUSTOM_ROLES_COUNT = 10;
 
 
 
@@ -70,7 +70,7 @@ public class RoleService {
                 throw new DuplicateRoleNameException("Роль с названием «%s» уже существует.".formatted(roleName));
             }
         }
-        if(createdRolesCounter>=MAX_ROLES_COUNT){
+        if(createdRolesCounter>= MAX_CUSTOM_ROLES_COUNT){
             throw new RoleCreationLimitReachedException();
         }
 

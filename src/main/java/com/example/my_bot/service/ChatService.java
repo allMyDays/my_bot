@@ -1,7 +1,6 @@
 package com.example.my_bot.service;
 
 import com.example.my_bot.dto.ChatDetailsDto;
-import com.example.my_bot.dto.MemberWithRoleDto;
 import com.example.my_bot.entity.ChatEntity;
 import com.example.my_bot.exception.ChatEntityNotFoundException;
 import com.example.my_bot.mapper.ChatMapper;
@@ -13,9 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
@@ -37,11 +33,11 @@ public class ChatService {
     private final ChatMapper chatMapper;
 
 
-    public Optional<ChatEntity> getChatEntity(long chatId){
+    private Optional<ChatEntity> getChatEntity(long chatId){
         return chatRepository.findById(chatId);
     }
 
-    public ChatEntity findByChatIdOrThrow(long chatId){
+    private ChatEntity findByChatIdOrThrow(long chatId){
         return getChatEntity(chatId).orElseThrow(()->
                 new ChatEntityNotFoundException(chatId));
 
@@ -88,6 +84,11 @@ public class ChatService {
         chat.setPrefix(null);
 
         updateChatCache(CHAT.buildKey(chatId), chatRepository.save(chat));
+    }
+
+    public Optional<Character> getChatPrefix(long chatId){
+       return getCachedChatDetails(chatId, false).getOptionalPrefix();
+
     }
 
     public void setLastSyncToNow(long chatId){

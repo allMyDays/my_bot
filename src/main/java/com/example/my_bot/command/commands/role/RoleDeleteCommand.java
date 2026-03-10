@@ -40,12 +40,11 @@ public class RoleDeleteCommand implements ChatCommand {
 
         RoleDto assignedRole=null;
 
-        if(isNumber(args[0])){
-            if(!isValidInteger(args[0])){
-                vkChatClient.sendText(chatId, NOT_VALID_INTEGER_MESSAGE, true);
-                return;
-            }
+        if(isNumber(args[0])&&!isValidInteger(args[0])){
+            vkChatClient.sendText(chatId, NOT_VALID_INTEGER_MESSAGE, true);
+            return;
         }
+
         try{
             if(isNumber(args[0])){
                 assignedRole = roleService.deleteCustomRole(chatId, fromId, Integer.parseInt(args[0]));

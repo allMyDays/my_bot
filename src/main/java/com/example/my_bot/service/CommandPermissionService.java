@@ -3,21 +3,22 @@ package com.example.my_bot.service;
 import com.example.my_bot.command.CommandRegistry;
 import com.example.my_bot.dto.permission.RoleCommandPermissionDto;
 import com.example.my_bot.entity.CommandPermissionEntity;
+import com.example.my_bot.enumeration.RedisKeyBuilder;
+import com.example.my_bot.exception.command.NoUserCommandsFoundException;
+import com.example.my_bot.exception.permission.PermissionCreationLimitReachedException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.exception.role.RoleAccessDeniedException;
 import com.example.my_bot.mapper.CommandPermissionMapper;
 import com.example.my_bot.mapper.json.CommandPermissionJsonMapper;
 import com.example.my_bot.repository.CommandPermissionRepository;
+import jakarta.transaction.Transactional;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.RedisKeyBuilder.ROLE_CMD_PERMISSION;
@@ -42,6 +43,8 @@ public class CommandPermissionService {
 
     private final static int PERMISSIONS_CACHE_TTL_SECONDS = 600;
 
+    private final int MAX_CUSTOM_PERMISSIONS_COUNT = 20;
+
 
     @Autowired
     @Lazy
@@ -50,6 +53,7 @@ public class CommandPermissionService {
     }
 
 
+    @Transactional
     public Set<String> allowCommandForRole(long chatId, long fromId, @NonNull Set<String> userCommands, int rolePriority){
 
         if(!roleService.roleExistsByPriority(chatId, rolePriority)){
@@ -58,21 +62,52 @@ public class CommandPermissionService {
 
         if(rolePriority>memberService.getCachedMemberRolePriority(chatId, fromId)){
             throw new RoleAccessDeniedException();
-
         }
 
-        Set<String> mainCmdNames = commandRegistry.getMainNamesOfRequiredCommands(userCommands);
-        if(mainCmdNames.isEmpty()){
-            return mainCmdNames;
+        Set<String> mainUserCmdNames = commandRegistry.getMainNamesOfRequiredCommands(userCommands);
+        if(mainUserCmdNames.isEmpty()){
+            throw new NoUserCommandsFoundException();
         }
 
-        List<CommandPermissionEntity> permissionsToSave = mainCmdNames.stream()
-                .map(name->new CommandPermissionEntity(chatId, name, null, rolePriority, true))
-                .toList();
+        Map<String, RoleCommandPermissionDto> existingCustomPermissions = getCachedCustomRolePermissions(chatId);
 
-        permissionRepository.saveAll(permissionsToSave);
+        int availableSize = MAX_CUSTOM_PERMISSIONS_COUNT-existingCustomPermissions.size();
 
-        return mainCmdNames;
+        if(availableSize<=0){
+            throw new PermissionCreationLimitReachedException();
+        }
+
+        Set<String> commandsToUpdate = new HashSet<>();
+        Set<String> commandsToSave = new HashSet<>();
+
+        int processedCommands = 0;
+        for(String currentCommand: mainUserCmdNames){
+            if(processedCommands==availableSize){
+                break;
+            }
+            RoleCommandPermissionDto commandDto = existingCustomPermissions.get(currentCommand);
+            if(commandDto==null){
+                commandsToSave.add(currentCommand);
+                processedCommands++;
+            }else if(commandDto.getRolePriority()!=rolePriority){
+                    commandsToUpdate.add(currentCommand);
+                    processedCommands++;
+            }
+        }
+
+        permissionRepository.saveAll(
+                commandsToSave.stream()
+                        .map(c->new CommandPermissionEntity(chatId, c, null, rolePriority, true))
+                        .toList()
+        );
+        if(!commandsToUpdate.isEmpty()){
+         permissionRepository.updateRolePriorityForRoleCommands(chatId, commandsToUpdate, rolePriority);
+        }
+
+        redisService.delete(ROLE_CMD_PERMISSION.buildKey(chatId));  // удаляю кеш разрешений
+        commandsToSave.addAll(commandsToUpdate);
+        return commandsToSave;
+
 
     }
 

@@ -39,11 +39,9 @@ public class RoleRenameCommand implements ChatCommand {
         }
         RoleDto editedRole=null;
 
-        if(isNumber(args[0])){
-            if(!isValidInteger(args[0])){
-                vkChatClient.sendText(chatId, NOT_VALID_INTEGER_MESSAGE, true);
-                return;
-            }
+        if(isNumber(args[0])&&!isValidInteger(args[0])){
+            vkChatClient.sendText(chatId, NOT_VALID_INTEGER_MESSAGE, true);
+            return;
         }
         try{
             String newRoleName = String.join(" ", Arrays.copyOfRange(args, 1, args.length));

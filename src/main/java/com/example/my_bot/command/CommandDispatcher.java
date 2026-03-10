@@ -36,12 +36,12 @@ public class CommandDispatcher {
 
              if(message==null||(text=message.trim()).isEmpty()) return;
 
-             Character chatPrefix = chatService.getCachedChatDetails(chatId, true).getPrefix();
+             Optional<Character> chatPrefix = chatService.getCachedChatDetails(chatId, true).getOptionalPrefix();
 
              boolean mustCutPrefix=true;
 
-             if(chatPrefix!=null){
-                 if(text.charAt(0)!=chatPrefix) return;
+             if(chatPrefix.isPresent()){
+                 if(text.charAt(0)!=chatPrefix.get()) return;
              }else{
                  if(text.charAt(0)!=DEFAULT_CHAT_PREFIX){
                      mustCutPrefix=false;
