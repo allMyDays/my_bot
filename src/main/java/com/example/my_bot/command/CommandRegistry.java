@@ -1,6 +1,7 @@
 package com.example.my_bot.command;
 
 import com.example.my_bot.annotation.Command;
+import com.example.my_bot.dto.command.UserCommandValidationResult;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,14 +59,20 @@ public class CommandRegistry {
         return getCommandAnnotation(commandName.toLowerCase().trim()).map(Command::mainCommandName);
     }
 
-    public Set<String> getMainNamesOfRequiredCommands(Set<String> userCommands) {
+    public UserCommandValidationResult getMainNamesOfRequiredCommands(@NonNull Set<String> userCommands) {
 
-        Set<String> mainNames = new HashSet<>();
+        Set<String> notFound = new HashSet<>();
+        Set<String> normalizedNames = new HashSet<>();
 
         for(String userCommand: userCommands){
             Optional<ChatCommand> cmd = getCommand(userCommand);
-            cmd.ifPresent(c-> mainNames.add(commandAnnotations.get(c).mainCommandName()));
-        } return mainNames;
+            if(cmd.isEmpty()){
+                notFound.add(userCommand);
+            }else{
+                normalizedNames.add(commandAnnotations.get(cmd.get()).mainCommandName());
+            }
+
+        } return new UserCommandValidationResult(notFound, normalizedNames);
     }
 
 

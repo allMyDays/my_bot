@@ -230,11 +230,7 @@ public class RoleService {
        return getRoleByPriority(chatId, rolePriority).map(RoleDto::getRoleName);
 
     }
- /*   public Optional<Integer> getRolePriority(long chatId, @NonNull String roleName){
 
-        return getRoleByNameIgnoreCase(chatId, roleName).map(RoleDto::getRolePriority);
-
-    }*/
 
     public Optional<RoleDto> getRoleByPriority(long chatId, int rolePriority){
 

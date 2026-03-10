@@ -3,6 +3,8 @@ package com.example.my_bot.command.commands.permission;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.dto.RoleDto;
+import com.example.my_bot.dto.permission.SetCommandPermissionResult;
 import com.example.my_bot.entity.RoleEntity;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.permission.PermissionException;
@@ -15,6 +17,7 @@ import com.vk.api.sdk.exceptions.ClientException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.management.relation.Role;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -50,7 +53,7 @@ public class RolePermissionCreateCommand implements ChatCommand {
                 return;
         }
 
-        Set<String> processedCommands=null;
+        SetCommandPermissionResult permissionResult=null;
         try{
             Set<String> userCommandsToProcess = new HashSet<>();
             userCommandsToProcess.add(args[0].trim());
@@ -60,29 +63,47 @@ public class RolePermissionCreateCommand implements ChatCommand {
                 }
             }
             if(isNumber(args[1])){
-                processedCommands = permissionService.allowCommandForRole(chatId, fromId, userCommandsToProcess,Integer.parseInt(args[1]));
+                permissionResult = permissionService.allowCommandForRole(chatId, fromId, userCommandsToProcess,Integer.parseInt(args[1]));
             }
         }catch (PermissionException | RoleException | CommandException e){
             vkChatClient.sendText(chatId, e.getMessage(), true);
             return;
         }
-        if(processedCommands==null||processedCommands.isEmpty()){
-            vkChatClient.sendText(chatId, "Данные не обновились. Либо эти команды уже доступны указанной роли, либо не существуют.", true);
+        if(permissionResult==null){
+            vkChatClient.sendText(chatId, "Произошла ошибка при попытке обработать команды.", true);
             return;
         }
-
         char chatPrefix = chatService.getChatPrefix(chatId).orElse(DEFAULT_CHAT_PREFIX);
 
-        if (processedCommands.size() == 1) {
-            String command = processedCommands.iterator().next();
-            vkChatClient.sendText(chatId, String.format("✅Команда «%c%s» теперь может применяться только участниками с указанной ролью и выше.", chatPrefix, command), true);
-        } else if (processedCommands.size() > 1) {
-            String commandsList = processedCommands.stream()
+        StringBuilder result = new StringBuilder();
+        String roleName = permissionResult.getRoleDto().getRoleName();
+
+        if (!permissionResult.getChanged().isEmpty()) {
+            String commandsList = permissionResult.getChanged().stream()
                     .map(cmd -> "⚙ " + chatPrefix + cmd)
                     .collect(Collectors.joining("\n"));
-            String message = String.format("✅Команды:\n%s\nТеперь могут применяться только участниками с указанной ролью и выше.", commandsList);
-            vkChatClient.sendText(chatId, message, true);
+            result.append(String.format("✅Команды:\n%s\nТеперь могут применяться только участниками с ролью «%s» и выше.",
+                    commandsList, roleName));
         }
 
+        if (!permissionResult.getHasRequiredPermissionAlready().isEmpty()) {
+            if (!result.isEmpty()) result.append("\n\n");
+            String commandsList = permissionResult.getHasRequiredPermissionAlready().stream()
+                    .map(cmd -> "⚙ " + chatPrefix + cmd)
+                    .collect(Collectors.joining("\n"));
+            result.append(String.format("‼Команды:\n%s\nУже разрешены для роли «%s» и выше.",
+                    commandsList, roleName));
+        }
+
+        if (!permissionResult.getNotFound().isEmpty()) {
+            if (!result.isEmpty()) result.append("\n\n");
+            result.append(String.format("❌Аргументы:\n❓%s\nНе являются командами или написаны с опечатками.",
+                    String.join("\n❓", permissionResult.getNotFound())));
+        }
+        vkChatClient.sendText(chatId, result.toString(), true);
+
+
+
     }
+
 }

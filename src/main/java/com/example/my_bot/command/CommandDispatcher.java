@@ -2,7 +2,7 @@ package com.example.my_bot.command;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
-import com.example.my_bot.dto.permission.RoleCommandPermissionDto;
+import com.example.my_bot.dto.permission.RolePermissionDto;
 import com.example.my_bot.service.ChatService;
 import com.example.my_bot.service.CommandPermissionService;
 import com.example.my_bot.service.MemberService;
@@ -66,7 +66,7 @@ public class CommandDispatcher {
 
             int userRolePriority = memberService.getCachedMemberRolePriority(chatId,fromId);
 
-            RoleCommandPermissionDto customRolePermission = cmdPermissionService.getCachedCustomRolePermissions(chatId)
+            RolePermissionDto customRolePermission = cmdPermissionService.getCachedCustomRolePermissions(chatId)
                     .get(cmdAnnotation.mainCommandName());
 
             boolean canExecute = false;

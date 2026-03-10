@@ -1,7 +1,7 @@
 package com.example.my_bot.mapper.json;
 
 
-import com.example.my_bot.dto.permission.RoleCommandPermissionDto;
+import com.example.my_bot.dto.permission.RolePermissionDto;
 import com.example.my_bot.exception.json.JSONDeserializationException;
 import com.example.my_bot.exception.json.JSONSerializationException;
 import lombok.extern.slf4j.Slf4j;
@@ -15,25 +15,25 @@ import java.util.List;
 public abstract class CommandPermissionJsonMapper {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public String toJson(RoleCommandPermissionDto dto) {
+    public String toJson(RolePermissionDto dto) {
        try{
            return objectMapper.writeValueAsString(dto);
        }catch (Exception e){
-           throw new JSONSerializationException(RoleCommandPermissionDto.class, e);
+           throw new JSONSerializationException(RolePermissionDto.class, e);
        }
     }
 
-    public RoleCommandPermissionDto fromJson(String json) {
+    public RolePermissionDto fromJson(String json) {
         try{
-            return objectMapper.readValue(json, RoleCommandPermissionDto.class);
+            return objectMapper.readValue(json, RolePermissionDto.class);
         }catch (Exception e){
-            throw new JSONDeserializationException(RoleCommandPermissionDto.class, json, e);
+            throw new JSONDeserializationException(RolePermissionDto.class, json, e);
 
 
         }
     }
 
-    public abstract List<RoleCommandPermissionDto> fromJson(List<String> json);
+    public abstract List<RolePermissionDto> fromJson(List<String> json);
 
 
 

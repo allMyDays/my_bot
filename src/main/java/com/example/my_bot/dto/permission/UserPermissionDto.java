@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserCommandPermissionDto {
+public class UserPermissionDto {
 
     private String commandName;
 
