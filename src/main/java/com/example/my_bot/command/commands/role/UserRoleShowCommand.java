@@ -13,7 +13,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
+import java.util.Optional;
+
+import static com.example.my_bot.constant.MessageConstant.MEMBER_LINK_IS_NOT_CORRECT;
+import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
+import static com.example.my_bot.utils.VkChatUtils.createMention;
 
 
 @Slf4j
@@ -38,13 +43,29 @@ public class UserRoleShowCommand implements ChatCommand {
     public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
 
         long chatId = cmd.getChatId();
+        long memberToCheck;
 
         if(cmd.getFirstRowArguments().length==0){
-            int priority =  memberService.getCachedMemberRolePriority(chatId, cmd.getFromId());
-            vkChatClient.sendText(chatId, "Ваша роль в чате — «%s». Приоритет роли: %d"
-                    .formatted(roleService.getRoleName(chatId, priority).orElse("Неизвестная роль"), priority),true);
-            return;
+            if(cmd.hasReplyMessage()){
+                memberToCheck = cmd.getReplyMessageFromId().get();
+            }else if(cmd.hasFwdMessages()){
+                memberToCheck = cmd.getFwdMessageFromIds().get(0);
+            }else{
+                memberToCheck= cmd.getFromId();
+            }
+        }else{
+            Optional<Long> memberOptional = memberService.getCachedMemberIdByUserInput(cmd.getFirstRowArguments()[0]);
+            if(memberOptional.isEmpty()){
+                vkChatClient.sendText(chatId, MEMBER_LINK_IS_NOT_CORRECT, true);
+                return;
+            } memberToCheck = memberOptional.get();
         }
+        int userRolePriority =  memberService.getCachedMemberRolePriority(chatId, memberToCheck);
+        String roleName = roleService.getRoleName(chatId, userRolePriority).orElse("Unknown role");
+        vkChatClient.sendText(chatId,
+                createMention(memberToCheck)+
+                        (cmd.getFromId()==memberToCheck?"(Ваша)":"(Участник) имеет")+" роль в чате — «%s». Приоритет роли: %d"
+                .formatted(roleName, userRolePriority),true);
 
 
     }
