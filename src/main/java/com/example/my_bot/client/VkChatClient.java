@@ -23,12 +23,14 @@ import static com.example.my_bot.utils.VkChatUtils.extractPeerId;
 public class VkChatClient{
     private final VkApiClient vkApiClient;
     private final GroupActor groupActor;
+    private final long groupId;
 
     public VkChatClient(
             @Value("${vk.group.id}") long groupId,
             @Value("${vk.group.token}") String accessToken) {
         this.vkApiClient = new VkApiClient(new HttpTransportClient());
         this.groupActor =  new GroupActor(groupId, accessToken);
+        this.groupId = groupId;
     }
 
     public void sendText(long chatId, String text, boolean disableMentions) throws ClientException, ApiException {
@@ -84,6 +86,10 @@ public class VkChatClient{
 
 
     public void kickChatMember(int chatId, long memberId) throws ClientException, ApiException {
+
+        if (memberId==(groupId*-1)){
+            return;
+        }
 
         vkApiClient.messages().removeChatUser(groupActor)
                 .chatId(chatId)

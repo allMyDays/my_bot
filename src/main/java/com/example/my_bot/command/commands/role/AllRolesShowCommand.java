@@ -4,6 +4,7 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.dto.RoleDto;
+import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -33,7 +34,9 @@ public class AllRolesShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+
+        long chatId = cmd.getChatId();
 
         StringBuilder sb = new StringBuilder();
 

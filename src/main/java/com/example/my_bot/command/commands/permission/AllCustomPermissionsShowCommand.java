@@ -5,6 +5,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.dto.MemberWithRoleDto;
 import com.example.my_bot.dto.RoleDto;
+import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.permission.RolePermissionDto;
 import com.example.my_bot.dto.permission.SetCommandPermissionResult;
 import com.example.my_bot.exception.command.CommandException;
@@ -44,7 +45,9 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+
+        long chatId = cmd.getChatId();
 
         Collection<RolePermissionDto> permissions = permissionService.getCachedCustomRolePermissions(chatId)
                 .values();

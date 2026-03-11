@@ -4,6 +4,7 @@ package com.example.my_bot.command.commands;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -15,7 +16,6 @@ import org.springframework.context.annotation.Lazy;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
-import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 
 @Slf4j
@@ -36,29 +36,40 @@ public class KickCommand implements ChatCommand {
 
 
     @Override
-    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
 
-        if(args.length==0){
-            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
-            return;
+        long chatId = cmd.getChatId();
+
+        long memberToRemove;
+
+        if(cmd.getFirstRowArguments().length==0){
+            if(cmd.hasReplyMessage()){
+                memberToRemove = cmd.getReplyMessageFromId().get();
+            }else if(cmd.hasFwdMessages()){
+                memberToRemove = cmd.getFwdMessageFromIds().get(0);
+            }else{
+                vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
+                return;
+            }
+        }else{
+            Optional<Long> memberOptional = memberService.getCachedMemberIdByUserInput(cmd.getFirstRowArguments()[0]);
+
+            if(memberOptional.isEmpty()){
+                vkChatClient.sendText(chatId, MEMBER_LINK_IS_NOT_CORRECT, true);
+                return;
+            } memberToRemove = memberOptional.get();
+
         }
 
-        Optional<Long> memberIdOpt = memberService.getCachedMemberIdByUserInput(args[0]);
 
-        if(memberIdOpt.isEmpty()){
-            vkChatClient.sendText(chatId, MEMBER_LINK_IS_NOT_CORRECT, true);
-            return;
-        }
-        long memberId = memberIdOpt.get();
-
-        if(memberService.getCachedMemberRolePriority(chatId, fromId)
-                <memberService.getCachedMemberRolePriority(chatId, memberId)){
+        if(memberService.getCachedMemberRolePriority(chatId, cmd.getFromId())
+                <memberService.getCachedMemberRolePriority(chatId, memberToRemove)){
             vkChatClient.sendText(chatId, NOT_ENOUGH_ROLE_TO_INTERACT_WITH_MEMBER, true);
             return;
         }
 
        try{
-           vkChatClient.kickChatMember((int)chatId, memberId);
+           vkChatClient.kickChatMember((int)chatId, memberToRemove);
        }catch (ApiException e){
            vkChatClient.sendText(chatId, "Не удалось исключить пользователя. "+e.getMessage(), true);
        }

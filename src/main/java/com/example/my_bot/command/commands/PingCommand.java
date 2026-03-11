@@ -4,6 +4,7 @@ package com.example.my_bot.command.commands;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.dto.command.CommandMessageDto;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.extern.slf4j.Slf4j;
@@ -27,9 +28,9 @@ public class PingCommand implements ChatCommand {
 
 
     @Override
-    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
 
-        vkChatClient.sendText(chatId, "ПОНГ", true);
+        vkChatClient.sendText(cmd.getChatId(), "ПОНГ", true);
 
     }
 }

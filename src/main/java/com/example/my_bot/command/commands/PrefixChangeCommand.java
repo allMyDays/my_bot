@@ -3,6 +3,7 @@ package com.example.my_bot.command.commands;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.exception.chat.ForbiddenPrefixException;
 import com.example.my_bot.service.ChatService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -30,7 +31,10 @@ public class PrefixChangeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+
+        String[] args = cmd.getFirstRowArguments();
+        long chatId = cmd.getChatId();
 
         if(args.length==0){
             vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE,true);

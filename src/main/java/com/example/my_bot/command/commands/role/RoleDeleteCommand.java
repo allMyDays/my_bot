@@ -4,6 +4,7 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.dto.RoleDto;
+import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.RoleEntity;
 import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.service.RoleService;
@@ -31,7 +32,10 @@ public class RoleDeleteCommand implements ChatCommand {
 
 
     @Override
-    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+
+        long chatId = cmd.getChatId();
+        String[] args = cmd.getFirstRowArguments();
 
         if(args.length==0){
             vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
@@ -47,9 +51,9 @@ public class RoleDeleteCommand implements ChatCommand {
 
         try{
             if(isNumber(args[0])){
-                assignedRole = roleService.deleteCustomRole(chatId, fromId, Integer.parseInt(args[0]));
+                assignedRole = roleService.deleteCustomRole(chatId, cmd.getFromId(), Integer.parseInt(args[0]));
             }else{
-                assignedRole = roleService.deleteCustomRole(chatId, fromId, String.join(" ", args));
+                assignedRole = roleService.deleteCustomRole(chatId, cmd.getFromId(), String.join(" ", args));
             }
 
         } catch (RoleException e) {

@@ -2,6 +2,7 @@ package com.example.my_bot.command;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
+import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.permission.RolePermissionDto;
 import com.example.my_bot.service.ChatService;
 import com.example.my_bot.service.CommandPermissionService;
@@ -30,32 +31,30 @@ public class CommandDispatcher {
 
 
 
-    public void dispatch(String message, long chatId, long fromId) throws ClientException, ApiException {
+    public void dispatch(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-             String text;
+             Optional<String> commandOptional = commandMessage.getCommand();
+             if(commandOptional.isEmpty()) return;
+             String commandName = commandOptional.get();
 
-             if(message==null||(text=message.trim()).isEmpty()) return;
+             long chatId = commandMessage.getChatId();
 
-             Optional<Character> chatPrefix = chatService.getCachedChatDetails(chatId, true).getOptionalPrefix();
+             Optional<Character> chatPrefix = chatService.getCachedChatDetails(chatId, true)
+                     .getOptionalPrefix();
 
              boolean mustCutPrefix=true;
 
              if(chatPrefix.isPresent()){
-                 if(text.charAt(0)!=chatPrefix.get()) return;
+                 if(commandName.charAt(0)!=chatPrefix.get()) return;
              }else{
-                 if(text.charAt(0)!=DEFAULT_CHAT_PREFIX){
+                 if(commandName.charAt(0)!=DEFAULT_CHAT_PREFIX){
                      mustCutPrefix=false;
 
                  }
              }
-
-             String[] parts = text.split("\\s+");
-             String commandName = parts[0].toLowerCase();
               if(mustCutPrefix){
                   commandName = commandName.substring(1);
               }
-
-             String[] arguments = Arrays.copyOfRange(parts, 1, parts.length);
 
 
         Optional<ChatCommand> cmdOptional = commandRegistry.getCommand(commandName);
@@ -64,7 +63,7 @@ public class CommandDispatcher {
             Command cmdAnnotation = commandRegistry.getCommandAnnotation(commandName)
                     .orElseThrow(()->new RuntimeException("Cannot find required init-annotation @Command"));
 
-            int userRolePriority = memberService.getCachedMemberRolePriority(chatId,fromId);
+            int userRolePriority = memberService.getCachedMemberRolePriority(chatId, commandMessage.getFromId());
 
             RolePermissionDto customRolePermission = cmdPermissionService.getCachedCustomRolePermissions(chatId)
                     .get(cmdAnnotation.mainCommandName());
@@ -80,7 +79,7 @@ public class CommandDispatcher {
             }
 
             if(canExecute){
-                cmd.execute(chatId, fromId, arguments);
+                cmd.execute(commandMessage);
             }else{
                 vkChatClient.sendText(chatId,NOT_ENOUGH_ROLE_TO_EXECUTE_CMD, true);
             }

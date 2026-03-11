@@ -3,6 +3,7 @@ package com.example.my_bot.command.commands.role;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -34,10 +35,12 @@ public class UserRoleShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
 
-        if(args.length==0){
-            int priority =  memberService.getCachedMemberRolePriority(chatId, fromId);
+        long chatId = cmd.getChatId();
+
+        if(cmd.getFirstRowArguments().length==0){
+            int priority =  memberService.getCachedMemberRolePriority(chatId, cmd.getFromId());
             vkChatClient.sendText(chatId, "Ваша роль в чате — «%s». Приоритет роли: %d"
                     .formatted(roleService.getRoleName(chatId, priority).orElse("Неизвестная роль"), priority),true);
             return;

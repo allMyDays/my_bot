@@ -4,6 +4,7 @@ package com.example.my_bot.command.commands;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -32,11 +33,11 @@ public class SynchronizeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
 
-        memberService.synchronizeChatMembers(chatId);
+        memberService.synchronizeChatMembers(cmd.getChatId());
 
-        vkChatClient.sendText(chatId, "✅Данные участников были обновлены.",true);
+        vkChatClient.sendText(cmd.getChatId(), "✅Текущие участники чата были синхронизированы с моей базой данных.",true);
 
     }
 }

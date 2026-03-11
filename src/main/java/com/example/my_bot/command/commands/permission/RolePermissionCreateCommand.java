@@ -4,6 +4,7 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.dto.RoleDto;
+import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.permission.SetCommandPermissionResult;
 import com.example.my_bot.entity.RoleEntity;
 import com.example.my_bot.exception.command.CommandException;
@@ -42,7 +43,10 @@ public class RolePermissionCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+
+        long chatId = commandMessage.getChatId();
+        String[] args = commandMessage.getFirstRowArguments();
 
         if(args.length<2){
             vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
@@ -57,15 +61,16 @@ public class RolePermissionCreateCommand implements ChatCommand {
         try{
             Set<String> userCommandsToProcess = new HashSet<>();
             userCommandsToProcess.add(args[0].trim());
-            if(args.length>2){
-                for(int i=2;i<args.length;i++){
-                    userCommandsToProcess.add(args[i].trim());
+
+                for(int i=1;i<commandMessage.getAllRows().length;i++){
+                    userCommandsToProcess.add(commandMessage.getAllRows()[i].trim());
                 }
-            }
+
+
             if(isNumber(args[1])){
-                permissionResult = permissionService.allowCommandForRole(chatId, fromId, userCommandsToProcess,Integer.parseInt(args[1]));
+                permissionResult = permissionService.allowCommandForRole(chatId, commandMessage.getFromId(), userCommandsToProcess,Integer.parseInt(args[1]));
             }else{
-                permissionResult = permissionService.allowCommandForRole(chatId, fromId, userCommandsToProcess,args[1]);
+                permissionResult = permissionService.allowCommandForRole(chatId, commandMessage.getFromId(), userCommandsToProcess,args[1]);
             }
         }catch (PermissionException | RoleException | CommandException e){
             vkChatClient.sendText(chatId, e.getMessage(), true);

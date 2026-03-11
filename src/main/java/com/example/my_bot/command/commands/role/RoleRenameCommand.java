@@ -4,6 +4,7 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.dto.RoleDto;
+import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.RoleEntity;
 import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.service.RoleService;
@@ -31,7 +32,10 @@ public class RoleRenameCommand implements ChatCommand {
 
 
     @Override
-    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+
+        String[] args = cmd.getFirstRowArguments();
+        long chatId = cmd.getChatId();
 
         if(args.length<2){
             vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
@@ -46,9 +50,9 @@ public class RoleRenameCommand implements ChatCommand {
         try{
             String newRoleName = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
             if(isNumber(args[0])){
-                editedRole = roleService.renameRole(chatId, fromId, Integer.parseInt(args[0]),newRoleName);
+                editedRole = roleService.renameRole(chatId, cmd.getFromId(), Integer.parseInt(args[0]),newRoleName);
             }else{
-                editedRole = roleService.renameRole(chatId, fromId, args[0], newRoleName);
+                editedRole = roleService.renameRole(chatId, cmd.getFromId(), args[0], newRoleName);
             }
 
         } catch (RoleException e) {

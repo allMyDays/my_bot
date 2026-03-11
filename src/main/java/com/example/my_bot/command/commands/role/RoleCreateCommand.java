@@ -3,6 +3,7 @@ package com.example.my_bot.command.commands.role;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.RoleEntity;
 import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.service.RoleService;
@@ -29,7 +30,10 @@ public class RoleCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(long chatId, long fromId, String[] args) throws ClientException, ApiException {
+    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+
+        long chatId = cmd.getChatId();
+        String[] args = cmd.getFirstRowArguments();
 
         if(args.length<2){
             vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
@@ -43,7 +47,7 @@ public class RoleCreateCommand implements ChatCommand {
 
         RoleEntity createdRole=null;
         try{
-            createdRole =  roleService.createRole(chatId, fromId, Integer.parseInt(args[0]),
+            createdRole =  roleService.createRole(chatId, cmd.getFromId(), Integer.parseInt(args[0]),
                    String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
 
         }catch (RoleException e){

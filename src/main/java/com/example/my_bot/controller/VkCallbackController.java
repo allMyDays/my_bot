@@ -2,6 +2,7 @@ package com.example.my_bot.controller;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
+import com.example.my_bot.mapper.CommandMapper;
 import com.example.my_bot.service.MemberService;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -14,6 +15,8 @@ import com.vk.api.sdk.objects.callback.Type;
 import com.vk.api.sdk.objects.messages.ActionOneOf;
 import com.vk.api.sdk.objects.messages.Message;
 import com.vk.api.sdk.objects.messages.MessageActionStatus;
+import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,24 +37,30 @@ public class VkCallbackController {
 
     private final String confirmationCode;
 
-    private final CommandDispatcher commandDispatcher;
-
     private final long groupId;
+
+    private final CommandDispatcher commandDispatcher;
 
     private final VkChatClient vkChatClient;
 
     private final MemberService memberService;
 
-    public VkCallbackController(
-            @Value("${vk.group.confirmation}") String confirmationCode,
-            @Value("${vk.group.id}") long groupId,
-            CommandDispatcher commandDispatcher, VkChatClient vkChatClient, MemberService memberService) {
-        this.confirmationCode = confirmationCode;
-        this.commandDispatcher=commandDispatcher;
-        this.groupId = groupId;
-        this.vkChatClient = vkChatClient;
+    private final CommandMapper commandMapper;
+
+    public VkCallbackController(MemberService memberService,
+                                CommandMapper commandMapper,
+                                VkChatClient vkChatClient,
+                                CommandDispatcher commandDispatcher,
+                                @Value("${vk.group.id}") long groupId,
+                                @Value("${vk.group.confirmation}")String confirmationCode) {
         this.memberService = memberService;
+        this.commandMapper = commandMapper;
+        this.vkChatClient = vkChatClient;
+        this.commandDispatcher = commandDispatcher;
+        this.groupId = groupId;
+        this.confirmationCode = confirmationCode;
     }
+
 
     @PostMapping("/callback")
     public String handle(@RequestBody String body) {
@@ -65,9 +74,7 @@ public class VkCallbackController {
 
         if (MESSAGE_NEW.equals(type)) {
             Message message = event.getObject().getMessage();
-            String text = message.getText();
             long peerId = message.getPeerId();
-            long fromId = message.getFromId();
 
             if(!isPersonalChat(peerId)){
                 long chatId = extractConversationId(peerId);
@@ -86,7 +93,7 @@ public class VkCallbackController {
                   }
 
 
-                 commandDispatcher.dispatch(text, chatId, fromId);
+                 commandDispatcher.dispatch(commandMapper.toCommandMessageDto(message));
                  memberService.checkLastSyncAndPerform(chatId);
 
             }catch (Exception e) {
