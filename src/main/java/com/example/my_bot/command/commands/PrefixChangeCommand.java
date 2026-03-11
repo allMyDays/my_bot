@@ -11,6 +11,8 @@ import com.vk.api.sdk.exceptions.ClientException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
+import java.util.Optional;
+
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.enumeration.DefaultRole.*;
@@ -37,22 +39,20 @@ public class PrefixChangeCommand implements ChatCommand {
         long chatId = cmd.getChatId();
 
         if(args.length==0){
-            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE,true);
+            String message;
+            Optional<Character> optionalPrefix = chatService.getChatPrefix(chatId);
+            if(optionalPrefix.isEmpty()){
+                chatService.setChatPrefix(chatId, DEFAULT_CHAT_PREFIX);
+                message = String.format("✅Префикс чата был установлен на стандартный: %s",DEFAULT_CHAT_PREFIX);
+            }else{
+                chatService.disableChatPrefix(chatId);
+                message = String.format("✅Префикс чата был отключён. " +
+                        "Теперь команды в чате можно писать как без префикса, так и со стандартным префиксом: %s",DEFAULT_CHAT_PREFIX);
+            }
+            vkChatClient.sendText(chatId, message,true);
             return;
         }
 
-        if(args[0].matches("(?iu)дефолт")){
-            chatService.setChatPrefix(chatId, DEFAULT_CHAT_PREFIX);
-            vkChatClient.sendText(chatId, "✅Префикс чата был сброшен на стандартный: «%s»".formatted(DEFAULT_CHAT_PREFIX),true);
-            return;
-        }
-        if(args[0].matches("(?iu)удалить|отключить")){
-            chatService.disableChatPrefix(chatId);
-            vkChatClient.sendText(chatId, "✅Префикс чата был отключён. " +
-                    "Теперь команды в чате можно писать как без префикса, так и со стандартным префиксом: «%s»"
-                    .formatted(DEFAULT_CHAT_PREFIX),true);
-            return;
-        }
         if(args[0].length()>1){
             vkChatClient.sendText(chatId, "В качестве префикса можно установить только один символ.",true);
             return;
@@ -64,7 +64,7 @@ public class PrefixChangeCommand implements ChatCommand {
             return;
         }
 
-        vkChatClient.sendText(chatId, (("✅Префикс чата был установлен на «%s». " +
+        vkChatClient.sendText(chatId, (("✅Префикс чата был установлен на: %s\n" +
                 "Теперь команды в чате можно писать ТОЛЬКО с этим префиксом.").formatted(args[0])),true);
 
     }
