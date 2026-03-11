@@ -12,6 +12,7 @@ import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ConversationMember;
 import jakarta.transaction.Transactional;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -21,10 +22,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.*;
 import static com.example.my_bot.enumeration.RedisKeyBuilder.STAFF;
+import static com.example.my_bot.utils.VkChatUtils.isValidInteger;
+import static com.example.my_bot.utils.VkChatUtils.isValidLong;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +54,12 @@ public class MemberService {
     private static final long AUTO_SYNC_INTERVAL_MINUTES = 15;
 
     private final static int STAFF_CACHE_TTL_SECONDS = 600;
+
+    private final Pattern MEMBER_MENTION = Pattern.compile("\\[(id|club)(\\d+)\\|[^]]+]");
+
+    private static final Pattern VK_URL_PATTERN = Pattern.compile(
+            "(?:https?://)?(?:www\\.)?(?:m\\.)?(?:(?:vk\\.(?:com|ru))|vkontakte\\.ru)/(((id|club|public)\\d{1,11})|[a-zA-Z0-9_.]{4,32})");
+
 
     @Autowired
     @Lazy
@@ -187,6 +198,40 @@ public class MemberService {
 
         return changedRows>0;
 
+    }
+
+    public Optional<Long> getCachedMemberIdByUserInput(@NonNull String userInput){
+
+        userInput=userInput.toLowerCase().trim();
+
+        Matcher matcher = MEMBER_MENTION.matcher(userInput);
+        if (matcher.find()) {
+            String type = matcher.group(1); // "id" или "club"
+            if(!isValidLong(matcher.group(2))){
+                return Optional.empty();
+            } long id = Long.parseLong(matcher.group(2));
+
+            return Optional.of(type.equals("id")?id:(id*-1));
+        }
+        Matcher m = VK_URL_PATTERN.matcher(userInput);
+        if (!m.find()) return Optional.empty();
+
+        // (((id|club|public)\\d{1,11})|[a-zA-Z0-9_.]{4,32})");
+
+        if (m.group(2) != null) {
+            String prefix = m.group(3);
+            String fullMatch = m.group(2);
+            String numStr = fullMatch.substring(prefix.length());
+            long id = Long.parseLong(numStr);
+            if (prefix.equals("id")) {
+                return Optional.of(id);
+            } else {
+                return Optional.of(-id);
+            }
+        } else {
+            return vkChatClient.getMemberIdByNickname(m.group(1));
+
+        }
     }
 
 

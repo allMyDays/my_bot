@@ -13,7 +13,9 @@ public class MessageConstant {
 
     public static String NOT_ENOUGH_ROLE_TO_EXECUTE_CMD = "Ваша роль недостаточно высока для применения этой команды.";
 
+    public static String MEMBER_LINK_IS_NOT_CORRECT = "Не удалось получить участника по указанному вами строчному аргументу.";
 
+    public static String NOT_ENOUGH_ROLE_TO_INTERACT_WITH_MEMBER = "Роль этого участника выше или равна Вашей роли.";
 
 
 

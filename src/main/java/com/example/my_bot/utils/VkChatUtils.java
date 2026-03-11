@@ -34,7 +34,7 @@ public class VkChatUtils {
 
 
     public static boolean isValidInteger(String str) {
-        if (str == null || !str.matches("-?\\d+")) {
+        if (str == null || !(str=str.trim()).matches("-?\\d+")) {
             return false;
         }
         try {
@@ -44,9 +44,24 @@ public class VkChatUtils {
             return false;
         }
     }
-    public static boolean isNumber(@NonNull String str) {
-        return str.matches("-?\\d+");
+
+    public static boolean isValidLong(String str) {
+        if (str == null || !(str=str.trim()).matches("-?\\d+")) {
+            return false;
+        }
+        try {
+            Long.parseLong(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
+
+    public static boolean isNumber(@NonNull String str) {
+        return str.trim().matches("-?\\d+");
+    }
+
+
 
 
 
