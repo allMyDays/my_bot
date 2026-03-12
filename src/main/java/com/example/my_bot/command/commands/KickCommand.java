@@ -48,7 +48,7 @@ public class KickCommand implements ChatCommand {
             }else if(cmd.hasFwdMessages()){
                 memberToRemove = cmd.getFwdMessageFromIds().get(0);
             }else{
-                vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
+                vkChatClient.sendText(chatId, MEMBER_ARGUMENT_ABSENTS, true);
                 return;
             }
         }else{

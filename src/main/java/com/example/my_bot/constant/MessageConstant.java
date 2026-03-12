@@ -17,6 +17,8 @@ public class MessageConstant {
 
     public static String NOT_ENOUGH_ROLE_TO_INTERACT_WITH_MEMBER = "Роль этого участника выше или равна Вашей роли.";
 
+    public static String MEMBER_ARGUMENT_ABSENTS = "Необходимо указать участника, к которому вы хотите применить эту команду.";
+
 
 
 

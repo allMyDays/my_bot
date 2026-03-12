@@ -1,11 +1,8 @@
 package com.example.my_bot.mapper;
 
-import com.example.my_bot.dto.MemberWithRoleDto;
 import com.example.my_bot.dto.RoleDto;
-import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.entity.RoleEntity;
 import com.example.my_bot.enumeration.DefaultRole;
-import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

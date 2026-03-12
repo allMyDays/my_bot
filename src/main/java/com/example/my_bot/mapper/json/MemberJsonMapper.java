@@ -1,7 +1,7 @@
 package com.example.my_bot.mapper.json;
 
 
-import com.example.my_bot.dto.MemberWithRoleDto;
+import com.example.my_bot.dto.member.MemberWithRoleDto;
 import com.example.my_bot.exception.json.JSONDeserializationException;
 import com.example.my_bot.exception.json.JSONSerializationException;
 import lombok.extern.slf4j.Slf4j;

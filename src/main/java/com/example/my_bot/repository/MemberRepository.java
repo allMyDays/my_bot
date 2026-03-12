@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Repository
@@ -40,6 +41,8 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
     int markMembersAsLeft(@Param("chatId") long chatId, @Param("userIds") Set<Long> userIds);
 
     List<MemberEntity> findByChatIdAndUserIdIn(long chatId, Set<Long> userIds);
+
+    Optional<MemberEntity> findByChatIdAndUserId(long chatId, long userId);
 
 
 

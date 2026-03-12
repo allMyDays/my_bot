@@ -151,7 +151,7 @@ public class RoleService {
 
         RoleDto roleToReAssign = findTheNearestLowestRole(chatId, roleToDelete.getRolePriority());
 
-        memberService.updateRolePriorityForMembers(chatId, roleToDelete.getRolePriority(), roleToReAssign.getRolePriority());
+        memberService.reAssignRequiredMembersMassively(chatId, roleToDelete.getRolePriority(), roleToReAssign.getRolePriority());
 
         roleRepository.delete(roleToDelete);
 
@@ -172,7 +172,7 @@ public class RoleService {
 
         RoleDto roleToReAssign = findTheNearestLowestRole(chatId, roleToDelete.getRolePriority());
 
-        memberService.updateRolePriorityForMembers(chatId, roleToDelete.getRolePriority(), roleToReAssign.getRolePriority());
+        memberService.reAssignRequiredMembersMassively(chatId, roleToDelete.getRolePriority(), roleToReAssign.getRolePriority());
 
         roleRepository.delete(roleToDelete);
 

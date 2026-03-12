@@ -2,8 +2,15 @@ package com.example.my_bot.service;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.dto.ChatDetailsDto;
-import com.example.my_bot.dto.MemberWithRoleDto;
+import com.example.my_bot.dto.member.AssignMemberResult;
+import com.example.my_bot.dto.member.MemberWithRoleDto;
+import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.entity.UserEntity;
+import com.example.my_bot.exception.member.CannotAssignYourselfException;
+import com.example.my_bot.exception.member.MemberAccessDeniedException;
+import com.example.my_bot.exception.member.MemberAlreadyHasThisRoleException;
+import com.example.my_bot.exception.member.UserNeverBeenInChatException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.mapper.json.MemberJsonMapper;
@@ -28,7 +35,6 @@ import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.*;
 import static com.example.my_bot.enumeration.RedisKeyBuilder.STAFF;
-import static com.example.my_bot.utils.VkChatUtils.isValidInteger;
 import static com.example.my_bot.utils.VkChatUtils.isValidLong;
 
 @Service
@@ -186,7 +192,7 @@ public class MemberService {
 
     }
 
-    public boolean updateRolePriorityForMembers(long chatId, int oldRolePriority, int newRolePriority){
+    public boolean reAssignRequiredMembersMassively(long chatId, int oldRolePriority, int newRolePriority){
 
         if(roleService.getRoleByPriority(chatId,newRolePriority).isEmpty()){
             throw new RoleNotFoundException();
@@ -199,6 +205,48 @@ public class MemberService {
         return changedRows>0;
 
     }
+
+    public AssignMemberResult assignNewRoleToMember(long chatId, long userToAssign, int newRolePriority, long fromId){
+
+        if(userToAssign==fromId){
+            throw new CannotAssignYourselfException();
+        }
+
+        MemberEntity requiredMember = memberRepository.findByChatIdAndUserId(chatId, userToAssign)
+                .orElseThrow(()->new UserNeverBeenInChatException(userToAssign));
+
+        RoleDto roleToAssign = roleService.getRoleByPriority(chatId, newRolePriority)
+                .orElseThrow(RoleNotFoundException::new);
+
+        if(requiredMember.getRolePriority()==newRolePriority){
+            throw new MemberAlreadyHasThisRoleException(userToAssign);
+        }
+        if(requiredMember.getRolePriority()>getCachedMemberRolePriority(chatId, fromId)){
+            throw new MemberAccessDeniedException(userToAssign, fromId);
+        }
+
+        RoleDto roleToChange = roleService.getRoleByPriority(chatId, requiredMember.getRolePriority())
+                .orElseThrow(RoleNotFoundException::new);
+
+        requiredMember.setRolePriority(newRolePriority);
+
+        memberRepository.save(requiredMember);
+
+        invalidateStaffMembersCache(chatId);
+
+        return new AssignMemberResult(roleToChange, roleToAssign);
+
+    }
+
+    public AssignMemberResult assignNewRoleToMember(long chatId, long userToAssign, @NonNull String newRoleName, long fromId){
+
+        RoleDto roleToAssign = roleService.getRoleByNameIgnoreCase(chatId, newRoleName.trim())
+                .orElseThrow(RoleNotFoundException::new);
+
+        return assignNewRoleToMember(chatId, userToAssign, roleToAssign.getRolePriority(), fromId);
+
+    }
+
 
     public Optional<Long> getCachedMemberIdByUserInput(@NonNull String userInput){
 
@@ -215,8 +263,6 @@ public class MemberService {
         }
         Matcher m = VK_URL_PATTERN.matcher(userInput);
         if (!m.find()) return Optional.empty();
-
-        // (((id|club|public)\\d{1,11})|[a-zA-Z0-9_.]{4,32})");
 
         if (m.group(2) != null) {
             String prefix = m.group(3);
