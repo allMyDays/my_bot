@@ -101,6 +101,14 @@ public class RolePermissionCreateCommand implements ChatCommand {
             result.append(String.format("‼Команды:\n%s\nУже разрешены для роли «%s» и выше.",
                     commandsList, roleName));
         }
+        if (!permissionResult.getForbiddenToEdit().isEmpty()) {
+            if (!result.isEmpty()) result.append("\n\n");
+            String commandsList = permissionResult.getForbiddenToEdit().stream()
+                    .map(cmd -> "⚙ " + chatPrefix + cmd)
+                    .collect(Collectors.joining("\n"));
+            result.append(String.format("\uD83D\uDEABКоманды:\n%s\nНедоступны вам для редактирования (сейчас их роль доступа выше Вашей).",
+                    commandsList, roleName));
+        }
 
         if (!permissionResult.getNotFound().isEmpty()) {
             if (!result.isEmpty()) result.append("\n\n");

@@ -21,7 +21,7 @@ import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 
 @Slf4j
-@Command(mainCommandName = "разрешения", alternativeCommandNames = {"права"}, defaultRole = MODERATOR, eventable = true)
+@Command(mainCommandName = "права", alternativeCommandNames = {"разрешения"}, defaultRole = MODERATOR, eventable = true)
 @RequiredArgsConstructor
 public class AllCustomPermissionsShowCommand implements ChatCommand {
 

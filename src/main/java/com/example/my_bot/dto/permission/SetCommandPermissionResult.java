@@ -22,5 +22,7 @@ public class SetCommandPermissionResult {
 
     private Set<String> hasRequiredPermissionAlready=new HashSet<>();
 
+    private Set<String> forbiddenToEdit=new HashSet<>();
+
     private RoleDto roleDto;
 }
