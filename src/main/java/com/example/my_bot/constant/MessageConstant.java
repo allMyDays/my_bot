@@ -19,6 +19,8 @@ public class MessageConstant {
 
     public static String MEMBER_ARGUMENT_ABSENTS = "Необходимо указать участника, к которому вы хотите применить эту команду.";
 
+    public static String CANNOT_APPLY_THIS_COMMAND_TO_YOURSELF = "Эту команду нельзя применить к самому себе.";
+
 
 
 

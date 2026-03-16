@@ -254,7 +254,9 @@ public class MemberService {
                 return Optional.of(-id);
             }
         } else {
-            return vkChatClient.getMemberIdByNickname(m.group(1));
+            String userNickname = m.group(1);
+            return cacheManager.getNicknameCache().get(userNickname,
+                    k -> vkChatClient.getMemberIdByNickname(userNickname));
 
         }
     }

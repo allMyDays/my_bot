@@ -58,7 +58,11 @@ public class KickCommand implements ChatCommand {
                 vkChatClient.sendText(chatId, MEMBER_LINK_IS_NOT_CORRECT, true);
                 return;
             } memberToRemove = memberOptional.get();
+        }
 
+        if(memberToRemove==cmd.getFromId()){
+            vkChatClient.sendText(chatId, CANNOT_APPLY_THIS_COMMAND_TO_YOURSELF, true);
+            return;
         }
 
 
