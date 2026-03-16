@@ -63,14 +63,4 @@ public class VkChatUtils {
 
 
 
-
-
-
-
-
-
-
-
-
-
 }

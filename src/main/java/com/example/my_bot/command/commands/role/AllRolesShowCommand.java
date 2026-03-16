@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import java.util.Set;
+import java.util.TreeMap;
 
 import static com.example.my_bot.enumeration.DefaultRole.*;
 
@@ -40,17 +41,15 @@ public class AllRolesShowCommand implements ChatCommand {
 
         StringBuilder sb = new StringBuilder();
 
-        Set<RoleDto> roles = roleService.getAllRolesSortedInDescendingOrder(chatId);
+        TreeMap<Integer, String> roles = roleService.getAllRolesSortedInDescendingOrder(chatId);
 
-        long customRoles = roles.stream()
-                .filter(r->!isDefaultRole(r.getRolePriority()))
+        long customRoles = roles.keySet().stream()
+                .filter(r->!isDefaultRole(r))
                 .count();
 
         sb.append("В чате %d дополнительных ролей. Вот полный список:\n\n".formatted(customRoles));
 
-        roles.forEach((r)->
-                sb.append("%s — %d\n".formatted(r.getRoleName(), r.getRolePriority()))
-        );
+        roles.forEach((key, value) -> sb.append("%s — %d\n".formatted(value, key)));
 
         vkChatClient.sendText(chatId, sb.toString(),true);
 

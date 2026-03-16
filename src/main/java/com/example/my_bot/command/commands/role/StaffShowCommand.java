@@ -3,7 +3,7 @@ package com.example.my_bot.command.commands.role;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
-import com.example.my_bot.dto.member.MemberWithRoleDto;
+import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.service.MemberService;
@@ -40,28 +40,27 @@ public class StaffShowCommand implements ChatCommand {
         long chatId = cmd.getChatId();
 
         StringBuilder sb = new StringBuilder();
-        List<MemberWithRoleDto> staffList = memberService.getCachedMembersWithRole(chatId);
 
-        Map<Integer, List<MemberWithRoleDto>> staffMap = staffList.stream()  // сортировка по приоритету, от большего приоритета к меньшему
-                .collect(Collectors.groupingBy(
-                        MemberWithRoleDto::getRolePriority,
-                        () -> new TreeMap<>(Comparator.reverseOrder()),
-                        Collectors.toList()
-                ));
+        long exitedMembers = 0;
 
-        long exitedMembers = staffList.stream()
-                .filter(m -> !m.isInChat())
-                .count();
+        TreeMap<Integer, List<MemberDto>> staffMap =  new TreeMap<>(Comparator.reverseOrder());
+        Collection<MemberDto> staff = memberService.getCachedMembersWithRole(chatId).values();
 
-        sb.append("В чате %d участников имеют роль (из них %d сейчас отсутствует).\n\n".formatted(staffList.size(), exitedMembers));
+        for (MemberDto dto : staff) {
+            staffMap.computeIfAbsent(dto.getRolePriority(), k -> new ArrayList<>()).add(dto);
+            if (!dto.isInChat()) {
+                exitedMembers++;
+            }
+        }
 
-        Map<Integer, String> roleMap = roleService.getRequiredRolesWithNoSorting(chatId, staffMap.keySet()).stream()
-                .collect(Collectors.toMap(RoleDto::getRolePriority, RoleDto::getRoleName));
+        sb.append("В чате %d участников имеют роль (из них %d сейчас отсутствует).\n\n".formatted(staff.size(), exitedMembers));
+
+        Map<Integer, String> roleMap = roleService.getAllRolesWithNoSorting(chatId);
 
 
-        for(Map.Entry<Integer, List<MemberWithRoleDto>> entry: staffMap.entrySet()){
+        for(Map.Entry<Integer, List<MemberDto>> entry: staffMap.entrySet()){
             sb.append(roleMap.get(entry.getKey())).append(" ").append("(%d):\n".formatted(entry.getKey()));
-            for(MemberWithRoleDto member:entry.getValue()){
+            for(MemberDto member:entry.getValue()){
             if(member.isChatAdmin()){
                 sb.append("\uD83D\uDCA0 ");
             } sb.append(createMention(member.getUserId()));

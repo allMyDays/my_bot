@@ -65,12 +65,12 @@ public class CommandDispatcher {
 
             int userRolePriority = memberService.getCachedMemberRolePriority(chatId, commandMessage.getFromId());
 
-            RolePermissionDto customRolePermission = cmdPermissionService.getCachedCustomRolePermissions(chatId)
+            Integer customRolePermissionPriority = cmdPermissionService.getCachedCustomRolePermissions(chatId)
                     .get(cmdAnnotation.mainCommandName());
 
             boolean canExecute = false;
-            if(customRolePermission!=null){
-                if(userRolePriority>=customRolePermission.getRolePriority()){
+            if(customRolePermissionPriority!=null){
+                if(userRolePriority>=customRolePermissionPriority){
                 canExecute=true;
                 }
             }

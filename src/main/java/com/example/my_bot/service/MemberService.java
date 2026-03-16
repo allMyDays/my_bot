@@ -1,19 +1,18 @@
 package com.example.my_bot.service;
 
 import com.example.my_bot.client.VkChatClient;
+import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.member.AssignMemberResult;
-import com.example.my_bot.dto.member.MemberWithRoleDto;
+import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.entity.MemberEntity;
-import com.example.my_bot.entity.UserEntity;
 import com.example.my_bot.exception.member.CannotAssignYourselfException;
 import com.example.my_bot.exception.member.MemberAccessDeniedException;
 import com.example.my_bot.exception.member.MemberAlreadyHasThisRoleException;
 import com.example.my_bot.exception.member.UserNeverBeenInChatException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.MemberMapper;
-import com.example.my_bot.mapper.json.MemberJsonMapper;
 import com.example.my_bot.repository.MemberRepository;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -28,13 +27,14 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.*;
-import static com.example.my_bot.enumeration.RedisKeyBuilder.STAFF;
 import static com.example.my_bot.utils.VkChatUtils.isValidLong;
 
 @Service
@@ -47,19 +47,15 @@ public class MemberService {
 
     private final MemberMapper memberMapper;
 
-    private final MemberJsonMapper memberJsonMapper;
-
-    private final RedisService redisService;
-
     private final ChatService chatService;
 
     private MemberService selfLink;
 
     private RoleService roleService;
 
-    private static final long AUTO_SYNC_INTERVAL_MINUTES = 15;
+    private final CaffeineCacheManager cacheManager;
 
-    private final static int STAFF_CACHE_TTL_SECONDS = 600;
+    private static final long AUTO_SYNC_INTERVAL_MINUTES = 15;
 
     private final Pattern MEMBER_MENTION = Pattern.compile("\\[(id|club)(\\d+)\\|[^]]+]");
 
@@ -136,7 +132,7 @@ public class MemberService {
         }
 
         chatService.setLastSyncToNow(chatId);
-        invalidateStaffMembersCache(chatId);
+        invalidateMemberCache(chatId);
 
     }
 
@@ -154,41 +150,24 @@ public class MemberService {
 
     }
 
-    public List<MemberWithRoleDto> getCachedMembersWithRole(long chatId){
+    public Map<Long, MemberDto> getCachedMembersWithRole(long chatId){
 
-       Map<String, String> hash = redisService.getHash(STAFF.buildKey(chatId));
-
-       if(!hash.isEmpty()){
-           return memberJsonMapper.fromJson(hash.values().stream().toList());
-       }
-
-       List<MemberWithRoleDto> memberDtoList = memberMapper.toMemberWithRoleDtoList(
-               memberRepository.findMembersWithNotZeroRole(chatId));
-
-
-        Map<String, String> mapToSave = new HashMap<>();
-        for (MemberWithRoleDto dto : memberDtoList) {
-            mapToSave.put(String.valueOf(dto.getUserId()), memberJsonMapper.toJson(dto));
-        }
-        redisService.setHash(STAFF.buildKey(chatId), mapToSave, STAFF_CACHE_TTL_SECONDS);
-
-        return memberDtoList;
-
+        return cacheManager.getMemberRoleCache().get(chatId,
+                k ->{
+            ConcurrentMap<Long, MemberDto> resultMap = new ConcurrentHashMap<>();
+            List<MemberEntity> members = memberRepository.findMembersWithNotZeroRole(chatId);
+            for(MemberEntity member:members){
+                resultMap.put(member.getUserId(), memberMapper.toMemberDto(member));
+            } return resultMap;
+        });
     }
 
     public int getCachedMemberRolePriority(long chatId, long userId){
-
-       Optional<Integer> priorityOptional =  getCachedMembersWithRole(chatId).stream()
-               .filter(m->m.getUserId()==userId)
-               .map(MemberWithRoleDto::getRolePriority)
-               .findFirst();
-
-        return priorityOptional.orElseGet(MEMBER::getRolePriority);
-
-    }
-
-    private void invalidateStaffMembersCache(long chatId){
-        redisService.delete(STAFF.buildKey(chatId));
+        Map<Long, MemberDto> members =  getCachedMembersWithRole(chatId);
+        MemberDto memberDto = members.get(userId);
+        if(memberDto!=null){
+            return memberDto.getRolePriority();
+        }return MEMBER.getRolePriority();
 
     }
 
@@ -200,7 +179,7 @@ public class MemberService {
 
         int changedRows = memberRepository.updateRolePriorityForMembers(chatId, oldRolePriority, newRolePriority);
 
-        invalidateStaffMembersCache(chatId);
+        invalidateMemberCache(chatId);
 
         return changedRows>0;
 
@@ -232,7 +211,7 @@ public class MemberService {
 
         memberRepository.save(requiredMember);
 
-        invalidateStaffMembersCache(chatId);
+        putMemberInTheCache(chatId, userToAssign, memberMapper.toMemberDto(requiredMember));
 
         return new AssignMemberResult(roleToChange, roleToAssign);
 
@@ -280,12 +259,23 @@ public class MemberService {
         }
     }
 
+    private void putMemberInTheCache(long chatId, long userId, @NonNull MemberDto memberDto) {
+        ConcurrentMap<Long, MemberDto> map = cacheManager.getMemberRoleCache().get(chatId, k -> new ConcurrentHashMap<>());
+        map.put(userId, memberDto);
+    }
+
+    private void deleteMemberFromTheCache(long chatId, long userId){
+        ConcurrentMap<Long, MemberDto> map = cacheManager.getMemberRoleCache().get(chatId, k -> new ConcurrentHashMap<>());
+        map.remove(userId);
+    }
+        private void invalidateMemberCache(long chatId){
+        cacheManager.getMemberRoleCache().invalidate(chatId);
+
+        }
+
+    }
 
 
 
 
 
-
-
-
-}

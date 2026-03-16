@@ -1,14 +1,14 @@
 package com.example.my_bot.enumeration;
 
-public enum RedisKeyBuilder {
+public enum CacheKeyBuilder {
 
-    CHAT("chat:"), STAFF("staff:"), ROLE_CMD_PERMISSION("role_perm:");
+    CHAT("chat:"), ROLE("role:"), STAFF("staff:"), ROLE_CMD_PERMISSION("role_perm:");
 
     private final String prefix;
 
     private final static String suffix = ":";
 
-    RedisKeyBuilder(String prefix) {
+    CacheKeyBuilder(String prefix) {
         this.prefix=prefix;
     }
 

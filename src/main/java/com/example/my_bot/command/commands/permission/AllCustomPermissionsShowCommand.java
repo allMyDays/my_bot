@@ -38,22 +38,21 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
 
         long chatId = cmd.getChatId();
 
-        Collection<RolePermissionDto> permissions = permissionService.getCachedCustomRolePermissions(chatId)
-                .values();
+        Map<String, Integer> rolePermissions = permissionService.getCachedCustomRolePermissions(chatId);
 
-
-        Map<Integer, List<String>> permissionMap = permissions.stream()
+        Map<Integer, List<String>> permissionMap = rolePermissions.entrySet().stream()
                 .collect(Collectors.groupingBy(
-                        RolePermissionDto::getRolePriority,
-                        () -> new TreeMap<>(Comparator.reverseOrder()),
-                        Collectors.mapping(RolePermissionDto::getCommandName, Collectors.toList())
+                        Map.Entry::getValue,
+                        Collectors.mapping(
+                                Map.Entry::getKey,
+                                Collectors.toList()
+                        )
                 ));
 
         StringBuilder sb = new StringBuilder();
-        sb.append("В чате установлено %d кастомных настроек прав для команд:".formatted(permissions.size()));
+        sb.append("В чате установлено %d кастомных настроек прав для команд:".formatted(rolePermissions.size()));
 
-        Map<Integer, String> roleMap = roleService.getRequiredRolesWithNoSorting(chatId, permissionMap.keySet()).stream()
-                .collect(Collectors.toMap(RoleDto::getRolePriority, RoleDto::getRoleName));
+        Map<Integer, String> roleMap = roleService.getAllRolesWithNoSorting(chatId);
 
         char chatPrefix = chatService.getChatPrefix(chatId).orElse(DEFAULT_CHAT_PREFIX);
         for(Map.Entry<Integer, List<String>> entry: permissionMap.entrySet()){

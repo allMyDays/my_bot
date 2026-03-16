@@ -31,4 +31,7 @@ public interface RoleRepository extends JpaRepository<RoleEntity, Long> {
 
     List<RoleEntity> findByChatIdAndRolePriorityIn(Long chatId, Set<Integer> rolePriority);
 
+    @Modifying
+    int deleteByChatIdAndRolePriority(Long chatId, int rolePriority);
+
 }

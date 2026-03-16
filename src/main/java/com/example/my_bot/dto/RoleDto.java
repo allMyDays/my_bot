@@ -10,15 +10,12 @@ import java.util.Objects;
 
 
 @Getter
-//@Setter
 @AllArgsConstructor
 public class RoleDto {
 
     private final String roleName;
 
     private final int rolePriority;
-
-    private final boolean isRoleInDataBase;
 
 
 

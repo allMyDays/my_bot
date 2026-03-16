@@ -1,13 +1,14 @@
 package com.example.my_bot.service;
 
+import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.entity.ChatEntity;
 import com.example.my_bot.exception.chat.ChatEntityNotFoundException;
 import com.example.my_bot.exception.chat.ForbiddenPrefixException;
 import com.example.my_bot.mapper.ChatMapper;
-import com.example.my_bot.mapper.json.ChatJsonMapper;
 import com.example.my_bot.repository.ChatRepository;
 import jakarta.annotation.Nullable;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,25 +18,19 @@ import java.util.Optional;
 import java.util.Set;
 
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
-import static com.example.my_bot.enumeration.RedisKeyBuilder.CHAT;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatService {
 
-    private final static int CHAT_CACHE_TTL_SECONDS = 600;
-
-    private final RedisService redisService;
+    private final CaffeineCacheManager cacheManager;
 
     private final ChatRepository chatRepository;
 
-    private final ChatJsonMapper chatJsonMapper;
-
     private final ChatMapper chatMapper;
 
-    public final static Set<Character> FORBIDDEN_PREFIXES = Set.of('*','@');
-
+    private final static Set<Character> FORBIDDEN_PREFIXES = Set.of('*','@');
 
     private Optional<ChatEntity> getChatEntity(long chatId){
         return chatRepository.findById(chatId);
@@ -47,52 +42,40 @@ public class ChatService {
 
     }
 
-    public ChatDetailsDto getCachedChatDetails(long chatId, boolean createIfAbsents){
-
-        Optional<String> valueOptional = redisService.get(CHAT.buildKey(chatId));
-
-        if(valueOptional.isPresent()){
-            return chatJsonMapper.fromJson(valueOptional.get());
-        }
-
-        Optional<ChatEntity> chatOptional = getChatEntity(chatId);
-
-        ChatEntity chat;
-
-        if(chatOptional.isEmpty()){
-            if(createIfAbsents){
-                chat = createNewChat(chatId, null);
-            } else throw new ChatEntityNotFoundException(chatId);
-
-        }else{
-            chat=chatOptional.get();
-        }
-
-        return updateChatCache(CHAT.buildKey(chatId), chat);
-
+    public ChatDetailsDto getCachedChatDetails(long chatId, boolean createIfAbsents) {
+        return cacheManager.getChatDetailsCache().get(chatId, id -> {
+            Optional<ChatEntity> optionalChat = getChatEntity(id);
+            if (optionalChat.isPresent()) {
+                return chatMapper.toChatDetailsDto(optionalChat.get());
+            }
+            if (createIfAbsents) {
+                ChatEntity newEntity = createNewChat(id, null);
+                return chatMapper.toChatDetailsDto(newEntity);
+            } else {
+                throw new ChatEntityNotFoundException(id);
+            }
+        });
     }
 
     public void setChatPrefix(long chatId, char newPrefix){
 
         if(FORBIDDEN_PREFIXES.contains(newPrefix)){
             throw new ForbiddenPrefixException(newPrefix);
-
         }
-
         ChatEntity chat = findByChatIdOrThrow(chatId);
-
         chat.setPrefix(newPrefix);
+        chatRepository.save(chat);
 
-        updateChatCache(CHAT.buildKey(chatId), chatRepository.save(chat));
+        putChatToCache(chatId, chatRepository.save(chat));
     }
 
     public void disableChatPrefix(long chatId){
 
         ChatEntity chat = findByChatIdOrThrow(chatId);
-
         chat.setPrefix(null);
+        chatRepository.save(chat);
 
-        updateChatCache(CHAT.buildKey(chatId), chatRepository.save(chat));
+        putChatToCache(chatId, chatRepository.save(chat));
     }
 
     public Optional<Character> getChatPrefix(long chatId){
@@ -103,19 +86,19 @@ public class ChatService {
     public void setLastSyncToNow(long chatId){
 
         ChatEntity chat = findByChatIdOrThrow(chatId);
-
         chat.setLastSyncTime(Instant.now());
+        chatRepository.save(chat);
 
-        updateChatCache(CHAT.buildKey(chatId), chatRepository.save(chat));
+        putChatToCache(chatId, chatRepository.save(chat));
     }
 
-    private ChatDetailsDto updateChatCache(String redisKey, ChatEntity chat){
+    private ChatDetailsDto putChatToCache(long chatId, @NonNull ChatEntity chat){
 
         ChatDetailsDto chatDto = chatMapper.toChatDetailsDto(chat);
 
-        redisService.saveTemp(redisKey, chatJsonMapper.toJson(chatDto), CHAT_CACHE_TTL_SECONDS);
+       cacheManager.getChatDetailsCache().put(chatId, chatDto);
 
-        return chatDto;
+       return chatDto;
 
     }
 
@@ -131,15 +114,6 @@ public class ChatService {
         return chatRepository.save(chat);
 
     }
-
-
-
-
-
-
-
-
-
 
 
 }
