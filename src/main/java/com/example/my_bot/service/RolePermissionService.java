@@ -6,16 +6,13 @@ import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.command.UserCommandValidationResult;
 import com.example.my_bot.dto.permission.AbilityEditRolePermissionsResult;
-import com.example.my_bot.dto.permission.RolePermissionDto;
 import com.example.my_bot.dto.permission.SetCommandPermissionResult;
-import com.example.my_bot.entity.CommandPermissionEntity;
+import com.example.my_bot.entity.RolePermissionEntity;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.permission.RolePermissionAccessDeniedException;
-import com.example.my_bot.exception.permission.PermissionCreationLimitReachedException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.exception.role.RoleAccessDeniedException;
-import com.example.my_bot.mapper.CommandPermissionMapper;
-import com.example.my_bot.repository.CommandPermissionRepository;
+import com.example.my_bot.repository.RolePermissionRepository;
 import jakarta.transaction.Transactional;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -25,16 +22,13 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
-
-import static com.example.my_bot.enumeration.CacheKeyBuilder.ROLE_CMD_PERMISSION;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class CommandPermissionService {
+public class RolePermissionService {
 
     private CommandRegistry commandRegistry;
 
@@ -42,11 +36,11 @@ public class CommandPermissionService {
 
     private final RoleService roleService;
 
-    private final CommandPermissionRepository permissionRepository;
+    private final RolePermissionRepository permissionRepository;
 
     private final CaffeineCacheManager cacheManager;
 
-    private final int MAX_CUSTOM_PERMISSIONS_COUNT = 20;
+    private final static int MAX_CUSTOM_PERMISSIONS_COUNT = 20;
 
 
     @Autowired
@@ -84,40 +78,33 @@ public class CommandPermissionService {
 
         Map<String, Integer> existingCustomPermissions = getCachedCustomRolePermissions(chatId);
 
-        int availableSize = MAX_CUSTOM_PERMISSIONS_COUNT-existingCustomPermissions.size();
-
-        if(availableSize<=0){
-            throw new PermissionCreationLimitReachedException();
-        }
+        int newPermissionsAvailableSize = MAX_CUSTOM_PERMISSIONS_COUNT-existingCustomPermissions.size();
 
         Set<String> commandsToUpdate = new HashSet<>();
-        Set<CommandPermissionEntity> commandsToSave = new HashSet<>();
+        Set<RolePermissionEntity> commandsToSave = new HashSet<>();
 
-        int processedCommands = 0;
         for(String currentCommand: commandEditingResult.getAllowed()){
-            if(processedCommands==availableSize){
-                break;
-            }
-            Integer permissionRolePriority = existingCustomPermissions.get(currentCommand);
-            if(permissionRolePriority==null){
-                commandsToSave.add(new CommandPermissionEntity(chatId, currentCommand, null, rolePriority, true));
-            }else if(permissionRolePriority!=rolePriority){
+            Integer existingPermissionRolePriority = existingCustomPermissions.get(currentCommand);
+            if(existingPermissionRolePriority==null){
+                if(newPermissionsAvailableSize<=0){
+                    result.getNotEnoughSpaceToAddNew().add(currentCommand);
+                    continue;
+                }
+                commandsToSave.add(new RolePermissionEntity(chatId, currentCommand,rolePriority));
+                newPermissionsAvailableSize--;
+            }else if(existingPermissionRolePriority!=rolePriority){
                     commandsToUpdate.add(currentCommand);
             }else{
                 result.getHasRequiredPermissionAlready().add(currentCommand);
                 continue;
-            }
-
-            result.getChanged().add(currentCommand);
-            processedCommands++;
-
+            }result.getAccepted().add(currentCommand);
         }
         if(!commandsToSave.isEmpty()){
             permissionRepository.saveAll(commandsToSave);}
         if(!commandsToUpdate.isEmpty()){
             permissionRepository.updateRolePermissionForRequiredCommands(chatId, commandsToUpdate, rolePriority);
         }
-        putRolePermissionsInTheCache(chatId, result.getChanged(), rolePriority);  // обновляю кеш разрешений
+        invalidateRolePermissionCache(chatId);  // обновляю кеш разрешений
 
         return result;
 
@@ -144,7 +131,7 @@ public class CommandPermissionService {
 
         permissionRepository.deleteRolePermissionForOneCommand(chatId, mainCommandName);
 
-        deleteRolePermissionFromTheCache(chatId, mainCommandName);
+        invalidateRolePermissionCache(chatId);
 
     }
 
@@ -166,7 +153,8 @@ public class CommandPermissionService {
             }else{
                 Optional<Command> annotationOptional = commandRegistry.getCommandAnnotation(normalizedCommand);
                 if(annotationOptional.isEmpty()){
-                    log.error("could not find required @Command annotation for normalized string command: {}", normalizedCommand);
+                    log.error("chat {} error: could not find required @Command annotation for normalized string command: {}",chatId, normalizedCommand);
+                    forbidden.add(normalizedCommand);
                     continue;
                 }Command annotation = annotationOptional.get();
                 if(annotation.defaultRole().getRolePriority()>userRolePriority){
@@ -189,7 +177,7 @@ public class CommandPermissionService {
             }else{
                 Optional<Command> annotationOptional = commandRegistry.getCommandAnnotation(normalizedCommand);
                 if(annotationOptional.isEmpty()){
-                    log.error("could not find required @Command annotation for normalized string command: {}", normalizedCommand);
+                    log.error("chat {} error: could not find required @Command annotation for normalized string command: {}",chatId, normalizedCommand);
                     return false;
                 }Command annotation = annotationOptional.get();
                 return annotation.defaultRole().getRolePriority() <= userRolePriority;
@@ -200,10 +188,10 @@ public class CommandPermissionService {
 
     public Map<String, Integer> getCachedCustomRolePermissions(long chatId) {
         ConcurrentMap<String, Integer> map =  cacheManager.getRolePermissionCache().get(chatId, id ->
-                permissionRepository.findByChatIdAndUserIdIsNull(id).stream()
+                permissionRepository.findByChatId(id).stream()
                         .collect(Collectors.toConcurrentMap(
-                                CommandPermissionEntity::getCommandName,
-                                CommandPermissionEntity::getRolePriority,
+                                RolePermissionEntity::getCommandName,
+                                RolePermissionEntity::getRolePriority,
                                 (existing, replacement) -> existing
                         ))
         );
@@ -211,24 +199,11 @@ public class CommandPermissionService {
         return Collections.unmodifiableMap(map);
     }
 
-    private void putRolePermissionInTheCache(long chatId, String normalizedCommand, int newRolePriority) {
-        normalizedCommand = normalizedCommand.trim();
-        ConcurrentMap<String, Integer> map = cacheManager.getRolePermissionCache().get(chatId, k -> new ConcurrentHashMap<>());
-        map.put(normalizedCommand, newRolePriority);
+    private void invalidateRolePermissionCache(long chatId){
+        cacheManager.getRolePermissionCache().invalidate(chatId);
     }
-
-    private void putRolePermissionsInTheCache(long chatId, @NonNull Set<String> normalizedCommands, int newRolePriority){
-
-        ConcurrentMap<String, Integer> map = cacheManager.getRolePermissionCache().get(chatId, k -> new ConcurrentHashMap<>());
-        for(String command:normalizedCommands){
-            if(command==null) continue;
-            map.put(command.trim(), newRolePriority);
-        }
-    } private void deleteRolePermissionFromTheCache(long chatId, @NonNull String normalizedCommand){
-
-        ConcurrentMap<String, Integer> map = cacheManager.getRolePermissionCache().get(chatId, k -> new ConcurrentHashMap<>());
-        map.remove(normalizedCommand.trim());
+    public static int getMaxCustomPermissionsCount() {
+        return MAX_CUSTOM_PERMISSIONS_COUNT;
     }
-
 
 }

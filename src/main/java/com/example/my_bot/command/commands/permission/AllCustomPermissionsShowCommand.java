@@ -3,11 +3,9 @@ package com.example.my_bot.command.commands.permission;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
-import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.dto.permission.RolePermissionDto;
 import com.example.my_bot.service.ChatService;
-import com.example.my_bot.service.CommandPermissionService;
+import com.example.my_bot.service.RolePermissionService;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -27,7 +25,7 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
 
     private final VkChatClient vkChatClient;
 
-    private final CommandPermissionService permissionService;
+    private final RolePermissionService rolePermissionService;
 
     private final ChatService chatService;
     private final RoleService roleService;
@@ -38,7 +36,7 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
 
         long chatId = cmd.getChatId();
 
-        Map<String, Integer> rolePermissions = permissionService.getCachedCustomRolePermissions(chatId);
+        Map<String, Integer> rolePermissions = rolePermissionService.getCachedCustomRolePermissions(chatId);
 
         Map<Integer, List<String>> permissionMap = rolePermissions.entrySet().stream()
                 .collect(Collectors.groupingBy(
@@ -50,7 +48,7 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
                 ));
 
         StringBuilder sb = new StringBuilder();
-        sb.append("В чате установлено %d кастомных настроек прав для команд:".formatted(rolePermissions.size()));
+        sb.append("В чате установлено (%d/%d) кастомных настроек прав для команд:".formatted(rolePermissions.size(), RolePermissionService.getMaxCustomPermissionsCount()));
 
         Map<Integer, String> roleMap = roleService.getAllRolesWithNoSorting(chatId);
 

@@ -18,11 +18,15 @@ public class SetCommandPermissionResult {
 
     private Set<String> notFound=new HashSet<>();
 
-    private Set<String> changed=new HashSet<>();
+    private Set<String> accepted =new HashSet<>();
 
     private Set<String> hasRequiredPermissionAlready=new HashSet<>();
 
     private Set<String> forbiddenToEdit=new HashSet<>();
+
+    private Set<String> notEnoughSpaceToAddNew=new HashSet<>();
+
+
 
     private RoleDto roleDto;
 }

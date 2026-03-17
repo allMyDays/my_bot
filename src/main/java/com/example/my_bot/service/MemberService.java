@@ -11,6 +11,7 @@ import com.example.my_bot.exception.member.CannotAssignYourselfException;
 import com.example.my_bot.exception.member.MemberAccessDeniedException;
 import com.example.my_bot.exception.member.MemberAlreadyHasThisRoleException;
 import com.example.my_bot.exception.member.UserNeverBeenInChatException;
+import com.example.my_bot.exception.role.RoleAccessDeniedException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.repository.MemberRepository;
@@ -80,10 +81,6 @@ public class MemberService {
         return memberRepository.findByChatId(chatId);
     }
 
-    private void save(List<MemberEntity> memberEntities){
-       memberRepository.saveAll(memberEntities);
-
-    }
 
     @Transactional
     public void synchronizeChatMembers(long chatId) throws ClientException, ApiException {
@@ -120,7 +117,10 @@ public class MemberService {
                 entity.setRolePriority(CHAT_CREATOR.getRolePriority());
                 entity.setChatAdmin(true);
             } else if (Boolean.TRUE.equals(vkMember.getIsAdmin())) {
-                entity.setRolePriority(SENIOR_ADMINISTRATOR.getRolePriority());
+                int requiredRolePriority = SENIOR_ADMINISTRATOR.getRolePriority();
+                if(entity.getRolePriority()<requiredRolePriority){
+                    entity.setRolePriority(requiredRolePriority);
+                }
                 entity.setChatAdmin(true);
             } else {
                 entity.setChatAdmin(false);
@@ -132,7 +132,7 @@ public class MemberService {
         }
 
         chatService.setLastSyncToNow(chatId);
-        invalidateMemberCache(chatId);
+        invalidateMemberRoleCache(chatId);
 
     }
 
@@ -171,6 +171,7 @@ public class MemberService {
 
     }
 
+    @Transactional
     public boolean reAssignRequiredMembersMassively(long chatId, int oldRolePriority, int newRolePriority){
 
         if(roleService.getRoleByPriority(chatId,newRolePriority).isEmpty()){
@@ -179,44 +180,48 @@ public class MemberService {
 
         int changedRows = memberRepository.updateRolePriorityForMembers(chatId, oldRolePriority, newRolePriority);
 
-        invalidateMemberCache(chatId);
+        invalidateMemberRoleCache(chatId);
 
         return changedRows>0;
 
     }
-
+    @Transactional
     public AssignMemberResult assignNewRoleToMember(long chatId, long userToAssign, int newRolePriority, long fromId){
 
         if(userToAssign==fromId){
             throw new CannotAssignYourselfException();
         }
-
-        MemberEntity requiredMember = memberRepository.findByChatIdAndUserId(chatId, userToAssign)
+        MemberEntity memberToAssign = memberRepository.findByChatIdAndUserId(chatId, userToAssign)
                 .orElseThrow(()->new UserNeverBeenInChatException(userToAssign));
 
         RoleDto roleToAssign = roleService.getRoleByPriority(chatId, newRolePriority)
                 .orElseThrow(RoleNotFoundException::new);
 
-        if(requiredMember.getRolePriority()==newRolePriority){
+        if(memberToAssign.getRolePriority()==newRolePriority){
             throw new MemberAlreadyHasThisRoleException(userToAssign);
         }
-        if(requiredMember.getRolePriority()>getCachedMemberRolePriority(chatId, fromId)){
+        long callerRolePriority = getCachedMemberRolePriority(chatId, fromId);
+
+        if(memberToAssign.getRolePriority()>callerRolePriority){
             throw new MemberAccessDeniedException(userToAssign, fromId);
+        } if(newRolePriority>callerRolePriority){
+            throw new RoleAccessDeniedException();
         }
 
-        RoleDto roleToChange = roleService.getRoleByPriority(chatId, requiredMember.getRolePriority())
+        RoleDto roleToChange = roleService.getRoleByPriority(chatId, memberToAssign.getRolePriority())
                 .orElseThrow(RoleNotFoundException::new);
 
-        requiredMember.setRolePriority(newRolePriority);
+        memberToAssign.setRolePriority(newRolePriority);
 
-        memberRepository.save(requiredMember);
+        memberRepository.save(memberToAssign);
 
-        putMemberInTheCache(chatId, userToAssign, memberMapper.toMemberDto(requiredMember));
+        invalidateMemberRoleCache(chatId);
 
         return new AssignMemberResult(roleToChange, roleToAssign);
 
     }
 
+    @Transactional
     public AssignMemberResult assignNewRoleToMember(long chatId, long userToAssign, @NonNull String newRoleName, long fromId){
 
         RoleDto roleToAssign = roleService.getRoleByNameIgnoreCase(chatId, newRoleName.trim())
@@ -260,17 +265,7 @@ public class MemberService {
 
         }
     }
-
-    private void putMemberInTheCache(long chatId, long userId, @NonNull MemberDto memberDto) {
-        ConcurrentMap<Long, MemberDto> map = cacheManager.getMemberRoleCache().get(chatId, k -> new ConcurrentHashMap<>());
-        map.put(userId, memberDto);
-    }
-
-    private void deleteMemberFromTheCache(long chatId, long userId){
-        ConcurrentMap<Long, MemberDto> map = cacheManager.getMemberRoleCache().get(chatId, k -> new ConcurrentHashMap<>());
-        map.remove(userId);
-    }
-        private void invalidateMemberCache(long chatId){
+        private void invalidateMemberRoleCache(long chatId){
         cacheManager.getMemberRoleCache().invalidate(chatId);
 
         }

@@ -35,4 +35,8 @@ public class RoleEntity {
         this.rolePriority = rolePriority;
         this.roleName = roleName;
     }
+    public RoleEntity(Long chatId, int rolePriority) {
+        this.chatId = chatId;
+        this.rolePriority = rolePriority;
+    }
 }

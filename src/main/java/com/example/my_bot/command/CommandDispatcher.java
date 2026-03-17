@@ -3,9 +3,8 @@ package com.example.my_bot.command;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.dto.permission.RolePermissionDto;
 import com.example.my_bot.service.ChatService;
-import com.example.my_bot.service.CommandPermissionService;
+import com.example.my_bot.service.RolePermissionService;
 import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -27,7 +26,7 @@ public class CommandDispatcher {
     private final MemberService memberService;
     private final VkChatClient vkChatClient;
     private final CommandRegistry commandRegistry;
-    private final CommandPermissionService cmdPermissionService;
+    private final RolePermissionService cmdPermissionService;
 
 
 

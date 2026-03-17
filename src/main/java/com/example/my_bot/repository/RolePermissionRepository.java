@@ -1,6 +1,6 @@
 package com.example.my_bot.repository;
 
-import com.example.my_bot.entity.CommandPermissionEntity;
+import com.example.my_bot.entity.RolePermissionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -11,21 +11,21 @@ import java.util.List;
 import java.util.Set;
 
 @Repository
-public interface CommandPermissionRepository extends JpaRepository<CommandPermissionEntity, Long> {
+public interface RolePermissionRepository extends JpaRepository<RolePermissionEntity, Long> {
 
-    List<CommandPermissionEntity> findByChatIdAndUserIdIsNull(Long chatId);
+    List<RolePermissionEntity> findByChatId(Long chatId);
 
     @Modifying
-    @Query("UPDATE CommandPermissionEntity c SET c.rolePriority = :newPriority " +
-            "WHERE c.chatId = :chatId AND c.userId IS NULL AND c.commandName IN :commandNames")
+    @Query("UPDATE RolePermissionEntity c SET c.rolePriority = :newPriority " +
+            "WHERE c.chatId = :chatId AND c.commandName IN :commandNames")
     int updateRolePermissionForRequiredCommands(@Param("chatId") Long chatId,
                                                 @Param("commandNames") Set<String> commandNames,
                                                 @Param("newPriority") Integer newPriority);
 
 
     @Modifying
-    @Query("DELETE CommandPermissionEntity c " +
-            "WHERE c.chatId = :chatId AND c.userId IS NULL AND c.commandName = :commandName")
+    @Query("DELETE RolePermissionEntity c " +
+            "WHERE c.chatId = :chatId AND c.commandName = :commandName")
     int deleteRolePermissionForOneCommand(@Param("chatId") Long chatId,
                                           @Param("commandName") String commandName);
 

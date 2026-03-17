@@ -78,8 +78,9 @@ public class RoleService {
         if(createdRolesCounter>= MAX_CUSTOM_ROLES_COUNT){
             throw new RoleCreationLimitReachedException();
         }
-        putRoleInTheCache(chatId, rolePriority, roleName);
-        return roleRepository.save(new RoleEntity(chatId, rolePriority, roleName));
+        RoleEntity savedRole = roleRepository.save(new RoleEntity(chatId, rolePriority, roleName));
+        invalidateRoleCache(chatId);
+        return savedRole;
 
     }
     @Transactional
@@ -97,11 +98,13 @@ public class RoleService {
 
         Map<Integer, String> allRoles = getAllRolesWithNoSorting(chatId);
 
-        if(!allRoles.containsKey(existingRolePriority)){
+        String currentRoleName = allRoles.get(existingRolePriority);
+
+        if(currentRoleName==null){
             throw new RoleNotFoundException();
         }
 
-        if(allRoles.get(existingRolePriority).equals(newRoleName)){    // можно изменить регистр роли
+        if(currentRoleName.equals(newRoleName)){    // можно изменить регистр роли
             throw new DuplicateRoleNameException("Данная роль с приоритетом %d уже имеет точно такое же название."
                     .formatted(existingRolePriority));
 
@@ -121,20 +124,12 @@ public class RoleService {
             }
         }
 
-        RoleDto roleToReturn;
-        if(!getCreatedOrModifiedRoles(chatId).containsKey(existingRolePriority)){
-            // хотят переименовать системную роль которая еще никогда не была изменена и не находится в бд
-            RoleEntity roleToSave = new RoleEntity(chatId, existingRolePriority,newRoleName);
-            roleToReturn = roleMapper.toDto(roleRepository.save(roleToSave));
-        }
-        else{
-            int updatedRows = roleRepository.updateRoleName(chatId, existingRolePriority, newRoleName);
-            if(updatedRows==0){
-              log.error("chat {} error: could not edit role with priority {} that has to be in data base right now", chatId, existingRolePriority);
-              throw new RoleNotFoundException();
-           }roleToReturn = new RoleDto(newRoleName,existingRolePriority);
-        }
-        putRoleInTheCache(chatId, existingRolePriority, newRoleName);
+        Optional<RoleEntity> currentRole =  roleRepository.findByChatIdAndRolePriority(chatId, existingRolePriority);
+        RoleEntity roleToSave = currentRole.orElseGet(() ->
+                new RoleEntity(chatId, existingRolePriority));
+        roleToSave.setRoleName(newRoleName);
+        RoleDto roleToReturn = roleMapper.toDto(roleRepository.save(roleToSave));
+        invalidateRoleCache(chatId);
         return roleToReturn;
 
     }
@@ -169,8 +164,7 @@ public class RoleService {
             log.error("chat {} error: could not delete role by chat id and priority {}", chatId, rolePriority);
             throw new RoleNotFoundException();
         }
-        deleteRoleFromTheCache(chatId, rolePriority);
-
+        invalidateRoleCache(chatId);
         return roleToReAssign;
 
     }
@@ -266,19 +260,6 @@ public class RoleService {
         }
 
     }
-    private void putRoleInTheCache(long chatId, int rolePriority, @NonNull String roleName) {
-        ConcurrentMap<Integer, String> map = cacheManager.getDbRoleCache().get(chatId, k -> new ConcurrentHashMap<>());
-        map.put(rolePriority, roleName);
-    }
-
-    private void deleteRoleFromTheCache(long chatId, int rolePriority){
-        ConcurrentMap<Integer, String> map = cacheManager.getDbRoleCache().get(chatId, k -> new ConcurrentHashMap<>());
-        map.remove(rolePriority);
-    }
-    private void invalidateRoleCache(long chatId){
-        cacheManager.getDbRoleCache().invalidate(chatId);
-
-    }
     public Map<Integer, String> getCreatedOrModifiedRoles(long chatId){
 
         return new ConcurrentHashMap<>(cacheManager.getDbRoleCache().get(chatId,
@@ -291,4 +272,10 @@ public class RoleService {
                 }));
 
     }
+
+    private void invalidateRoleCache(long chatId){
+        cacheManager.getDbRoleCache().invalidate(chatId);
+
+    }
+
 }
