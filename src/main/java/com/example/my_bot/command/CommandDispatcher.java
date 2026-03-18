@@ -4,8 +4,11 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.service.ChatService;
+import com.example.my_bot.service.MemberPermissionService;
 import com.example.my_bot.service.RolePermissionService;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.utils.VkChatUtils;
+import com.google.common.collect.ImmutableMap;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +19,7 @@ import java.util.*;
 
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ROLE_TO_EXECUTE_CMD;
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
+import static com.example.my_bot.utils.VkChatUtils.createMention;
 
 
 @Component
@@ -27,6 +31,7 @@ public class CommandDispatcher {
     private final VkChatClient vkChatClient;
     private final CommandRegistry commandRegistry;
     private final RolePermissionService cmdPermissionService;
+    private final MemberPermissionService memberPermissionService;
 
 
 
@@ -62,20 +67,32 @@ public class CommandDispatcher {
             Command cmdAnnotation = commandRegistry.getCommandAnnotation(commandName)
                     .orElseThrow(()->new RuntimeException("Cannot find required init-annotation @Command"));
 
-            int userRolePriority = memberService.getCachedMemberRolePriority(chatId, commandMessage.getFromId());
-
-            Integer customRolePermissionPriority = cmdPermissionService.getCachedCustomRolePermissions(chatId)
+            ImmutableMap<Long, Boolean> memberPermissionsForCurrentCommand = memberPermissionService.getCachedCustomMemberPermissions(chatId)
                     .get(cmdAnnotation.mainCommandName());
 
             boolean canExecute = false;
-            if(customRolePermissionPriority!=null){
-                if(userRolePriority>=customRolePermissionPriority){
-                canExecute=true;
+            if(memberPermissionsForCurrentCommand!=null){
+                Boolean currentUserPersonalAbilityToExecuteCommand = memberPermissionsForCurrentCommand.get(commandMessage.getFromId());
+                if(currentUserPersonalAbilityToExecuteCommand!=null){
+                    canExecute = currentUserPersonalAbilityToExecuteCommand;
+                    if(!canExecute){
+                        vkChatClient.sendText(chatId,
+                                createMention(commandMessage.getFromId())+"(Вам) запрещена эта команда через индивидуальное разрешение.", true);
+                        return;
+                    }
                 }
             }
-            else if(userRolePriority>=cmdAnnotation.defaultRole().getRolePriority()){
+           if(!canExecute){
+              int userRolePriority = memberService.getCachedMemberRolePriority(chatId, commandMessage.getFromId());
+              Integer customRolePermissionPriority = cmdPermissionService.getCachedCustomRolePermissions(chatId)
+                    .get(cmdAnnotation.mainCommandName());
+              if(customRolePermissionPriority!=null){
+                  canExecute = userRolePriority>=customRolePermissionPriority;
+              }
+              else if(userRolePriority>=cmdAnnotation.defaultRole().getRolePriority()){
                 canExecute=true;
             }
+           }
 
             if(canExecute){
                 cmd.execute(commandMessage);

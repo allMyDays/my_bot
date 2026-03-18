@@ -5,18 +5,24 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.service.ChatService;
+import com.example.my_bot.service.MemberPermissionService;
 import com.example.my_bot.service.RolePermissionService;
 import com.example.my_bot.service.RoleService;
+import com.example.my_bot.utils.VkChatUtils;
+import com.google.common.collect.ImmutableMap;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
+import static com.example.my_bot.service.MemberPermissionService.getMaxCustomMemberPermissionsCount;
+import static com.example.my_bot.service.RolePermissionService.getMaxCustomRolePermissionsCount;
 
 @Slf4j
 @Command(mainCommandName = "права", alternativeCommandNames = {"разрешения"}, defaultRole = MODERATOR, eventable = true)
@@ -26,6 +32,8 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
     private final VkChatClient vkChatClient;
 
     private final RolePermissionService rolePermissionService;
+
+    private final MemberPermissionService memberPermissionService;
 
     private final ChatService chatService;
     private final RoleService roleService;
@@ -37,8 +45,9 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
         long chatId = cmd.getChatId();
 
         Map<String, Integer> rolePermissions = rolePermissionService.getCachedCustomRolePermissions(chatId);
+        Map<String, ImmutableMap<Long, Boolean>> memberPermissions = memberPermissionService.getCachedCustomMemberPermissions(chatId);
 
-        Map<Integer, List<String>> permissionMap = rolePermissions.entrySet().stream()
+        Map<Integer, List<String>> rolePermissionMap = rolePermissions.entrySet().stream()
                 .collect(Collectors.groupingBy(
                         Map.Entry::getValue,
                         Collectors.mapping(
@@ -46,14 +55,26 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
                                 Collectors.toList()
                         )
                 ));
+        Map<Long, Map<String, Boolean>> memberPermissionMap = new HashMap<>();
+        AtomicInteger memberPermissionSize = new AtomicInteger();
+        memberPermissions.forEach((command, userMap)->{
+            userMap.forEach((user,isAllowed)->{
+                Map<String, Boolean> userPermissions = memberPermissionMap.computeIfAbsent(user, k -> new HashMap<>());
+                userPermissions.put(command, isAllowed);
+                memberPermissionSize.getAndIncrement();
+            });
+        });
 
         StringBuilder sb = new StringBuilder();
-        sb.append("В чате установлено (%d/%d) кастомных настроек прав для команд:".formatted(rolePermissions.size(), RolePermissionService.getMaxCustomPermissionsCount()));
+        sb.append("В чате установлено (%d/%d) кастомных ограничений команд для ролей".formatted(rolePermissions.size(), getMaxCustomRolePermissionsCount()));
+        if(memberPermissionSize.get()!=0){
+            sb.append(" и (%d/%d) персональных ограничений для участников".formatted(memberPermissionSize.get(),getMaxCustomMemberPermissionsCount()));
+        }sb.append(":\n");
 
         Map<Integer, String> roleMap = roleService.getAllRolesWithNoSorting(chatId);
 
         char chatPrefix = chatService.getChatPrefix(chatId).orElse(DEFAULT_CHAT_PREFIX);
-        for(Map.Entry<Integer, List<String>> entry: permissionMap.entrySet()){
+        for(Map.Entry<Integer, List<String>> entry: rolePermissionMap.entrySet()){
             String roleName = roleMap.get(entry.getKey());
             if(roleName!=null){
                 sb.append("\nРоль «%s» (приоритет %d):".formatted(roleName,entry.getKey()));
@@ -64,6 +85,14 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
                 sb.append("\n➕ ").append(chatPrefix).append(command);
             }
         }
+
+        memberPermissionMap.forEach((userId, permissionMap)->{
+            sb.append("\nПерсонально для %s(этого участника):".formatted(VkChatUtils.createMention(userId)));
+            permissionMap.forEach((command,isAllowed)->{
+                sb.append("\n").append(isAllowed ? "➕ " : "➖ ").append(chatPrefix).append(command);
+            });
+        });
+
         vkChatClient.sendText(chatId, sb.toString(), true);
     }
 

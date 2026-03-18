@@ -24,13 +24,13 @@ public class MemberPermissionEntity {
     private String commandName;
 
     @Column(name = "user_id", nullable = false)
-    private Integer userId;
+    private Long userId;
 
     @Column(nullable = false)
     boolean isAllowed;
 
 
-    public MemberPermissionEntity(long chatId, String commandName, int userId, boolean isAllowed) {
+    public MemberPermissionEntity(long chatId, String commandName, long userId, boolean isAllowed) {
         this.chatId = chatId;
         this.commandName = commandName;
         this.userId = userId;

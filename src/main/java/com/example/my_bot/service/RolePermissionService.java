@@ -6,10 +6,10 @@ import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.command.UserCommandValidationResult;
 import com.example.my_bot.dto.permission.AbilityEditRolePermissionsResult;
-import com.example.my_bot.dto.permission.SetCommandPermissionResult;
+import com.example.my_bot.dto.permission.RolePermissionSettingResult;
 import com.example.my_bot.entity.RolePermissionEntity;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
-import com.example.my_bot.exception.permission.RolePermissionAccessDeniedException;
+import com.example.my_bot.exception.permission.PermissionAccessDeniedException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.exception.role.RoleAccessDeniedException;
 import com.example.my_bot.repository.RolePermissionRepository;
@@ -40,7 +40,7 @@ public class RolePermissionService {
 
     private final CaffeineCacheManager cacheManager;
 
-    private final static int MAX_CUSTOM_PERMISSIONS_COUNT = 20;
+    private final static int MAX_CUSTOM_ROLE_PERMISSIONS_COUNT = 40;
 
 
     @Autowired
@@ -51,7 +51,7 @@ public class RolePermissionService {
 
 
     @Transactional
-    public SetCommandPermissionResult allowCommandForRole(long chatId, long fromId, @NonNull Set<String> userCommands, int rolePriority){
+    public RolePermissionSettingResult allowCommandForRole(long chatId, long fromId, @NonNull Set<String> userCommands, int rolePriority){
 
         RoleDto foundRole = roleService.getRoleByPriority(chatId, rolePriority)
                 .orElseThrow(RoleNotFoundException::new);
@@ -61,7 +61,7 @@ public class RolePermissionService {
         if(rolePriority>userRolePriority){
             throw new RoleAccessDeniedException();
         }
-        SetCommandPermissionResult result = new SetCommandPermissionResult();
+        RolePermissionSettingResult result = new RolePermissionSettingResult();
         result.setRoleDto(foundRole);
 
         UserCommandValidationResult commandNormalizationResult = commandRegistry.getMainNamesOfRequiredCommands(userCommands);
@@ -72,13 +72,13 @@ public class RolePermissionService {
         }
 
         AbilityEditRolePermissionsResult commandEditingResult =
-                abilityToEditRolePermissions(chatId, commandNormalizationResult.getNormalizedCommands(), userRolePriority);
+                abilityToEditPermissions(chatId, commandNormalizationResult.getNormalizedCommands(), userRolePriority);
         result.setForbiddenToEdit(commandEditingResult.getForbidden());
         
 
         Map<String, Integer> existingCustomPermissions = getCachedCustomRolePermissions(chatId);
 
-        int newPermissionsAvailableSize = MAX_CUSTOM_PERMISSIONS_COUNT-existingCustomPermissions.size();
+        int newPermissionsAvailableSize = MAX_CUSTOM_ROLE_PERMISSIONS_COUNT -existingCustomPermissions.size();
 
         Set<String> commandsToUpdate = new HashSet<>();
         Set<RolePermissionEntity> commandsToSave = new HashSet<>();
@@ -110,7 +110,7 @@ public class RolePermissionService {
 
     }
     @Transactional
-    public SetCommandPermissionResult allowCommandForRole(long chatId, long fromId, @NonNull Set<String> userCommands, @NonNull String roleName){
+    public RolePermissionSettingResult allowCommandForRole(long chatId, long fromId, @NonNull Set<String> userCommands, @NonNull String roleName){
         int rolePriority = roleService.getRoleByNameIgnoreCase(chatId, roleName)
                 .orElseThrow(RoleNotFoundException::new).getRolePriority();
 
@@ -125,8 +125,8 @@ public class RolePermissionService {
 
         int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
 
-        if(!abilityToEditRolePermission(chatId, userCommand, userRolePriority)){
-            throw new RolePermissionAccessDeniedException(fromId);
+        if(!abilityToEditPermission(chatId, mainCommandName, userRolePriority)){
+            throw new PermissionAccessDeniedException(fromId);
         }
 
         permissionRepository.deleteRolePermissionForOneCommand(chatId, mainCommandName);
@@ -135,7 +135,7 @@ public class RolePermissionService {
 
     }
 
-    private AbilityEditRolePermissionsResult abilityToEditRolePermissions(long chatId, @NonNull Set<String> normalizedCommands, int userRolePriority){
+    public AbilityEditRolePermissionsResult abilityToEditPermissions(long chatId, @NonNull Set<String> normalizedCommands, int userRolePriority){
 
         Map<String, Integer> customPermissions = getCachedCustomRolePermissions(chatId);
 
@@ -144,8 +144,9 @@ public class RolePermissionService {
 
         for(String normalizedCommand: normalizedCommands){
 
-            if(customPermissions.containsKey(normalizedCommand)){
-                if(customPermissions.get(normalizedCommand)>userRolePriority){
+            Integer roleToExecute = customPermissions.get(normalizedCommand);
+            if(roleToExecute!=null){
+                if(roleToExecute>userRolePriority){
                     forbidden.add(normalizedCommand);
                 }else{
                     allowed.add(normalizedCommand);
@@ -162,26 +163,27 @@ public class RolePermissionService {
                 }else{
                     allowed.add(normalizedCommand);
                 }
-             }
-          }
+            }
+        }
 
         return new AbilityEditRolePermissionsResult(allowed, forbidden);
 
     }
-    private boolean abilityToEditRolePermission(long chatId, @NonNull String normalizedCommand, int userRolePriority){
+    public boolean abilityToEditPermission(long chatId, @NonNull String normalizedCommand, int userRolePriority){
 
         Map<String, Integer> customPermissions = getCachedCustomRolePermissions(chatId);
 
-            if(customPermissions.containsKey(normalizedCommand)){
-                return customPermissions.get(normalizedCommand) <= userRolePriority;
-            }else{
-                Optional<Command> annotationOptional = commandRegistry.getCommandAnnotation(normalizedCommand);
-                if(annotationOptional.isEmpty()){
-                    log.error("chat {} error: could not find required @Command annotation for normalized string command: {}",chatId, normalizedCommand);
-                    return false;
-                }Command annotation = annotationOptional.get();
-                return annotation.defaultRole().getRolePriority() <= userRolePriority;
+        Integer roleToExecute = customPermissions.get(normalizedCommand);
+        if(roleToExecute!=null){
+            return roleToExecute <= userRolePriority;
+        }else{
+            Optional<Command> annotationOptional = commandRegistry.getCommandAnnotation(normalizedCommand);
+            if(annotationOptional.isEmpty()){
+                log.error("chat {} error: could not find required @Command annotation for normalized string command: {}",chatId, normalizedCommand);
+                return false;
             }
+            return annotationOptional.get().defaultRole().getRolePriority() <= userRolePriority;
+        }
 
     }
 
@@ -202,8 +204,8 @@ public class RolePermissionService {
     private void invalidateRolePermissionCache(long chatId){
         cacheManager.getRolePermissionCache().invalidate(chatId);
     }
-    public static int getMaxCustomPermissionsCount() {
-        return MAX_CUSTOM_PERMISSIONS_COUNT;
+    public static int getMaxCustomRolePermissionsCount() {
+        return MAX_CUSTOM_ROLE_PERMISSIONS_COUNT;
     }
 
 }

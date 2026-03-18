@@ -7,6 +7,7 @@ import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.AssignMemberResult;
 import com.example.my_bot.entity.RoleEntity;
+import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.service.MemberService;
@@ -73,7 +74,7 @@ public class RoleAssignCommand implements ChatCommand {
          }else{
             assignResult = memberService.assignNewRoleToMember(chatId, userToAssign,args[0], cmd.getFromId());
          }
-        }catch(MemberException | RoleException e){
+        }catch(MemberException | RoleException | CommandException e){
             vkChatClient.sendText(chatId, e.getMessage(), true);
             return;
         }

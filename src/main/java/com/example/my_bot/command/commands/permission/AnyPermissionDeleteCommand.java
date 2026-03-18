@@ -5,15 +5,22 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.exception.command.CommandException;
+import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.permission.PermissionException;
+import com.example.my_bot.service.MemberPermissionService;
+import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RolePermissionService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Optional;
+
+import static com.example.my_bot.constant.MessageConstant.MEMBER_LINK_IS_NOT_CORRECT;
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.utils.VkChatUtils.createMention;
 
 @Slf4j
 @Command(mainCommandName = "сброситьправо", alternativeCommandNames = {"ungrant"}, defaultRole = ADMINISTRATOR, eventable = false)
@@ -22,7 +29,13 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
 
     private final VkChatClient vkChatClient;
 
-    private final RolePermissionService permissionService;
+    private final RolePermissionService rolePermissionService;
+
+    private final MemberPermissionService memberPermissionService;
+
+    private final MemberService memberService;
+
+
 
 
 
@@ -31,20 +44,31 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
 
         long chatId = commandMessage.getChatId();
         String[] args = commandMessage.getFirstRowArguments();
-
+        Optional<Long> userId=Optional.empty();
         if(args.length==0){
             vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
             return;
+        }if(args.length==2){
+            userId = memberService.getCachedMemberIdByUserInput(args[1]);
+            if(userId.isEmpty()){
+                vkChatClient.sendText(chatId, MEMBER_LINK_IS_NOT_CORRECT, true);
+                return;
+            }
         }
-
         try{
-            permissionService.deleteCustomRolePermission(chatId, args[0], commandMessage.getFromId());
-        }catch (CommandException | PermissionException e){
+            if(userId.isEmpty()){
+              rolePermissionService.deleteCustomRolePermission(chatId, args[0], commandMessage.getFromId());
+            }else{
+                memberPermissionService.deleteCustomMemberPermission(chatId, args[0], userId.get(),commandMessage.getFromId());
+            }
+        }catch (CommandException | PermissionException | MemberException e){
             vkChatClient.sendText(chatId, e.getMessage(), true);
             return;
         }
 
-        vkChatClient.sendText(chatId, "✅Настройка прав для указанной команды была сброшена до дефолтной роли.", true);
+        vkChatClient.sendText(chatId, userId.map(aLong ->
+                "✅Настройка сброшена. Теперь возможность использовать эту команду у %s(данного участника) зависит только от уровня его роли.".formatted(createMention(aLong)))
+                .orElse("✅Настройка прав для указанной команды была сброшена до дефолтной роли."), true);
 
     }
 

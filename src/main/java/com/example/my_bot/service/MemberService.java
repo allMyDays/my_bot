@@ -7,7 +7,7 @@ import com.example.my_bot.dto.member.AssignMemberResult;
 import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.entity.MemberEntity;
-import com.example.my_bot.exception.member.CannotAssignYourselfException;
+import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.exception.member.MemberAccessDeniedException;
 import com.example.my_bot.exception.member.MemberAlreadyHasThisRoleException;
 import com.example.my_bot.exception.member.UserNeverBeenInChatException;
@@ -189,7 +189,7 @@ public class MemberService {
     public AssignMemberResult assignNewRoleToMember(long chatId, long userToAssign, int newRolePriority, long fromId){
 
         if(userToAssign==fromId){
-            throw new CannotAssignYourselfException();
+            throw new CannotApplyThisCommandToYourselfException();
         }
         MemberEntity memberToAssign = memberRepository.findByChatIdAndUserId(chatId, userToAssign)
                 .orElseThrow(()->new UserNeverBeenInChatException(userToAssign));

@@ -14,7 +14,7 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 @Setter
-public class SetCommandPermissionResult {
+public class RolePermissionSettingResult {
 
     private Set<String> notFound=new HashSet<>();
 
@@ -25,8 +25,6 @@ public class SetCommandPermissionResult {
     private Set<String> forbiddenToEdit=new HashSet<>();
 
     private Set<String> notEnoughSpaceToAddNew=new HashSet<>();
-
-
 
     private RoleDto roleDto;
 }
