@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-import static com.example.my_bot.utils.VkChatUtils.extractPeerId;
+import static com.example.my_bot.utils.ChatUtils.extractPeerId;
 
 @Component
 @Slf4j

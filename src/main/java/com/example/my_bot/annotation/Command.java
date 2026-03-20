@@ -1,5 +1,6 @@
 package com.example.my_bot.annotation;
 
+import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.enumeration.DefaultRole;
 import org.springframework.stereotype.Component;
 

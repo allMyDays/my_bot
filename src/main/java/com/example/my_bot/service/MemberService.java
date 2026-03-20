@@ -36,7 +36,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.*;
-import static com.example.my_bot.utils.VkChatUtils.isValidLong;
+import static com.example.my_bot.utils.ChatUtils.isValidLong;
 
 @Service
 @RequiredArgsConstructor

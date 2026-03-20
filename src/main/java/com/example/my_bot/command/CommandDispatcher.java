@@ -3,11 +3,8 @@ package com.example.my_bot.command;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.service.ChatService;
-import com.example.my_bot.service.MemberPermissionService;
-import com.example.my_bot.service.RolePermissionService;
-import com.example.my_bot.service.MemberService;
-import com.example.my_bot.utils.VkChatUtils;
+import com.example.my_bot.dto.cooldown.CooldownResult;
+import com.example.my_bot.service.*;
 import com.google.common.collect.ImmutableMap;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -19,7 +16,8 @@ import java.util.*;
 
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ROLE_TO_EXECUTE_CMD;
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
-import static com.example.my_bot.utils.VkChatUtils.createMention;
+import static com.example.my_bot.utils.ChatUtils.createMention;
+import static com.example.my_bot.utils.ChatUtils.formatDuration;
 
 
 @Component
@@ -32,6 +30,7 @@ public class CommandDispatcher {
     private final CommandRegistry commandRegistry;
     private final RolePermissionService cmdPermissionService;
     private final MemberPermissionService memberPermissionService;
+    private final CooldownService cooldownService;
 
 
 
@@ -71,19 +70,20 @@ public class CommandDispatcher {
                     .get(cmdAnnotation.mainCommandName());
 
             boolean canExecute = false;
+            long fromId = commandMessage.getFromId();
             if(memberPermissionsForCurrentCommand!=null){
-                Boolean currentUserPersonalAbilityToExecuteCommand = memberPermissionsForCurrentCommand.get(commandMessage.getFromId());
+                Boolean currentUserPersonalAbilityToExecuteCommand = memberPermissionsForCurrentCommand.get(fromId);
                 if(currentUserPersonalAbilityToExecuteCommand!=null){
                     canExecute = currentUserPersonalAbilityToExecuteCommand;
                     if(!canExecute){
                         vkChatClient.sendText(chatId,
-                                createMention(commandMessage.getFromId())+"(Вам) запрещена эта команда через индивидуальное разрешение.", true);
+                                createMention(fromId)+"(Вам) запрещена эта команда через индивидуальное разрешение.", true);
                         return;
                     }
                 }
             }
            if(!canExecute){
-              int userRolePriority = memberService.getCachedMemberRolePriority(chatId, commandMessage.getFromId());
+              int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
               Integer customRolePermissionPriority = cmdPermissionService.getCachedCustomRolePermissions(chatId)
                     .get(cmdAnnotation.mainCommandName());
               if(customRolePermissionPriority!=null){
@@ -95,6 +95,15 @@ public class CommandDispatcher {
            }
 
             if(canExecute){
+                CooldownResult cooldownResult = cooldownService.tryConsume(chatId, fromId, cmdAnnotation.mainCommandName());
+                if(!cooldownResult.isCanExecuteCommand()){
+                  if(cooldownResult.isCanSendCDMessageToUser()){
+                    vkChatClient.sendText(chatId,
+                            "Нельзя так часто использовать эту команду. Она станет вновь доступна %s(Вам) через %s"
+                                    .formatted(createMention(fromId),formatDuration(cooldownResult.getLeftCooldownSeconds(), true)),
+                            true);
+                  }return;
+                }
                 cmd.execute(commandMessage);
             }else{
                 vkChatClient.sendText(chatId,NOT_ENOUGH_ROLE_TO_EXECUTE_CMD, true);

@@ -3,15 +3,17 @@ package com.example.my_bot.command.commands.permission;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.service.ChatService;
 import com.example.my_bot.service.MemberPermissionService;
 import com.example.my_bot.service.RolePermissionService;
 import com.example.my_bot.service.RoleService;
-import com.example.my_bot.utils.VkChatUtils;
+import com.example.my_bot.utils.ChatUtils;
 import com.google.common.collect.ImmutableMap;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -28,6 +30,9 @@ import static com.example.my_bot.service.RolePermissionService.getMaxCustomRoleP
 @Command(mainCommandName = "права", alternativeCommandNames = {"разрешения"}, defaultRole = MODERATOR, eventable = true)
 @RequiredArgsConstructor
 public class AllCustomPermissionsShowCommand implements ChatCommand {
+
+    @Getter
+    private final CommandCooldown cooldown = new CommandCooldown(5,60);
 
     private final VkChatClient vkChatClient;
 
@@ -87,7 +92,7 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
         }
 
         memberPermissionMap.forEach((userId, permissionMap)->{
-            sb.append("\nПерсонально для %s(этого участника):".formatted(VkChatUtils.createMention(userId)));
+            sb.append("\nПерсонально для %s(этого участника):".formatted(ChatUtils.createMention(userId)));
             permissionMap.forEach((command,isAllowed)->{
                 sb.append("\n").append(isAllowed ? "➕ " : "➖ ").append(chatPrefix).append(command);
             });

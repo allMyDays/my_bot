@@ -3,6 +3,7 @@ package com.example.my_bot.command.commands.permission;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
@@ -12,6 +13,7 @@ import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RolePermissionService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,12 +22,15 @@ import java.util.Optional;
 import static com.example.my_bot.constant.MessageConstant.MEMBER_LINK_IS_NOT_CORRECT;
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
-import static com.example.my_bot.utils.VkChatUtils.createMention;
+import static com.example.my_bot.utils.ChatUtils.createMention;
 
 @Slf4j
 @Command(mainCommandName = "сброситьправо", alternativeCommandNames = {"ungrant"}, defaultRole = ADMINISTRATOR, eventable = false)
 @RequiredArgsConstructor
 public class AnyPermissionDeleteCommand implements ChatCommand {
+
+    @Getter
+    private final CommandCooldown cooldown = new CommandCooldown(3,60);
 
     private final VkChatClient vkChatClient;
 

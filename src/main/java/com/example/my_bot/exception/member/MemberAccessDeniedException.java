@@ -1,8 +1,6 @@
 package com.example.my_bot.exception.member;
 
-import com.example.my_bot.exception.role.RoleException;
-
-import static com.example.my_bot.utils.VkChatUtils.createMention;
+import static com.example.my_bot.utils.ChatUtils.createMention;
 
 public class MemberAccessDeniedException extends MemberException {
     public MemberAccessDeniedException(long userToAssign, long fromId) {

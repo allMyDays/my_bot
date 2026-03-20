@@ -3,26 +3,29 @@ package com.example.my_bot.command.commands.role;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.member.MemberDto;
-import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
-import static com.example.my_bot.utils.VkChatUtils.createMention;
+import static com.example.my_bot.utils.ChatUtils.createMention;
 
 @Command(mainCommandName = "управляющие", alternativeCommandNames = {"staff", "админы"}, defaultRole = MEMBER, eventable = true)
 @RequiredArgsConstructor
 public class StaffShowCommand implements ChatCommand {
+
+    @Getter
+    private final CommandCooldown cooldown = new CommandCooldown(7,60*2);
 
     private final MemberService memberService;
     private final RoleService roleService;
@@ -74,4 +77,5 @@ public class StaffShowCommand implements ChatCommand {
         vkChatClient.sendText(chatId,sb.toString(),true);
 
     }
+
 }

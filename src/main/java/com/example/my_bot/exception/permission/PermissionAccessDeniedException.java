@@ -1,6 +1,6 @@
 package com.example.my_bot.exception.permission;
 
-import static com.example.my_bot.utils.VkChatUtils.createMention;
+import static com.example.my_bot.utils.ChatUtils.createMention;
 
 public class PermissionAccessDeniedException extends PermissionException {
     public PermissionAccessDeniedException(long userId) {

@@ -4,9 +4,11 @@ package com.example.my_bot.command.commands;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -18,6 +20,9 @@ import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 @Command(mainCommandName = "название", alternativeCommandNames = {"title"}, defaultRole = ADMINISTRATOR, eventable = true)
 @Slf4j
 public class TitleChangeCommand implements ChatCommand {
+
+    @Getter
+    private final CommandCooldown cooldown = new CommandCooldown(3,60);
 
     private VkChatClient vkChatClient;
 
@@ -38,4 +43,5 @@ public class TitleChangeCommand implements ChatCommand {
         vkChatClient.changeChatTitle(cmd.getChatId(), String.join(" ", cmd.getFirstRowArguments()));
 
     }
+
 }

@@ -3,11 +3,13 @@ package com.example.my_bot.command.commands;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.exception.chat.ForbiddenPrefixException;
 import com.example.my_bot.service.ChatService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
@@ -19,6 +21,9 @@ import static com.example.my_bot.enumeration.DefaultRole.*;
 
 @Command(mainCommandName = "префикс",alternativeCommandNames = {"prefix"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
 public class PrefixChangeCommand implements ChatCommand {
+
+    @Getter
+    private final CommandCooldown cooldown = new CommandCooldown(4,60*2);
 
     private ChatService chatService;
 
@@ -68,4 +73,5 @@ public class PrefixChangeCommand implements ChatCommand {
                 "Теперь команды в чате можно писать ТОЛЬКО с этим префиксом.").formatted(args[0])),true);
 
     }
+
 }

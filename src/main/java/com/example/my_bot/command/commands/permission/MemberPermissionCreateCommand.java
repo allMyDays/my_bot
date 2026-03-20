@@ -3,6 +3,7 @@ package com.example.my_bot.command.commands.permission;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.permission.MemberPermissionSettingResult;
 import com.example.my_bot.exception.command.CommandException;
@@ -14,6 +15,7 @@ import com.example.my_bot.service.MemberPermissionService;
 import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,12 +28,15 @@ import java.util.stream.Collectors;
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
-import static com.example.my_bot.utils.VkChatUtils.*;
+import static com.example.my_bot.utils.ChatUtils.*;
 
 @Slf4j
 @Command(mainCommandName = "правоюзера", alternativeCommandNames = {"правоюзеру","userallow"}, defaultRole = ADMINISTRATOR, eventable = false)
 @RequiredArgsConstructor
 public class MemberPermissionCreateCommand implements ChatCommand {
+
+    @Getter
+    private final CommandCooldown cooldown = new CommandCooldown(5,60);
 
     private final VkChatClient vkChatClient;
 

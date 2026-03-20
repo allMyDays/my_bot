@@ -6,7 +6,7 @@ import lombok.NonNull;
 import org.mapstruct.Mapper;
 import com.vk.api.sdk.objects.messages.Message;
 
-import static com.example.my_bot.utils.VkChatUtils.extractConversationId;
+import static com.example.my_bot.utils.ChatUtils.extractConversationId;
 
 @Mapper(componentModel = "spring")
 public abstract class CommandMapper {

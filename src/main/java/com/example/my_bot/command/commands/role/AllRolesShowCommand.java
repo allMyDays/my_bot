@@ -3,11 +3,13 @@ package com.example.my_bot.command.commands.role;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -25,6 +27,9 @@ public class AllRolesShowCommand implements ChatCommand {
     private VkChatClient vkChatClient;
 
     private RoleService roleService;
+
+    @Getter
+    private final CommandCooldown cooldown = new CommandCooldown(3,60);
 
     @Autowired
     @Lazy
