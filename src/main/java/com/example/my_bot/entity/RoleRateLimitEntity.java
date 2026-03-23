@@ -6,15 +6,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Check;
-import org.hibernate.annotations.DialectOverride;
 
 @Entity
 @Setter
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "command_limit", uniqueConstraints = @UniqueConstraint(columnNames = {"chat_id", "command_name","role_priority"}))
-public class RoleLimitEntity {
+@Table(name = "role_rate_limit", uniqueConstraints = @UniqueConstraint(columnNames = {"chat_id", "command_name","role_priority"}))
+public class RoleRateLimitEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,7 +38,7 @@ public class RoleLimitEntity {
     @Column(nullable = false)
     private int periodInSeconds;
 
-    public RoleLimitEntity(Long chatId, String commandName, Integer rolePriority, boolean isPersonal, int maxUsage, int periodInSeconds) {
+    public RoleRateLimitEntity(Long chatId, String commandName, Integer rolePriority, boolean isPersonal, int maxUsage, int periodInSeconds) {
         this.chatId = chatId;
         this.commandName = commandName;
         this.rolePriority = rolePriority;

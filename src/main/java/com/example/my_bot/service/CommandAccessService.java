@@ -7,7 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.UserCommandValidationResult;
 import com.example.my_bot.dto.command.CommandAuthorizationResult;
 import com.example.my_bot.dto.cooldown.CooldownResult;
-import com.example.my_bot.dto.limit.RoleLimitDto;
+import com.example.my_bot.dto.limit.RoleRateLimitDto;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -22,7 +22,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static com.example.my_bot.enumeration.CooldownCacheKeyBuilder.CUSTOM_ROLE_COOLDOWN;
 import static com.example.my_bot.enumeration.CooldownCacheKeyBuilder.DEFAULT_COOLDOWN;
@@ -38,7 +37,7 @@ public class CommandAccessService {
 
     private MemberPermissionService memberPermissionService;
 
-    private RoleLimitService roleLimitService;
+    private RoleRateLimitService roleRateLimitService;
 
     private final static int MILLISECONDS_BETWEEN_SENDING_COOLDOWN_MESSAGE_TO_USER = 30_000;
 
@@ -94,8 +93,8 @@ public class CommandAccessService {
     }
     @Autowired
     @Lazy
-    public void setRoleLimitService(RoleLimitService roleLimitService) {
-        this.roleLimitService = roleLimitService;
+    public void setRoleRateLimitService(RoleRateLimitService roleRateLimitService) {
+        this.roleRateLimitService = roleRateLimitService;
     }
 
     public CommandAuthorizationResult checkCommandsAuthorization(
@@ -196,7 +195,7 @@ public class CommandAccessService {
         String defaultKey = DEFAULT_COOLDOWN.buildDefaultCDKey(chatId, fromId, normalizedCommand);
         CooldownInfo defaultInfo = probeCooldown(defaultKey, defaultCooldown.getSeconds(), defaultCooldown.getMaxUses(), now);
 
-        Optional<RoleLimitDto> roleLimit = getRoleLimit(chatId, normalizedCommand, userRolePriority);
+        Optional<RoleRateLimitDto> roleLimit = getRoleLimit(chatId, normalizedCommand, userRolePriority);
         CooldownInfo customInfo = null;
         String customKey = null;
 
@@ -294,13 +293,13 @@ public class CommandAccessService {
                 });
     }
 
-    private Optional<RoleLimitDto> getRoleLimit(long chatId, String command, int rolePriority) {
-        Map<String, ImmutableMap<Integer, RoleLimitDto>> allLimits = roleLimitService.getCachedCustomRoleLimits(chatId);
+    private Optional<RoleRateLimitDto> getRoleLimit(long chatId, String command, int rolePriority) {
+        Map<String, ImmutableMap<Integer, RoleRateLimitDto>> allLimits = roleRateLimitService.getCachedCustomRoleLimits(chatId);
         if (allLimits == null) {
             return Optional.empty();
         }
 
-        ImmutableMap<Integer, RoleLimitDto> commandLimits = allLimits.get(command);
+        ImmutableMap<Integer, RoleRateLimitDto> commandLimits = allLimits.get(command);
         if (commandLimits == null) {
             return Optional.empty();
         }

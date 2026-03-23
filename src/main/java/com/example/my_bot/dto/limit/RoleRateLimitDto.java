@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class RoleLimitDto {
+public class RoleRateLimitDto {
 
     private long entityId;
 

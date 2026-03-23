@@ -3,17 +3,17 @@ package com.example.my_bot.service;
 import com.example.my_bot.command.CommandRegistry;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.RoleDto;
-import com.example.my_bot.dto.limit.RoleLimitDto;
-import com.example.my_bot.entity.RoleLimitEntity;
+import com.example.my_bot.dto.limit.RoleRateLimitDto;
+import com.example.my_bot.entity.RoleRateLimitEntity;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
-import com.example.my_bot.exception.limit.LimitPeriodOutOfBoundsException;
-import com.example.my_bot.exception.limit.LimitUsageOutOfBoundsException;
-import com.example.my_bot.exception.limit.LimitWithThatCommandAndRoleAlreadyExistsException;
+import com.example.my_bot.exception.limit.RateLimitPeriodOutOfBoundsException;
+import com.example.my_bot.exception.limit.RateLimitUsageOutOfBoundsException;
+import com.example.my_bot.exception.limit.RateLimitWithThatCommandAndRoleAlreadyExistsException;
 import com.example.my_bot.exception.role.RoleAccessDeniedException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
-import com.example.my_bot.mapper.LimitMapper;
-import com.example.my_bot.repository.RoleLimitRepository;
+import com.example.my_bot.mapper.RateLimitMapper;
+import com.example.my_bot.repository.RoleRateLimitRepository;
 import com.google.common.collect.ImmutableMap;
 import jakarta.transaction.Transactional;
 import lombok.NonNull;
@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentMap;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class RoleLimitService {
+public class RoleRateLimitService {
 
     private CommandRegistry commandRegistry;
 
@@ -42,9 +42,9 @@ public class RoleLimitService {
 
     private final CommandAccessService commandService;
 
-    private final LimitMapper limitMapper;
+    private final RateLimitMapper rateLimitMapper;
 
-    private final RoleLimitRepository roleLimitRepository;
+    private final RoleRateLimitRepository roleRateLimitRepository;
 
     private final static int MAX_CUSTOM_LIMITS = 20;
 
@@ -65,12 +65,12 @@ public class RoleLimitService {
 
 
     @Transactional
-    public RoleLimitEntity createCommandLimit(long chatId, long fromId, @NonNull String userCommand, int rolePriority, int maxUsage, int periodInSeconds, boolean isPersonal){
+    public RoleRateLimitEntity createCommandLimit(long chatId, long fromId, @NonNull String userCommand, int rolePriority, int maxUsage, int periodInSeconds, boolean isPersonal){
 
         if(periodInSeconds< MIN_LIMIT_PERIOD_IN_SECONDS ||periodInSeconds> MAX_LIMIT_PERIOD_IN_SECONDS){
-            throw new LimitPeriodOutOfBoundsException(MIN_LIMIT_PERIOD_IN_SECONDS, MAX_LIMIT_PERIOD_IN_SECONDS);
+            throw new RateLimitPeriodOutOfBoundsException(MIN_LIMIT_PERIOD_IN_SECONDS, MAX_LIMIT_PERIOD_IN_SECONDS);
         }if(maxUsage<MIN_LIMIT_USAGE||maxUsage>MAX_LIMIT_USAGE) {
-            throw new LimitUsageOutOfBoundsException(MIN_LIMIT_USAGE, MAX_LIMIT_USAGE);
+            throw new RateLimitUsageOutOfBoundsException(MIN_LIMIT_USAGE, MAX_LIMIT_USAGE);
         }
         RoleDto foundRole = roleService.getRoleByPriority(chatId, rolePriority)
                 .orElseThrow(RoleNotFoundException::new);
@@ -86,12 +86,12 @@ public class RoleLimitService {
         if(!abilityCommandInteraction){
             throw new CommandAccessDeniedException(fromId, mainCommandName.get());
         }
-        ImmutableMap<Integer, RoleLimitDto> currentCommandRoleLimits = getCachedCustomRoleLimits(chatId).get(mainCommandName.get());
+        ImmutableMap<Integer, RoleRateLimitDto> currentCommandRoleLimits = getCachedCustomRoleLimits(chatId).get(mainCommandName.get());
 
         if(currentCommandRoleLimits!=null&&currentCommandRoleLimits.get(rolePriority)!=null){
-           throw new LimitWithThatCommandAndRoleAlreadyExistsException(mainCommandName.get(), foundRole.getRoleName());
+           throw new RateLimitWithThatCommandAndRoleAlreadyExistsException(mainCommandName.get(), foundRole.getRoleName());
         }
-        RoleLimitEntity savedLimit = roleLimitRepository.save(new RoleLimitEntity(
+        RoleRateLimitEntity savedLimit = roleRateLimitRepository.save(new RoleRateLimitEntity(
                 chatId, mainCommandName.get(), rolePriority, isPersonal, maxUsage, periodInSeconds
                 ));
 
@@ -99,7 +99,7 @@ public class RoleLimitService {
         return savedLimit;
     }
     @Transactional
-    public RoleLimitEntity createCommandLimit(long chatId, long fromId, @NonNull String userCommand, @NonNull String roleName, int maxUsage, int periodInSeconds, boolean isPersonal){
+    public RoleRateLimitEntity createCommandLimit(long chatId, long fromId, @NonNull String userCommand, @NonNull String roleName, int maxUsage, int periodInSeconds, boolean isPersonal){
         int rolePriority = roleService.getRoleByNameIgnoreCase(chatId, roleName.trim())
                 .orElseThrow(RoleNotFoundException::new).getRolePriority();
 
@@ -119,20 +119,20 @@ public class RoleLimitService {
 
 
 
-    public Map<String, ImmutableMap<Integer, RoleLimitDto>> getCachedCustomRoleLimits(long chatId) {
-        ConcurrentMap<String, ImmutableMap<Integer, RoleLimitDto>> map = cacheManager.getRoleLimitCache().get(chatId, id -> {
+    public Map<String, ImmutableMap<Integer, RoleRateLimitDto>> getCachedCustomRoleLimits(long chatId) {
+        ConcurrentMap<String, ImmutableMap<Integer, RoleRateLimitDto>> map = cacheManager.getRoleLimitCache().get(chatId, id -> {
 
-            List<RoleLimitEntity> entities = roleLimitRepository.findByChatId(id);
+            List<RoleRateLimitEntity> entities = roleRateLimitRepository.findByChatId(id);
 
-            Map<String, ImmutableMap.Builder<Integer, RoleLimitDto>> builders = new HashMap<>(); // временная карта
+            Map<String, ImmutableMap.Builder<Integer, RoleRateLimitDto>> builders = new HashMap<>(); // временная карта
 
-            for (RoleLimitEntity entity : entities) {
-                ImmutableMap.Builder<Integer, RoleLimitDto> builder = builders.computeIfAbsent(entity.getCommandName(), k -> ImmutableMap.builder());
-                builder.put(entity.getRolePriority(), limitMapper.toRoleLimitDto(entity));
+            for (RoleRateLimitEntity entity : entities) {
+                ImmutableMap.Builder<Integer, RoleRateLimitDto> builder = builders.computeIfAbsent(entity.getCommandName(), k -> ImmutableMap.builder());
+                builder.put(entity.getRolePriority(), rateLimitMapper.toRoleLimitDto(entity));
             }
 
             // итоговая карта
-            ConcurrentMap<String, ImmutableMap<Integer, RoleLimitDto>> result = new ConcurrentHashMap<>();
+            ConcurrentMap<String, ImmutableMap<Integer, RoleRateLimitDto>> result = new ConcurrentHashMap<>();
             builders.forEach((key, value) -> result.put(key, value.build()));
             return result;
         });

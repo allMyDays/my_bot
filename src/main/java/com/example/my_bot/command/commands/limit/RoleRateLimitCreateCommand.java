@@ -5,16 +5,11 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.dto.permission.RolePermissionSettingResult;
-import com.example.my_bot.entity.RoleEntity;
-import com.example.my_bot.entity.RoleLimitEntity;
+import com.example.my_bot.entity.RoleRateLimitEntity;
 import com.example.my_bot.exception.command.CommandException;
-import com.example.my_bot.exception.limit.LimitException;
-import com.example.my_bot.exception.permission.PermissionException;
+import com.example.my_bot.exception.limit.RateLimitException;
 import com.example.my_bot.exception.role.RoleException;
-import com.example.my_bot.service.ChatService;
-import com.example.my_bot.service.RoleLimitService;
-import com.example.my_bot.service.RolePermissionService;
+import com.example.my_bot.service.RoleRateLimitService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -24,14 +19,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigInteger;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.MessageConstant.*;
-import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.utils.ChatUtils.isNumber;
 import static com.example.my_bot.utils.ChatUtils.isValidInteger;
@@ -39,14 +29,14 @@ import static com.example.my_bot.utils.ChatUtils.isValidInteger;
 @Slf4j
 @Command(mainCommandName = "лимит", alternativeCommandNames = {"rolelimit"}, defaultRole = ADMINISTRATOR, eventable = false)
 @RequiredArgsConstructor
-public class RoleLimitCreateCommand implements ChatCommand {
+public class RoleRateLimitCreateCommand implements ChatCommand {
 
     @Getter
     private final CommandCooldown cooldown = new CommandCooldown(3,60);
 
     private final VkChatClient vkChatClient;
 
-    private final RoleLimitService roleLimitService;
+    private final RoleRateLimitService roleRateLimitService;
 
     private final RoleService roleService;
 
@@ -79,18 +69,18 @@ public class RoleLimitCreateCommand implements ChatCommand {
             return;
         }
 
-        RoleLimitEntity createdLimit=null;
+        RoleRateLimitEntity createdLimit=null;
         try{
             int maxUsage = Integer.parseInt(args[3]);
             boolean isPersonal = args.length==6&&args[5].equalsIgnoreCase("личный");
             int periodInSeconds = Integer.parseInt(stringPeriodInSeconds);
 
             if(isNumber(args[4])){
-                createdLimit = roleLimitService.createCommandLimit(chatId,fromId,args[0],Integer.parseInt(args[4]), maxUsage,periodInSeconds,isPersonal);
+                createdLimit = roleRateLimitService.createCommandLimit(chatId,fromId,args[0],Integer.parseInt(args[4]), maxUsage,periodInSeconds,isPersonal);
             }else{
-                createdLimit = roleLimitService.createCommandLimit(chatId,fromId,args[0],args[4], maxUsage,periodInSeconds,isPersonal);
+                createdLimit = roleRateLimitService.createCommandLimit(chatId,fromId,args[0],args[4], maxUsage,periodInSeconds,isPersonal);
             }
-        }catch (LimitException | RoleException | CommandException e){
+        }catch (RateLimitException | RoleException | CommandException e){
             vkChatClient.sendText(chatId, e.getMessage(), true);
             return;
         }
