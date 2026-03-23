@@ -1,4 +1,4 @@
-package com.example.my_bot.dto.permission;
+package com.example.my_bot.dto.command;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,7 +13,7 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 @Setter
-public class AbilityEditRolePermissionsResult {
+public class CommandAuthorizationResult {
 
     private Set<String> allowed=new HashSet<>();
 

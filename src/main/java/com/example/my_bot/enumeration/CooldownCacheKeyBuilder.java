@@ -1,11 +1,10 @@
 package com.example.my_bot.enumeration;
 
 import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
 
 public enum CooldownCacheKeyBuilder {
 
-    DEFAULT_COOLDOWN("def_cd:");
+    DEFAULT_COOLDOWN("def_cd:"), CUSTOM_ROLE_COOLDOWN("custom_role_cd:");
 
     private final String prefix;
 
@@ -13,8 +12,25 @@ public enum CooldownCacheKeyBuilder {
         this.prefix=prefix;
     }
 
-    public String buildKey(long chatId, long userId, @NonNull String normalizedCommand) {
-        return prefix + chatId +":"+userId+":"+normalizedCommand;
+    public String buildDefaultCDKey(long chatId, long userId, @NonNull String normalizedCommand) {
+        if (this != DEFAULT_COOLDOWN) {
+            throw new UnsupportedOperationException("buildDefaultCDKey поддерживается только для DEFAULT_COOLDOWN");
+        }
+        return prefix + chatId +":user"+userId+":"+normalizedCommand;
+    }
+
+    public String buildRolePersonalKey(long chatId, long userId, @NonNull String normalizedCommand, long limitEntityId) {
+        if (this != CUSTOM_ROLE_COOLDOWN) {
+            throw new UnsupportedOperationException(" buildRolePersonalKey поддерживается только для CUSTOM_ROLE_COOLDOWN");
+        }
+        return prefix + chatId +":user"+userId+":"+normalizedCommand+":"+limitEntityId;
+    }
+
+    public String buildRoleKey(long chatId, @NonNull String normalizedCommand, int rolePriority, long limitEntityId) {
+        if (this != CUSTOM_ROLE_COOLDOWN) {
+            throw new UnsupportedOperationException(" buildRoleKey поддерживается только для CUSTOM_ROLE_COOLDOWN");
+        }
+        return prefix + chatId +":role:"+rolePriority+":"+normalizedCommand+":"+limitEntityId;
     }
 
 

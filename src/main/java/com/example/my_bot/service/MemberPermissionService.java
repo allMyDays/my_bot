@@ -3,16 +3,13 @@ package com.example.my_bot.service;
 import com.example.my_bot.command.CommandRegistry;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.command.UserCommandValidationResult;
-import com.example.my_bot.dto.permission.AbilityEditRolePermissionsResult;
+import com.example.my_bot.dto.command.CommandAuthorizationResult;
 import com.example.my_bot.dto.permission.MemberPermissionSettingResult;
-import com.example.my_bot.dto.permission.RolePermissionSettingResult;
 import com.example.my_bot.entity.MemberPermissionEntity;
-import com.example.my_bot.entity.RolePermissionEntity;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
+import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.member.MemberAccessDeniedException;
-import com.example.my_bot.exception.permission.PermissionAccessDeniedException;
-import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.repository.MemberPermissionRepository;
 import com.google.common.collect.ImmutableMap;
 import jakarta.transaction.Transactional;
@@ -42,7 +39,7 @@ public class MemberPermissionService {
 
     private final static int MAX_CUSTOM_MEMBER_PERMISSIONS_COUNT = 20;
 
-    private final RolePermissionService rolePermissionService;
+    private final CommandAccessService commandService;
 
 
     @Autowired
@@ -71,9 +68,9 @@ public class MemberPermissionService {
             return result;
         }
 
-        AbilityEditRolePermissionsResult commandEditingResult =
-                rolePermissionService.abilityToEditPermissions(chatId, commandNormalizationResult.getNormalizedCommands(), callerRole);
-        result.setForbiddenToEdit(commandEditingResult.getForbidden());
+        CommandAuthorizationResult commandAuthorizationResult =
+                commandService.checkCommandsAuthorization(chatId, commandNormalizationResult.getNormalizedCommands(), callerRole, fromId, false);
+        result.setForbiddenToEdit(commandAuthorizationResult.getForbidden());
 
         Map<String, ImmutableMap<Long, Boolean>> existingMemberPermissions = getCachedCustomMemberPermissions(chatId);
 
@@ -86,7 +83,7 @@ public class MemberPermissionService {
         Set<String> commandsToUpdate = new HashSet<>();
         Set<MemberPermissionEntity> commandsToSave = new HashSet<>();
 
-        for(String currentCommand: commandEditingResult.getAllowed()){
+        for(String currentCommand: commandAuthorizationResult.getAllowed()){
             ImmutableMap<Long, Boolean> currentCommandPermissions = existingMemberPermissions.get(currentCommand);
             Boolean requiredPermission = (currentCommandPermissions==null?null:currentCommandPermissions.get(targetUserId));
             if(requiredPermission==null){
@@ -125,8 +122,8 @@ public class MemberPermissionService {
                 .orElseThrow(()->new UserCommandNotFoundException(userCommand));
         int callerRole = memberService.getCachedMemberRolePriority(chatId, fromId);
 
-        if(!rolePermissionService.abilityToEditPermission(chatId, mainCommandName, callerRole)){
-            throw new PermissionAccessDeniedException(fromId);
+        if(!commandService.checkCommandAuthorization(chatId, mainCommandName, callerRole, fromId, false)){
+            throw new CommandAccessDeniedException(fromId, mainCommandName);
         }if(memberService.getCachedMemberRolePriority(chatId, targetUserId)>callerRole){
             throw new MemberAccessDeniedException(targetUserId, fromId);
         }

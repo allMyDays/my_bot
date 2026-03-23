@@ -6,19 +6,24 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 
-@Getter
 @AllArgsConstructor
 @NoArgsConstructor
 @Setter
+
 public class CooldownResult {
 
     private boolean canExecuteCommand =false;
 
-    private long leftCooldownSeconds = 0;
+    @Getter
+    private long leftCDSeconds = 0;
 
     private boolean canSendCDMessageToUser =false;
 
+    public boolean canExecuteCommand() {
+        return canExecuteCommand;
+    }
 
-
-
+    public boolean canSendCDMessageToUser() {
+        return canSendCDMessageToUser;
+    }
 }

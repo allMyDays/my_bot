@@ -23,7 +23,7 @@ import static com.example.my_bot.utils.ChatUtils.isNumber;
 import static com.example.my_bot.utils.ChatUtils.isValidInteger;
 
 @Slf4j
-@Command(mainCommandName ="переименовать", alternativeCommandNames = {"renamerole"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
+@Command(mainCommandName ="имяроли", alternativeCommandNames = {"renamerole"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
 @RequiredArgsConstructor
 public class RoleRenameCommand implements ChatCommand {
 

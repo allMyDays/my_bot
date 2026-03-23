@@ -9,9 +9,9 @@ public class MessageConstant {
 
     public static final String NOT_ENOUGH_ARGUMENTS_MESSAGE = "Вы ввели недостаточно аргументов для обработки этой команды.";
 
-    public static final String NOT_VALID_INTEGER_MESSAGE = "Вы ввели некорректное число в качестве аргумента.";
+    public static final String NOT_VALID_INTEGER_MESSAGE = "Вы ввели некорректно большое или маленькое число в качестве аргумента.";
 
-    public static final String NOT_ENOUGH_ROLE_TO_EXECUTE_CMD = "Ваша роль недостаточно высока для применения этой команды.";
+    public static final String YOU_CANNOT_USE_THIS_COMMAND = "Эта команда вам недоступна (либо ваша роль не позволяет, либо запрещена конкретно вам).";
 
     public static final String MEMBER_LINK_IS_NOT_CORRECT = "Не удалось получить участника по указанному вами строчному аргументу.";
 
@@ -21,7 +21,9 @@ public class MessageConstant {
 
     public static final String CANNOT_APPLY_THIS_COMMAND_TO_YOURSELF = "Эту команду нельзя применить к самому себе.";
 
+    public static final String  INVALID_TIME_UNIT_MESSAGE = "Указанный аргумент времени не является корректной временной единицей (секундой/минутой/часом/днём и т.д.).";
 
+    public static final String  TIME_PERIOD_IS_TOO_LONG = "Вы указали слишком длинный временной период для данной команды.";
 
 
 

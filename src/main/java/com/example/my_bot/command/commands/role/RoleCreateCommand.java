@@ -58,7 +58,7 @@ public class RoleCreateCommand implements ChatCommand {
             vkChatClient.sendText(chatId, e.getMessage(), true);
             return;
         }
-            vkChatClient.sendText(chatId, "✅Вы создали новую роль «%s» с приоритетом %d."
+            vkChatClient.sendText(chatId, "✅Вы успешно создали новую роль «%s» с приоритетом %d."
                     .formatted(createdRole.getRoleName(), createdRole.getRolePriority()), true);
 
     }
