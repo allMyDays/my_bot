@@ -9,7 +9,7 @@ public class MessageConstant {
 
     public static final String NOT_ENOUGH_ARGUMENTS_MESSAGE = "Вы ввели недостаточно аргументов для обработки этой команды.";
 
-    public static final String NOT_VALID_INTEGER_MESSAGE = "Вы ввели некорректно большое или маленькое число в качестве аргумента.";
+    public static final String NOT_VALID_INTEGER_MESSAGE = "Указанный вами аргумент не является корректным числовым значением.";
 
     public static final String YOU_CANNOT_USE_THIS_COMMAND = "Эта команда вам недоступна (либо ваша роль не позволяет, либо запрещена конкретно вам).";
 

@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -107,17 +108,31 @@ public class RoleRateLimitService {
     }
 
     @Transactional
-    public void deleteCommandLimit(long chatId, @NonNull String userCommand, long fromId){
+    public void deleteLimit(RoleRateLimitDto limitDto, long chatId, long fromId){
 
+        int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
 
-
-
-
-
-
+        if(limitDto.getRolePriority()>userRolePriority){
+            throw new RoleAccessDeniedException();
+        }
+        boolean abilityCommandInteraction = commandService.checkCommandAuthorization(
+                chatId, limitDto.getCommandName(),userRolePriority,fromId, false);
+        if(!abilityCommandInteraction){
+            throw new CommandAccessDeniedException(fromId, limitDto.getCommandName());
+        }
+        roleRateLimitRepository.deleteById(limitDto.getEntityId());
+        invalidateCommandLimitCache(chatId);
     }
 
+    public List<RoleRateLimitDto> getRoleLimitsSortedByEntityId(long chatId){
 
+        Map<String, ImmutableMap<Integer, RoleRateLimitDto>> roleLimits =  getCachedCustomRoleLimits(chatId);
+
+        return roleLimits.values().stream()
+                .flatMap(map -> map.values().stream())
+                .sorted(Comparator.comparing(RoleRateLimitDto::getEntityId))
+                .collect(Collectors.toList());
+    }
 
     public Map<String, ImmutableMap<Integer, RoleRateLimitDto>> getCachedCustomRoleLimits(long chatId) {
         ConcurrentMap<String, ImmutableMap<Integer, RoleRateLimitDto>> map = cacheManager.getRoleLimitCache().get(chatId, id -> {
