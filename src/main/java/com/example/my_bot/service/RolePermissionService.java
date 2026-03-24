@@ -12,6 +12,7 @@ import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.exception.role.RoleAccessDeniedException;
 import com.example.my_bot.repository.RolePermissionRepository;
+import com.google.common.collect.ImmutableMap;
 import jakarta.transaction.Transactional;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -77,7 +78,7 @@ public class RolePermissionService {
         result.setForbiddenToEdit(commandAuthorizationResult.getForbidden());
         
 
-        Map<String, Integer> existingCustomPermissions = getCachedCustomRolePermissions(chatId);
+        ImmutableMap<String, Integer> existingCustomPermissions = getCachedCustomRolePermissions(chatId);
 
         int newPermissionsAvailableSize = MAX_CUSTOM_ROLE_PERMISSIONS_COUNT -existingCustomPermissions.size();
 
@@ -136,18 +137,15 @@ public class RolePermissionService {
 
     }
 
-
-    public Map<String, Integer> getCachedCustomRolePermissions(long chatId) {
-        ConcurrentMap<String, Integer> map =  cacheManager.getRolePermissionCache().get(chatId, id ->
+    @SuppressWarnings("ConstantConditions")
+    public ImmutableMap<String, Integer> getCachedCustomRolePermissions(long chatId) {
+        return cacheManager.getRolePermissionCache().get(chatId, id ->
                 permissionRepository.findByChatId(id).stream()
-                        .collect(Collectors.toConcurrentMap(
+                        .collect(ImmutableMap.toImmutableMap(
                                 RolePermissionEntity::getCommandName,
                                 RolePermissionEntity::getRolePriority,
-                                (existing, replacement) -> existing
-                        ))
+                                (existing, replacement) -> existing))
         );
-
-        return Collections.unmodifiableMap(map);
     }
 
     private void invalidateRolePermissionCache(long chatId){

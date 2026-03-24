@@ -41,19 +41,6 @@ public class CommandAccessService {
 
     private final static int MILLISECONDS_BETWEEN_SENDING_COOLDOWN_MESSAGE_TO_USER = 30_000;
 
-  /*  private static class CooldownData {
-        final Deque<Long> calls;
-        final long cdPeriodInSeconds;
-        long lastSentCDMessageInMillis;
-
-        CooldownData(long cdPeriodInSeconds) {
-            this.calls = new ArrayDeque<>();
-            this.cdPeriodInSeconds = cdPeriodInSeconds;
-            lastSentCDMessageInMillis =0;
-
-        }
-    }*/
-
     private final Cache<String, CooldownData> cooldownCache = Caffeine.newBuilder()
             .maximumSize(50_000)
             .expireAfter(new Expiry<String, CooldownData>() {
@@ -102,8 +89,8 @@ public class CommandAccessService {
 
         Set<String> normalizedCommands=(normalizeCommandsAndThrowIfNotExist? normalizeCommands(userCommands):userCommands);
 
-        Map<String, Integer> customRolePermissions = rolePermissionService.getCachedCustomRolePermissions(chatId);
-        Map<String, ImmutableMap<Long, Boolean>> customMemberPermissions = memberPermissionService.getCachedCustomMemberPermissions(chatId);
+        ImmutableMap<String, Integer> customRolePermissions = rolePermissionService.getCachedCustomRolePermissions(chatId);
+        ImmutableMap<String, ImmutableMap<Long, Boolean>> customMemberPermissions = memberPermissionService.getCachedCustomMemberPermissions(chatId);
 
         Set<String> allowed = new HashSet<>();
         Set<String> forbidden = new HashSet<>();
@@ -151,8 +138,8 @@ public class CommandAccessService {
 
         String normalizedCommand = (normalizeCommandAndThrowIfNotExist?normalizeCommand(userCommand):userCommand);
 
-        Map<String, Integer> customRolePermissions = rolePermissionService.getCachedCustomRolePermissions(chatId);
-        Map<String, ImmutableMap<Long, Boolean>> customMemberPermissions = memberPermissionService.getCachedCustomMemberPermissions(chatId);
+        ImmutableMap<String, Integer> customRolePermissions = rolePermissionService.getCachedCustomRolePermissions(chatId);
+        ImmutableMap<String, ImmutableMap<Long, Boolean>> customMemberPermissions = memberPermissionService.getCachedCustomMemberPermissions(chatId);
 
         ImmutableMap<Long, Boolean> currentCmdPersonalPermissions = customMemberPermissions.get(normalizedCommand);
         if(currentCmdPersonalPermissions!=null){
@@ -294,7 +281,7 @@ public class CommandAccessService {
     }
 
     private Optional<RoleRateLimitDto> getRoleLimit(long chatId, String command, int rolePriority) {
-        Map<String, ImmutableMap<Integer, RoleRateLimitDto>> allLimits = roleRateLimitService.getCachedCustomRoleLimits(chatId);
+        ImmutableMap<String, ImmutableMap<Integer, RoleRateLimitDto>> allLimits = roleRateLimitService.getCachedCustomRoleLimits(chatId);
         if (allLimits == null) {
             return Optional.empty();
         }

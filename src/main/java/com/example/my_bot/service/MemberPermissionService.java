@@ -72,7 +72,7 @@ public class MemberPermissionService {
                 commandService.checkCommandsAuthorization(chatId, commandNormalizationResult.getNormalizedCommands(), callerRole, fromId, false);
         result.setForbiddenToEdit(commandAuthorizationResult.getForbidden());
 
-        Map<String, ImmutableMap<Long, Boolean>> existingMemberPermissions = getCachedCustomMemberPermissions(chatId);
+        ImmutableMap<String, ImmutableMap<Long, Boolean>> existingMemberPermissions = getCachedCustomMemberPermissions(chatId);
 
         int totalMemberPermissionSize = existingMemberPermissions.values().stream()
                 .mapToInt(ImmutableMap::size)
@@ -134,8 +134,8 @@ public class MemberPermissionService {
     }
 
 
-    public Map<String, ImmutableMap<Long, Boolean>> getCachedCustomMemberPermissions(long chatId) {
-        ConcurrentMap<String, ImmutableMap<Long, Boolean>> map = cacheManager.getMemberPermissionCache().get(chatId, id -> {
+    public ImmutableMap<String, ImmutableMap<Long, Boolean>> getCachedCustomMemberPermissions(long chatId) {
+        return cacheManager.getMemberPermissionCache().get(chatId, id -> {
 
             List<MemberPermissionEntity> entities = memberPermissionRepository.findByChatId(id);
 
@@ -151,12 +151,10 @@ public class MemberPermissionService {
             }
 
             // итоговая карта
-            ConcurrentMap<String, ImmutableMap<Long, Boolean>> result = new ConcurrentHashMap<>();
+            ImmutableMap.Builder<String, ImmutableMap<Long, Boolean>> result = new ImmutableMap.Builder<>();
             builders.forEach((key, value) -> result.put(key, value.build()));
-            return result;
+            return result.build();
         });
-
-        return Collections.unmodifiableMap(map);
     }
 
     private void invalidateMemberPermissionCache(long chatId){

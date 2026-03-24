@@ -5,6 +5,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.cooldown.CooldownResult;
+import com.example.my_bot.dto.user.UserDetailsDto;
 import com.example.my_bot.entity.UserEntity;
 import com.example.my_bot.service.*;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -38,9 +39,9 @@ public class CommandDispatcher {
 
              long fromId = commandMessage.getFromId();
 
-             UserEntity userEntity = userService.getOrCreateUser(fromId);
+             UserDetailsDto userDetailsDto = userService.getOrCreateUser(fromId);
 
-             if(userEntity.isBanned()){
+             if(userDetailsDto.isBanned()){
                  return;
              }
 

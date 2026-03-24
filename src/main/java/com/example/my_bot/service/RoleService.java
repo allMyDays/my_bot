@@ -9,6 +9,7 @@ import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.exception.role.*;
 import com.example.my_bot.mapper.RoleMapper;
 import com.example.my_bot.repository.RoleRepository;
+import com.google.common.collect.ImmutableMap;
 import com.vdurmont.emoji.EmojiManager;
 import jakarta.transaction.Transactional;
 import lombok.NonNull;
@@ -206,7 +207,7 @@ public class RoleService {
 
     public Map<Integer, String> getAllRolesWithNoSorting(long chatId){
 
-        Map<Integer, String> resultMap = getCreatedOrModifiedRoles(chatId);
+        Map<Integer, String> resultMap = new HashMap<>(getCreatedOrModifiedRoles(chatId));
 
         for(DefaultRole defaultRole: DefaultRole.values()){
             resultMap.putIfAbsent(defaultRole.getRolePriority(), defaultRole.getRoleName());
@@ -260,16 +261,16 @@ public class RoleService {
         }
 
     }
-    public Map<Integer, String> getCreatedOrModifiedRoles(long chatId){
+    public ImmutableMap<Integer, String> getCreatedOrModifiedRoles(long chatId){
 
-        return new ConcurrentHashMap<>(cacheManager.getDbRoleCache().get(chatId,
+        return cacheManager.getDbRoleCache().get(chatId,
                 k-> {
-                    ConcurrentMap<Integer, String> map = new ConcurrentHashMap<>();
+                    ImmutableMap.Builder<Integer, String> map = new ImmutableMap.Builder<>();
                     List<RoleEntity> roleEntities = roleRepository.findByChatId(chatId);
                     for(RoleEntity role: roleEntities){
                         map.put(role.getRolePriority(), role.getRoleName());
-                    } return map;
-                }));
+                    } return map.build();
+                });
 
     }
 

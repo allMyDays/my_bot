@@ -126,7 +126,7 @@ public class RoleRateLimitService {
 
     public List<RoleRateLimitDto> getRoleLimitsSortedByEntityId(long chatId){
 
-        Map<String, ImmutableMap<Integer, RoleRateLimitDto>> roleLimits =  getCachedCustomRoleLimits(chatId);
+        ImmutableMap<String, ImmutableMap<Integer, RoleRateLimitDto>> roleLimits =  getCachedCustomRoleLimits(chatId);
 
         return roleLimits.values().stream()
                 .flatMap(map -> map.values().stream())
@@ -134,8 +134,8 @@ public class RoleRateLimitService {
                 .collect(Collectors.toList());
     }
 
-    public Map<String, ImmutableMap<Integer, RoleRateLimitDto>> getCachedCustomRoleLimits(long chatId) {
-        ConcurrentMap<String, ImmutableMap<Integer, RoleRateLimitDto>> map = cacheManager.getRoleLimitCache().get(chatId, id -> {
+    public ImmutableMap<String, ImmutableMap<Integer, RoleRateLimitDto>> getCachedCustomRoleLimits(long chatId) {
+        return cacheManager.getRoleLimitCache().get(chatId, id -> {
 
             List<RoleRateLimitEntity> entities = roleRateLimitRepository.findByChatId(id);
 
@@ -147,12 +147,10 @@ public class RoleRateLimitService {
             }
 
             // итоговая карта
-            ConcurrentMap<String, ImmutableMap<Integer, RoleRateLimitDto>> result = new ConcurrentHashMap<>();
+            ImmutableMap.Builder<String, ImmutableMap<Integer, RoleRateLimitDto>> result = new ImmutableMap.Builder<>();
             builders.forEach((key, value) -> result.put(key, value.build()));
-            return result;
+            return result.build();
         });
-
-        return Collections.unmodifiableMap(map);
     }
 
     private void invalidateCommandLimitCache(long chatId){

@@ -15,6 +15,7 @@ import com.example.my_bot.exception.role.RoleAccessDeniedException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.repository.MemberRepository;
+import com.google.common.collect.ImmutableMap;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ConversationMember;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.concurrent.Immutable;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -150,20 +152,8 @@ public class MemberService {
 
     }
 
-    public Map<Long, MemberDto> getCachedMembersWithRole(long chatId){
-
-        return cacheManager.getMemberRoleCache().get(chatId,
-                k ->{
-            ConcurrentMap<Long, MemberDto> resultMap = new ConcurrentHashMap<>();
-            List<MemberEntity> members = memberRepository.findMembersWithNotZeroRole(chatId);
-            for(MemberEntity member:members){
-                resultMap.put(member.getUserId(), memberMapper.toMemberDto(member));
-            } return resultMap;
-        });
-    }
-
     public int getCachedMemberRolePriority(long chatId, long userId){
-        Map<Long, MemberDto> members =  getCachedMembersWithRole(chatId);
+        ImmutableMap<Long, MemberDto> members =  getCachedMembersWithRole(chatId);
         MemberDto memberDto = members.get(userId);
         if(memberDto!=null){
             return memberDto.getRolePriority();
@@ -269,6 +259,17 @@ public class MemberService {
         cacheManager.getMemberRoleCache().invalidate(chatId);
 
         }
+        public ImmutableMap<Long, MemberDto> getCachedMembersWithRole(long chatId){
+
+        return cacheManager.getMemberRoleCache().get(chatId,
+                k ->{
+                    ImmutableMap.Builder<Long, MemberDto> resultMap = new ImmutableMap.Builder<>();
+                    List<MemberEntity> members = memberRepository.findMembersWithNotZeroRole(chatId);
+                    for(MemberEntity member:members){
+                        resultMap.put(member.getUserId(), memberMapper.toMemberDto(member));
+                    } return resultMap.build();
+                });
+             }
 
     }
 

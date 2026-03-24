@@ -77,14 +77,14 @@ public class ChatService {
         }
         ChatEntity chat = findByChatIdOrThrow(chatId);
         chat.setPrefix(newPrefix);
-        putChatToCache(chatId, chatRepository.save(chat));
+        putChatToCache(chatRepository.save(chat));
     }
     @Transactional
     public void disableChatPrefix(long chatId){
 
         ChatEntity chat = findByChatIdOrThrow(chatId);
         chat.setPrefix(null);
-        putChatToCache(chatId, chatRepository.save(chat));
+        putChatToCache(chatRepository.save(chat));
     }
     @Transactional
     public SwitchChatSettingResult switchSilentRestriction(long chatId){
@@ -99,7 +99,7 @@ public class ChatService {
             chat.setSilentRestriction(true);
             resultToReturn = SwitchChatSettingResult.ON;
         }
-        putChatToCache(chatId, chatRepository.save(chat));
+        putChatToCache( chatRepository.save(chat));
         return resultToReturn;
 
     }
@@ -115,7 +115,7 @@ public class ChatService {
         ChatEntity chat = findByChatIdOrThrow(chatId);
         chat.setLastSyncTime(Instant.now());
 
-        putChatToCache(chatId, chatRepository.save(chat));
+        putChatToCache(chatRepository.save(chat));
     }
     @Transactional
     public ChatEntity createNewChat(long chatId, @Nullable Character prefix){
@@ -134,11 +134,11 @@ public class ChatService {
 
     }
 
-    private ChatDetailsDto putChatToCache(long chatId, @NonNull ChatEntity chat){
+    private ChatDetailsDto putChatToCache( @NonNull ChatEntity chat){
 
         ChatDetailsDto chatDto = chatMapper.toChatDetailsDto(chat);
 
-        cacheManager.getChatDetailsCache().put(chatId, chatDto);
+        cacheManager.getChatDetailsCache().put(chat.getChatId(), chatDto);
 
         return chatDto;
 

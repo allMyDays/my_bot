@@ -48,8 +48,8 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
 
         long chatId = cmd.getChatId();
 
-        Map<String, Integer> rolePermissions = rolePermissionService.getCachedCustomRolePermissions(chatId);
-        Map<String, ImmutableMap<Long, Boolean>> memberPermissions = memberPermissionService.getCachedCustomMemberPermissions(chatId);
+        ImmutableMap<String, Integer> rolePermissions = rolePermissionService.getCachedCustomRolePermissions(chatId);
+        ImmutableMap<String, ImmutableMap<Long, Boolean>> memberPermissions = memberPermissionService.getCachedCustomMemberPermissions(chatId);
 
         Map<Integer, List<String>> rolePermissionMap = rolePermissions.entrySet().stream()
                 .collect(Collectors.groupingBy(
