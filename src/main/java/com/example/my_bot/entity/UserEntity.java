@@ -9,21 +9,40 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @Entity
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "app_user")
+@Table(name = "all_users")
 public class UserEntity {
     @Id
     private Long userId;
 
     @Column(nullable = false)
-    boolean isBannedForever;
+    private boolean isBanned;
 
-    String name;
+    private Long boundChat;
 
-    String lastName;
+    private String fullNameInNom;
 
+    private String fullNameInGen;
+
+    private String fullNameInDat;
+
+    private String fullNameInAcc;
+
+    private String fullNameInIns;
+
+    private String fullNameInAbl;
+
+    private Instant lastFullNameUpdate;
+
+
+
+    public UserEntity(Long userId) {
+        this.userId = userId;
+    }
 }

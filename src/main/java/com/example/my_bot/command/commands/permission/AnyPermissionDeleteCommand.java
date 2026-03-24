@@ -5,12 +5,14 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.permission.PermissionException;
 import com.example.my_bot.service.MemberPermissionService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RolePermissionService;
+import com.example.my_bot.service.UserService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -39,6 +41,8 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
     private final MemberPermissionService memberPermissionService;
 
     private final MemberService memberService;
+
+    private final UserService userService;
 
 
 
@@ -71,9 +75,14 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
             return;
         }
 
-        vkChatClient.sendText(chatId, userId.map(aLong ->
-                "✅Настройка сброшена. Теперь возможность использовать эту команду у %s(данного участника) зависит только от уровня его роли.".formatted(createMention(aLong)))
-                .orElse("✅Настройка прав для указанной команды была сброшена до дефолтной роли."), true);
+        vkChatClient.sendText(chatId, userId.map(aLong ->{
+              String userName = userService.getUserNameInRequiredCase(aLong, NameCase.ACCUSATIVE)
+                            .orElse("этого участника");
+
+               return  "✅Настройка сброшена. Теперь возможность использовать эту команду у %s(%s) зависит только от уровня его роли."
+                       .formatted(createMention(aLong),userName);
+          }
+        ).orElse("✅Настройка прав для указанной команды была сброшена до дефолтной роли."), true);
 
     }
 

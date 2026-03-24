@@ -5,10 +5,8 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.service.ChatService;
-import com.example.my_bot.service.MemberPermissionService;
-import com.example.my_bot.service.RolePermissionService;
-import com.example.my_bot.service.RoleService;
+import com.example.my_bot.enumeration.user.NameCase;
+import com.example.my_bot.service.*;
 import com.example.my_bot.utils.ChatUtils;
 import com.google.common.collect.ImmutableMap;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -42,6 +40,7 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
 
     private final ChatService chatService;
     private final RoleService roleService;
+    private final UserService userService;
 
 
     @Override
@@ -92,7 +91,10 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
         }
 
         memberPermissionMap.forEach((userId, permissionMap)->{
-            sb.append("\nПерсонально для %s(этого участника):".formatted(ChatUtils.createMention(userId)));
+            String mention = ChatUtils.createMention(userId);
+            String userName = userService.getUserNameInRequiredCase(userId, NameCase.GENITIVE)
+                    .orElse("этого участника");
+            sb.append("\nПерсонально для %s(%s):".formatted(mention,userName));
             permissionMap.forEach((command,isAllowed)->{
                 sb.append("\n").append(isAllowed ? "➕ " : "➖ ").append(chatPrefix).append(command);
             });

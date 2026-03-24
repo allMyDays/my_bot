@@ -5,8 +5,10 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
+import com.example.my_bot.service.UserService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -35,6 +37,8 @@ public class UserRoleShowCommand implements ChatCommand {
     private final MemberService memberService;
 
     private final RoleService roleService;
+
+    private final UserService userService;
 
     @Autowired
     @Lazy
@@ -66,10 +70,11 @@ public class UserRoleShowCommand implements ChatCommand {
         }
         int userRolePriority =  memberService.getCachedMemberRolePriority(chatId, memberToCheck);
         String roleName = roleService.getRoleName(chatId, userRolePriority).orElse("Unknown role");
-        vkChatClient.sendText(chatId,
-                createMention(memberToCheck)+
-                        (cmd.getFromId()==memberToCheck?"(Ваша)":"(Участник) имеет")+" роль в чате — «%s». Приоритет роли: %d"
-                .formatted(roleName, userRolePriority),true);
+        String userName = userService.getUserNameInRequiredCase(memberToCheck, NameCase.GENITIVE)
+                .orElse("участника");
+
+        vkChatClient.sendText(chatId, "Роль %s(%s) в чате — «%s». Приоритет роли: %d"
+                .formatted(createMention(memberToCheck),userName,roleName, userRolePriority),true);
 
 
     }

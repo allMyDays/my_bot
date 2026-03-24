@@ -7,10 +7,12 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.AssignMemberResult;
+import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.service.UserService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -34,6 +36,8 @@ public class RoleAssignCommand implements ChatCommand {
     private final VkChatClient vkChatClient;
 
     private final MemberService memberService;
+
+    private final UserService userService;
 
 
 
@@ -82,8 +86,12 @@ public class RoleAssignCommand implements ChatCommand {
         if(assignResult!=null){
             RoleDto oldRole = assignResult.getPreviousRole();
             RoleDto newRole = assignResult.getNewRole();
-            vkChatClient.sendText(chatId, String.format("✅Роль %s(участника) изменена: «%s»(%d) ➜ «%s»(%d)",
-                    createMention(userToAssign),oldRole.getRoleName(), oldRole.getRolePriority(), newRole.getRoleName(), newRole.getRolePriority()), false);
+
+            String username = userService.getUserNameInRequiredCase(userToAssign, NameCase.GENITIVE)
+                    .orElse("этого участника");
+
+            vkChatClient.sendText(chatId, String.format("✅Роль %s(%s) изменена: «%s»(%d) ➜ «%s»(%d)",
+                    createMention(userToAssign),username,oldRole.getRoleName(), oldRole.getRolePriority(), newRole.getRoleName(), newRole.getRolePriority()), false);
 
         }
 

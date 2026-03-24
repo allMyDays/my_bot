@@ -5,6 +5,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.cooldown.CooldownResult;
+import com.example.my_bot.entity.UserEntity;
 import com.example.my_bot.service.*;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -28,11 +29,20 @@ public class CommandDispatcher {
     private final VkChatClient vkChatClient;
     private final CommandRegistry commandRegistry;
     private final CommandAccessService commandAccessService;
+    private final UserService userService;
 
 
 
 
     public void dispatch(CommandMessageDto commandMessage) throws ClientException, ApiException {
+
+             long fromId = commandMessage.getFromId();
+
+             UserEntity userEntity = userService.getOrCreateUser(fromId);
+
+             if(userEntity.isBanned()){
+                 return;
+             }
 
              Optional<String> commandOptional = commandMessage.getCommand();
              if(commandOptional.isEmpty()) return;
@@ -64,7 +74,6 @@ public class CommandDispatcher {
             ChatCommand mainCommand = cmdOptional.get();
             Command cmdAnnotation = commandRegistry.getCommandAnnotation(commandName)
                     .orElseThrow(()->new RuntimeException("Cannot find required init-annotation @Command"));
-            long fromId = commandMessage.getFromId();
 
             int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
 

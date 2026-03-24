@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.permission.MemberPermissionSettingResult;
+import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.permission.PermissionException;
@@ -13,6 +14,7 @@ import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.service.ChatService;
 import com.example.my_bot.service.MemberPermissionService;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.service.UserService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -45,6 +47,8 @@ public class MemberPermissionCreateCommand implements ChatCommand {
     private final MemberService memberService;
 
     private final MemberPermissionService memberPermissionService;
+
+    private final UserService userService;
 
 
     @Override
@@ -94,9 +98,12 @@ public class MemberPermissionCreateCommand implements ChatCommand {
         String cmdPrefix = "⚙ " + chatPrefix;
         String userMention = createMention(targetUserId.get());
 
+        String userName = userService.getUserNameInRequiredCase(targetUserId.get(), NameCase.INSTRUMENTAL)
+                .orElse("этим участником");
+
         appendSection(result, permissionResult.getAccepted(), cmdPrefix,
                 "✅Команды:\n", "%s\nТеперь "+(allow?"могут персонально":"никогда не могут")
-                        +" применяться %s(этим участником) независимо от его роли.", userMention);
+                        +" применяться %s("+userName+") независимо от его роли.", userMention);
         appendSection(result, permissionResult.getHasRequiredPermissionAlready(), cmdPrefix,
                 "‼Команды:\n", "%s\nУже "+(allow?"разрешены":"запрещены")+" персонально %s(этому участнику).",userMention);
         appendSection(result, permissionResult.getForbiddenToEdit(), cmdPrefix,

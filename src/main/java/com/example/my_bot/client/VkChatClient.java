@@ -1,14 +1,20 @@
 package com.example.my_bot.client;
 
+import com.example.my_bot.dto.user.UserFullNameInEachCase;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.vk.api.sdk.client.VkApiClient;
 import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.httpclient.HttpTransportClient;
+import com.vk.api.sdk.objects.base.NameCase;
 import com.vk.api.sdk.objects.messages.ConversationMember;
 import com.vk.api.sdk.objects.messages.responses.GetConversationMembersResponse;
 import com.vk.api.sdk.objects.utils.DomainResolvedType;
 import com.vk.api.sdk.objects.utils.responses.ResolveScreenNameResponse;
+import com.vk.api.sdk.queries.execute.ExecuteBatchQuery;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -98,4 +104,42 @@ public class VkChatClient{
     }
 
 
+    public UserFullNameInEachCase getAllNameCases(long userId) throws ClientException, ApiException {
+        String stringUserId = String.valueOf(userId);
+        ExecuteBatchQuery batch = vkApiClient.execute().batch(groupActor,
+                vkApiClient.users().get(groupActor).userIds(stringUserId).nameCase(NameCase.ACCUSATIVE),
+                vkApiClient.users().get(groupActor).userIds(stringUserId).nameCase(NameCase.DATIVE),
+                vkApiClient.users().get(groupActor).userIds(stringUserId).nameCase(NameCase.GENITIVE),
+                vkApiClient.users().get(groupActor).userIds(stringUserId).nameCase(NameCase.INSTRUMENTAL),
+                vkApiClient.users().get(groupActor).userIds(stringUserId).nameCase(NameCase.NOMINATIVE),
+                vkApiClient.users().get(groupActor).userIds(stringUserId).nameCase(NameCase.PREPOSITIONAL)
+        );
+        JsonElement response = batch.execute();
+        JsonArray jsonArray = response.getAsJsonArray();
+
+        UserFullNameInEachCase result = new UserFullNameInEachCase();
+
+        for (int i = 0; i < jsonArray.size(); i++) {
+            JsonElement element = jsonArray.get(i);
+            if (!element.isJsonArray()) continue;
+
+            JsonArray usersArray = element.getAsJsonArray();
+            if (usersArray.isEmpty()) continue;
+
+            JsonObject user = usersArray.get(0).getAsJsonObject();
+            String firstName = user.get("first_name").getAsString();
+            String lastName = user.get("last_name").getAsString();
+            String fullName = firstName + " " + lastName;
+
+            switch (i) {
+                case 0: result.setAccusative(fullName); break;
+                case 1: result.setDative(fullName); break;
+                case 2: result.setGenitive(fullName); break;
+                case 3: result.setInstrumental(fullName); break;
+                case 4: result.setNominative(fullName); break;
+                case 5: result.setPrepositional(fullName); break;
+            }
+        }
+        return result;
+    }
 }
