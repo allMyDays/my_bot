@@ -26,5 +26,8 @@ public class ChatEntity {
     @Column(nullable = true)
     private Instant lastSyncTime;
 
+    @Column(nullable = true)
+    private boolean silentRestriction;
+
 
 }

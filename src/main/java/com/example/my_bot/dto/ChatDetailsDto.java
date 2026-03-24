@@ -17,6 +17,8 @@ public class ChatDetailsDto {
 
     private Instant lastSyncTime;
 
+    private boolean silentRestriction;
+
     @JsonIgnore
     public Optional<Character> getOptionalPrefix() {
         return Optional.ofNullable(prefix);

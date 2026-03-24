@@ -23,8 +23,8 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static com.example.my_bot.enumeration.CooldownCacheKeyBuilder.CUSTOM_ROLE_COOLDOWN;
-import static com.example.my_bot.enumeration.CooldownCacheKeyBuilder.DEFAULT_COOLDOWN;
+import static com.example.my_bot.enumeration.key.CooldownCacheKeyBuilder.CUSTOM_ROLE_COOLDOWN;
+import static com.example.my_bot.enumeration.key.CooldownCacheKeyBuilder.DEFAULT_COOLDOWN;
 
 @Slf4j
 @Service

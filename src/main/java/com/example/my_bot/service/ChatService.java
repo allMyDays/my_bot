@@ -3,6 +3,7 @@ package com.example.my_bot.service;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.entity.ChatEntity;
+import com.example.my_bot.enumeration.chat.SwitchChatSettingResult;
 import com.example.my_bot.exception.chat.ChatEntityAlreadyExistsException;
 import com.example.my_bot.exception.chat.ChatEntityNotFoundException;
 import com.example.my_bot.exception.chat.ForbiddenPrefixException;
@@ -85,6 +86,24 @@ public class ChatService {
         chat.setPrefix(null);
         putChatToCache(chatId, chatRepository.save(chat));
     }
+    @Transactional
+    public SwitchChatSettingResult switchSilentRestriction(long chatId){
+
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+
+        SwitchChatSettingResult resultToReturn;
+        if(chat.isSilentRestriction()){
+            chat.setSilentRestriction(false);
+            resultToReturn = SwitchChatSettingResult.OFF;
+        }else{
+            chat.setSilentRestriction(true);
+            resultToReturn = SwitchChatSettingResult.ON;
+        }
+        putChatToCache(chatId, chatRepository.save(chat));
+        return resultToReturn;
+
+    }
+
 
     public Optional<Character> getChatPrefix(long chatId){
        return getCachedChatDetails(chatId, false).getOptionalPrefix();

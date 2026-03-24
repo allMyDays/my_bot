@@ -2,6 +2,7 @@ package com.example.my_bot.command;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
+import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.cooldown.CooldownResult;
 import com.example.my_bot.service.*;
@@ -13,7 +14,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-import static com.example.my_bot.constant.MessageConstant.YOU_CANNOT_USE_THIS_COMMAND;
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.utils.ChatUtils.createMention;
 import static com.example.my_bot.utils.TimeUtils.formatDuration;
@@ -40,8 +40,9 @@ public class CommandDispatcher {
 
              long chatId = commandMessage.getChatId();
 
-             Optional<Character> chatPrefix = chatService.getCachedChatDetails(chatId, true)
-                     .getOptionalPrefix();
+             ChatDetailsDto chatDetails = chatService.getCachedChatDetails(chatId, true);
+
+             Optional<Character> chatPrefix = chatDetails.getOptionalPrefix();
 
              boolean mustCutPrefix=true;
 
@@ -83,7 +84,12 @@ public class CommandDispatcher {
                 }
                 mainCommand.execute(commandMessage);
             }else{
-                vkChatClient.sendText(chatId, YOU_CANNOT_USE_THIS_COMMAND, true);
+                if(!chatDetails.isSilentRestriction()){
+                vkChatClient.sendText(
+                        chatId,
+                        "Команда «%s» недоступна %s(Вам) для использования.".formatted(cmdAnnotation.mainCommandName(),createMention(fromId)),
+                        false);
+                }
             }
         }
     }
