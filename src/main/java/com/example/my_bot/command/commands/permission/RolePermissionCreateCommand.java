@@ -43,17 +43,18 @@ public class RolePermissionCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long chatId = commandMessage.getChatId();
-        String[] args = commandMessage.getFirstRowArguments();
+        long chatId = messageDto.getChatId();
+        String[] args = messageDto.getFirstRowArguments();
+        long peerId = messageDto.getPeerId();;
 
         if(args.length<2){
-            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
+            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
             return;
         }
         if(isNumber(args[0])&&!isValidInteger(args[0])){
-                vkChatClient.sendText(chatId, NOT_VALID_INTEGER_MESSAGE, true);
+                vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId, true);
                 return;
         }
 
@@ -61,21 +62,21 @@ public class RolePermissionCreateCommand implements ChatCommand {
         try{
             Set<String> userCommandsToProcess = new HashSet<>();
             userCommandsToProcess.add(args[1].trim());
-                for(int i=1;i<commandMessage.getAllRows().length;i++){
-                    userCommandsToProcess.add(commandMessage.getAllRows()[i].trim());
+                for(int i=1;i<messageDto.getAllRows().length;i++){
+                    userCommandsToProcess.add(messageDto.getAllRows()[i].trim());
                 }
             if(isNumber(args[0])){
-                permissionResult = permissionService.allowCommandForRole(chatId, commandMessage.getFromId(), userCommandsToProcess,Integer.parseInt(args[0]));
+                permissionResult = permissionService.allowCommandForRole(chatId, messageDto.getFromId(), userCommandsToProcess,Integer.parseInt(args[0]));
             }else{
-                permissionResult = permissionService.allowCommandForRole(chatId, commandMessage.getFromId(), userCommandsToProcess,args[0]);
+                permissionResult = permissionService.allowCommandForRole(chatId, messageDto.getFromId(), userCommandsToProcess,args[0]);
             }
         }catch (PermissionException | RoleException | CommandException e){
-            vkChatClient.sendText(chatId, e.getMessage(), true);
+            vkChatClient.sendText(e.getMessage(), peerId,true);
             return;
         }
         if(permissionResult==null){
             log.error("chat {} error: permissionResult is null after executing method allowCommandForRole", chatId);
-            vkChatClient.sendText(chatId, "Произошла ошибка при попытке обработать команды.", true);
+            vkChatClient.sendText("Произошла ошибка при попытке обработать команды.", peerId,true);
             return;
         }
         char chatPrefix = chatService.getChatPrefix(chatId).orElse(DEFAULT_CHAT_PREFIX);
@@ -95,7 +96,7 @@ public class RolePermissionCreateCommand implements ChatCommand {
         appendSection(result, permissionResult.getNotFound(), "❓",
                 "❌Аргументы:\n", "%s\nНе являются командами или написаны с опечатками.", roleName);
 
-        vkChatClient.sendText(chatId, result.toString(), true);
+        vkChatClient.sendText(result.toString(),peerId, true);
 
     }
 

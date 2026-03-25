@@ -48,23 +48,24 @@ public class UserRoleShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long chatId = cmd.getChatId();
+        long chatId = messageDto.getChatId();
+        long peerId = messageDto.getPeerId();
         long memberToCheck;
 
-        if(cmd.getFirstRowArguments().length==0){
-            if(cmd.hasReplyMessage()){
-                memberToCheck = cmd.getReplyMessageFromId().get();
-            }else if(cmd.hasFwdMessages()){
-                memberToCheck = cmd.getFwdMessageFromIds().get(0);
+        if(messageDto.getFirstRowArguments().length==0){
+            if(messageDto.hasReplyMessage()){
+                memberToCheck = messageDto.getReplyMessageFromId().get();
+            }else if(messageDto.hasFwdMessages()){
+                memberToCheck = messageDto.getFwdMessageFromIds().get(0);
             }else{
-                memberToCheck= cmd.getFromId();
+                memberToCheck= messageDto.getFromId();
             }
         }else{
-            Optional<Long> memberOptional = memberService.getCachedMemberIdByUserInput(cmd.getFirstRowArguments()[0]);
+            Optional<Long> memberOptional = memberService.getCachedMemberIdByUserInput(messageDto.getFirstRowArguments()[0]);
             if(memberOptional.isEmpty()){
-                vkChatClient.sendText(chatId, MEMBER_LINK_IS_NOT_CORRECT, true);
+                vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT, peerId,true);
                 return;
             } memberToCheck = memberOptional.get();
         }
@@ -73,8 +74,9 @@ public class UserRoleShowCommand implements ChatCommand {
         String userName = userService.getUserNameInRequiredCase(memberToCheck, NameCase.GENITIVE)
                 .orElse("участника");
 
-        vkChatClient.sendText(chatId, "Роль %s(%s) в чате — «%s». Приоритет роли: %d"
-                .formatted(createMention(memberToCheck),userName,roleName, userRolePriority),true);
+        vkChatClient.sendText("Роль %s(%s) в чате — «%s». Приоритет роли: %d".formatted(createMention(memberToCheck),userName,roleName, userRolePriority)
+                ,peerId
+                , true);
 
 
     }

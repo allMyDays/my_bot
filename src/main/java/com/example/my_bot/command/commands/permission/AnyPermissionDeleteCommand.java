@@ -49,40 +49,45 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long chatId = commandMessage.getChatId();
-        String[] args = commandMessage.getFirstRowArguments();
+        long chatId = messageDto.getChatId();
+        String[] args = messageDto.getFirstRowArguments();
         Optional<Long> userId=Optional.empty();
+        long peerId = messageDto.getPeerId();
+
         if(args.length==0){
-            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
+            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
             return;
         }if(args.length==2){
             userId = memberService.getCachedMemberIdByUserInput(args[1]);
             if(userId.isEmpty()){
-                vkChatClient.sendText(chatId, MEMBER_LINK_IS_NOT_CORRECT, true);
+                vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT,peerId, true);
                 return;
             }
         }
         try{
             if(userId.isEmpty()){
-              rolePermissionService.deleteCustomRolePermission(chatId, args[0], commandMessage.getFromId());
+              rolePermissionService.deleteCustomRolePermission(chatId, args[0], messageDto.getFromId());
             }else{
-                memberPermissionService.deleteCustomMemberPermission(chatId, args[0], userId.get(),commandMessage.getFromId());
+                memberPermissionService.deleteCustomMemberPermission(chatId, args[0], userId.get(),messageDto.getFromId());
             }
         }catch (CommandException | PermissionException | MemberException e){
-            vkChatClient.sendText(chatId, e.getMessage(), true);
+            vkChatClient.sendText(e.getMessage(),peerId, true);
             return;
         }
 
-        vkChatClient.sendText(chatId, userId.map(aLong ->{
-              String userName = userService.getUserNameInRequiredCase(aLong, NameCase.ACCUSATIVE)
+        String message = userId.map(aLong ->{
+                    String userName = userService.getUserNameInRequiredCase(aLong, NameCase.ACCUSATIVE)
                             .orElse("этого участника");
 
-               return  "✅Настройка сброшена. Теперь возможность использовать эту команду у %s(%s) зависит только от уровня его роли."
-                       .formatted(createMention(aLong),userName);
-          }
-        ).orElse("✅Настройка прав для указанной команды была сброшена до дефолтной роли."), true);
+                    return  "✅Настройка сброшена. Теперь возможность использовать эту команду у %s(%s) зависит только от уровня его роли."
+                            .formatted(createMention(aLong),userName);
+                }
+        ).orElse("✅Настройка прав для указанной команды была сброшена до дефолтной роли.");
+
+
+        vkChatClient.sendText(message, peerId, true);
 
     }
 

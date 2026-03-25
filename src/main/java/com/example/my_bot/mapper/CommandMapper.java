@@ -11,12 +11,13 @@ import static com.example.my_bot.utils.ChatUtils.extractConversationId;
 @Mapper(componentModel = "spring")
 public abstract class CommandMapper {
 
-    public CommandMessageDto toCommandMessageDto(@NonNull Message message){
+    public CommandMessageDto toCommandMessageDto(long chatId, @NonNull Message message){
 
         CommandMessageDto commandMessageDto = new CommandMessageDto();
         commandMessageDto.setUserMessage(message.getText());
         commandMessageDto.setFromId(message.getFromId());
-        commandMessageDto.setChatId(extractConversationId(message.getPeerId()));
+        commandMessageDto.setChatId(chatId);
+        commandMessageDto.setPeerId(message.getPeerId());
 
         if(message.getText()!=null){
             String[] rows = message.getText().split("\\n+");
@@ -30,9 +31,10 @@ public abstract class CommandMapper {
         if(message.getReplyMessage()!=null){
             commandMessageDto.setReplyMessageFromId(message.getReplyMessage().getFromId());
         }if(message.getFwdMessages()!=null){
-            commandMessageDto.setFwdMessagesFromIds(message.getFwdMessages().stream()
-                    .map(ForeignMessage::getFromId)
-                    .toList()
+            commandMessageDto.setFwdMessagesFromIds(
+                    message.getFwdMessages().stream()
+                     .map(ForeignMessage::getFromId)
+                     .toList()
             );
         } return commandMessageDto;
 

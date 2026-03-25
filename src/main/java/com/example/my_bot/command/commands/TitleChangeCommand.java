@@ -34,13 +34,13 @@ public class TitleChangeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        if(cmd.getFirstRowArguments().length==0){
-            vkChatClient.sendText(cmd.getChatId(), NOT_ENOUGH_ARGUMENTS_MESSAGE,true);
+        if(messageDto.getFirstRowArguments().length==0){
+            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE, messageDto.getPeerId(), true);
             return;
         }
-        vkChatClient.changeChatTitle(cmd.getChatId(), String.join(" ", cmd.getFirstRowArguments()));
+        vkChatClient.changeChatTitle(messageDto.getChatId(), String.join(" ", messageDto.getFirstRowArguments()));
 
     }
 

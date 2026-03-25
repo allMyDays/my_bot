@@ -19,8 +19,7 @@ import java.util.Arrays;
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_VALID_INTEGER_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
-import static com.example.my_bot.utils.ChatUtils.isNumber;
-import static com.example.my_bot.utils.ChatUtils.isValidInteger;
+import static com.example.my_bot.utils.ChatUtils.*;
 
 @Slf4j
 @Command(mainCommandName ="имяроли", alternativeCommandNames = {"renamerole"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
@@ -36,37 +35,39 @@ public class RoleRenameCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        String[] args = cmd.getFirstRowArguments();
-        long chatId = cmd.getChatId();
+        String[] args = messageDto.getFirstRowArguments();
+        long chatId = messageDto.getChatId();
+        long peerId = messageDto.getPeerId();
 
         if(args.length<2){
-            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
+            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
             return;
         }
         RoleDto editedRole=null;
 
         if(isNumber(args[0])&&!isValidInteger(args[0])){
-            vkChatClient.sendText(chatId, NOT_VALID_INTEGER_MESSAGE, true);
+            vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId, true);
             return;
         }
         try{
             String newRoleName = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
             if(isNumber(args[0])){
-                editedRole = roleService.renameRole(chatId, cmd.getFromId(), Integer.parseInt(args[0]),newRoleName);
+                editedRole = roleService.renameRole(chatId, messageDto.getFromId(), Integer.parseInt(args[0]),newRoleName);
             }else{
-                editedRole = roleService.renameRole(chatId, cmd.getFromId(), args[0], newRoleName);
+                editedRole = roleService.renameRole(chatId, messageDto.getFromId(), args[0], newRoleName);
             }
 
         } catch (RoleException e) {
-            vkChatClient.sendText(chatId, e.getMessage(), true);
+            vkChatClient.sendText(e.getMessage(),peerId, true);
             return;
         }
 
-        vkChatClient.sendText(chatId,
-                "✅Вы успешно переименовали указанную роль с приоритетом %d в «%s»."
-                        .formatted(editedRole.getRolePriority(), editedRole.getRoleName()), true);
+        vkChatClient.sendText("✅Вы успешно переименовали указанную роль с приоритетом %d в «%s»."
+                        .formatted(editedRole.getRolePriority(), editedRole.getRoleName()),
+                peerId,
+                true);
 
     }
 

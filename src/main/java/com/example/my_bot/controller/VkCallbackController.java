@@ -2,8 +2,11 @@ package com.example.my_bot.controller;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
+import com.example.my_bot.dto.user.UserDetailsDto;
 import com.example.my_bot.mapper.CommandMapper;
+import com.example.my_bot.service.ChatService;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.service.UserService;
 import com.google.gson.Gson;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -17,6 +20,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.UNKNOWN_ERROR_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.WELCOME_MESSAGE;
@@ -42,10 +47,13 @@ public class VkCallbackController {
 
     private final CommandMapper commandMapper;
 
+    private final UserService userService;
+
     public VkCallbackController(MemberService memberService,
                                 CommandMapper commandMapper,
                                 VkChatClient vkChatClient,
                                 CommandDispatcher commandDispatcher,
+                                UserService userService,
                                 @Value("${vk.group.id}") long groupId,
                                 @Value("${vk.group.confirmation}")String confirmationCode) {
         this.memberService = memberService;
@@ -54,6 +62,7 @@ public class VkCallbackController {
         this.commandDispatcher = commandDispatcher;
         this.groupId = groupId;
         this.confirmationCode = confirmationCode;
+        this.userService = userService;
     }
 
 
@@ -70,38 +79,33 @@ public class VkCallbackController {
         if (MESSAGE_NEW.equals(type)) {
             Message message = event.getObject().getMessage();
             long peerId = message.getPeerId();
+            long fromId = message.getFromId();
+            long chatId;
 
-            if(!isPersonalChat(peerId)){
-                long chatId = extractConversationId(peerId);
-                try {
+            if(isPersonalChat(peerId)){
+                Optional<Long> boundChat = userService.getOrCreateUser(fromId).getOptionalBoundChat();
+                if(boundChat.isEmpty()){
+                    return "ok";
+                }else{
+                    chatId=boundChat.get();
+                }
+            }else{
+                chatId = extractConversationId(peerId);
+            }
 
-                ActionOneOf action = message.getAction();
-                if (action != null) {
-                    MessageActionStatus actionType = action.getType();
-                    Long memberId = action.getMemberId();
-                    if(memberId!=null){
-                    if (CHAT_INVITE_USER.equals(actionType) && memberId== -groupId) {
-                        vkChatClient.sendText(chatId, WELCOME_MESSAGE,true);
-                        return "ok";
-                     }
-                    }
-                  }
-
-
-                 commandDispatcher.dispatch(commandMapper.toCommandMessageDto(message));
+            try {
+                 commandDispatcher.dispatch(commandMapper.toCommandMessageDto(chatId, message));
                  memberService.checkLastSyncAndPerform(chatId);
-
             }catch (Exception e) {
                 log.error("Произошла ошибка: ",e);
-
                 try {
-                    vkChatClient.sendText(extractConversationId(peerId),UNKNOWN_ERROR_MESSAGE,true);
+                    vkChatClient.sendText(UNKNOWN_ERROR_MESSAGE, peerId,true);
                 } catch (ClientException|ApiException e2) {
-                    log.error("Ошибка при попытке отправить сообщение об ошибке в чат: ",e2);
+                    log.error("Ошибка при попытке отправить сообщение об ошибке в диалог c peerId {}: ",peerId,e2);
 
                   }
                 }
-            }
+
         }
         return "ok";
     }

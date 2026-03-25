@@ -40,9 +40,9 @@ public class AllRolesShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long chatId = cmd.getChatId();
+        long chatId = messageDto.getChatId();
 
         StringBuilder sb = new StringBuilder();
 
@@ -56,7 +56,7 @@ public class AllRolesShowCommand implements ChatCommand {
 
         roles.forEach((key, value) -> sb.append("%s — %d\n".formatted(value, key)));
 
-        vkChatClient.sendText(chatId, sb.toString(),true);
+        vkChatClient.sendText(sb.toString(),messageDto.getPeerId(),true);
 
     }
 }

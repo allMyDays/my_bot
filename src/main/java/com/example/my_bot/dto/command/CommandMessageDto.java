@@ -34,6 +34,9 @@ public class CommandMessageDto {
 
     private String command;
 
+    @Getter
+    private long peerId;
+
 
     public Optional<Long> getReplyMessageFromId() {
         return Optional.ofNullable(replyMessageFromId);

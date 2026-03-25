@@ -43,44 +43,45 @@ public class RoleAssignCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long chatId = cmd.getChatId();
-        String[] args = cmd.getFirstRowArguments();
+        long chatId = messageDto.getChatId();
+        String[] args = messageDto.getFirstRowArguments();
+        long peerId = messageDto.getPeerId();
 
         if(args.length==0){
-            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
+            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
             return;
         }if(isNumber(args[0])&&!isValidInteger(args[0])){
-            vkChatClient.sendText(chatId, NOT_VALID_INTEGER_MESSAGE, true);
+            vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId, true);
             return;
         }
         long userToAssign;
         if(args.length==2){
             Optional<Long> optionalMember = memberService.getCachedMemberIdByUserInput(args[1]);
             if(optionalMember.isEmpty()){
-                vkChatClient.sendText(chatId, MEMBER_LINK_IS_NOT_CORRECT, true);
+                vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT,peerId, true);
                 return;
             } userToAssign = optionalMember.get();
         }else{
-            if(cmd.hasReplyMessage()){
-                userToAssign=cmd.getReplyMessageFromId().get();
-            }else if(cmd.hasFwdMessages()){
-                userToAssign=cmd.getFwdMessageFromIds().get(0);
+            if(messageDto.hasReplyMessage()){
+                userToAssign=messageDto.getReplyMessageFromId().get();
+            }else if(messageDto.hasFwdMessages()){
+                userToAssign=messageDto.getFwdMessageFromIds().get(0);
             }else{
-                vkChatClient.sendText(chatId, MEMBER_ARGUMENT_ABSENTS, true);
+                vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS,peerId, true);
                 return;
             }
         }
         AssignMemberResult assignResult;
         try{
          if(isNumber(args[0])){
-            assignResult= memberService.assignNewRoleToMember(chatId, userToAssign,Integer.parseInt(args[0]), cmd.getFromId());
+            assignResult= memberService.assignNewRoleToMember(chatId, userToAssign,Integer.parseInt(args[0]), messageDto.getFromId());
          }else{
-            assignResult = memberService.assignNewRoleToMember(chatId, userToAssign,args[0], cmd.getFromId());
+            assignResult = memberService.assignNewRoleToMember(chatId, userToAssign,args[0], messageDto.getFromId());
          }
         }catch(MemberException | RoleException | CommandException e){
-            vkChatClient.sendText(chatId, e.getMessage(), true);
+            vkChatClient.sendText(e.getMessage(), peerId,true);
             return;
         }
         if(assignResult!=null){
@@ -90,8 +91,10 @@ public class RoleAssignCommand implements ChatCommand {
             String username = userService.getUserNameInRequiredCase(userToAssign, NameCase.GENITIVE)
                     .orElse("этого участника");
 
-            vkChatClient.sendText(chatId, String.format("✅Роль %s(%s) изменена: «%s»(%d) ➜ «%s»(%d)",
-                    createMention(userToAssign),username,oldRole.getRoleName(), oldRole.getRolePriority(), newRole.getRoleName(), newRole.getRolePriority()), false);
+            vkChatClient.sendText(String.format("✅Роль %s(%s) изменена: «%s»(%d) ➜ «%s»(%d)",
+                    createMention(userToAssign),username,oldRole.getRoleName(), oldRole.getRolePriority(), newRole.getRoleName(), newRole.getRolePriority()),
+                    peerId,
+                    false);
 
         }
 

@@ -34,38 +34,41 @@ public class RoleDeleteCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long chatId = cmd.getChatId();
-        String[] args = cmd.getFirstRowArguments();
+        long chatId = messageDto.getChatId();
+        String[] args = messageDto.getFirstRowArguments();
+        long peerId = messageDto.getPeerId();
 
         if(args.length==0){
-            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
+            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
             return;
         }
 
-        RoleDto assignedRole=null;
+        RoleDto assignedRole;
 
         if(isNumber(args[0])&&!isValidInteger(args[0])){
-            vkChatClient.sendText(chatId, NOT_VALID_INTEGER_MESSAGE, true);
+            vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId, true);
             return;
         }
 
         try{
             if(isNumber(args[0])){
-                assignedRole = roleService.deleteCustomRole(chatId, cmd.getFromId(), Integer.parseInt(args[0]));
+                assignedRole = roleService.deleteCustomRole(chatId, messageDto.getFromId(), Integer.parseInt(args[0]));
             }else{
-                assignedRole = roleService.deleteCustomRole(chatId, cmd.getFromId(), String.join(" ", args));
+                assignedRole = roleService.deleteCustomRole(chatId, messageDto.getFromId(), String.join(" ", args));
             }
 
         } catch (RoleException e) {
-            vkChatClient.sendText(chatId, e.getMessage(), true);
+            vkChatClient.sendText(e.getMessage(),peerId, true);
             return;
         }
 
-        vkChatClient.sendText(chatId,
+        vkChatClient.sendText(
                 "✅Вы успешно удалили указанную роль. Все участники с этой ролью автоматически получили роль «%s» с приоритетом %d."
-                        .formatted(assignedRole.getRoleName(), assignedRole.getRolePriority()), true);
+                        .formatted(assignedRole.getRoleName(), assignedRole.getRolePriority()),
+                peerId,
+                true);
 
         }
 

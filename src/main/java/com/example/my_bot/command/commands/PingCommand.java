@@ -33,9 +33,9 @@ public class PingCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        vkChatClient.sendText(cmd.getChatId(), "ПОНГ", true);
+        vkChatClient.sendText("ПОНГ", messageDto.getPeerId(), true);
 
     }
 }

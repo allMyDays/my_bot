@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.RoleRateLimitEntity;
+import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.limit.RateLimitException;
 import com.example.my_bot.exception.role.RoleException;
@@ -23,8 +24,7 @@ import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
-import static com.example.my_bot.utils.ChatUtils.isNumber;
-import static com.example.my_bot.utils.ChatUtils.isValidInteger;
+import static com.example.my_bot.utils.ChatUtils.*;
 
 @Slf4j
 @Command(mainCommandName = "лимит", alternativeCommandNames = {"rolelimit"}, defaultRole = ADMINISTRATOR, eventable = false)
@@ -42,30 +42,31 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long chatId = commandMessage.getChatId();
-        String[] args = commandMessage.getFirstRowArguments();
-        long fromId = commandMessage.getFromId();
+        long chatId = messageDto.getChatId();
+        String[] args = messageDto.getFirstRowArguments();
+        long fromId = messageDto.getFromId();
+        long peerId = messageDto.getPeerId();
 
         if(args.length<5){
-            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
+            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
             return;
         }
 
         if((isNumber(args[4])&&!isValidInteger(args[4]))||!isValidInteger(args[1])){
-                vkChatClient.sendText(chatId, NOT_VALID_INTEGER_MESSAGE, true);
+                vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId, true);
                 return;
         }
         Optional<Integer> timeUnitInSeconds =  TimeUtils.toSeconds(args[2]);
         if(timeUnitInSeconds.isEmpty()){
-            vkChatClient.sendText(chatId, INVALID_TIME_UNIT_MESSAGE, true);
+            vkChatClient.sendText(INVALID_TIME_UNIT_MESSAGE, peerId,true);
             return;
         }
 
         String stringPeriodInSeconds = new BigInteger(timeUnitInSeconds.get().toString()).multiply(new BigInteger(args[1])).toString();
         if(!isValidInteger(stringPeriodInSeconds)){
-            vkChatClient.sendText(chatId, TIME_PERIOD_IS_TOO_LONG, true);
+            vkChatClient.sendText(TIME_PERIOD_IS_TOO_LONG, peerId,true);
             return;
         }
 
@@ -81,12 +82,12 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
                 createdLimit = roleRateLimitService.createCommandLimit(chatId,fromId,args[0],args[4], maxUsage,periodInSeconds,isPersonal);
             }
         }catch (RateLimitException | RoleException | CommandException e){
-            vkChatClient.sendText(chatId, e.getMessage(), true);
+            vkChatClient.sendText(e.getMessage(),peerId, true);
             return;
         }
         if(createdLimit==null){
             log.error("chat {} error: createdLimit is null after executing method createCommandLimit", chatId);
-            vkChatClient.sendText(chatId, "Произошла ошибка при попытке обработать команды.", true);
+            vkChatClient.sendText("Произошла ошибка при попытке обработать команды.",peerId, true);
             return;
         }
         String result = "✅Успешно добавлен новый лимит в %d использований за %s для команды «%s», воздействующий только на роль «%s»."
@@ -99,7 +100,7 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
             result+="\n❗Вы не указали параметр «личный», поэтому лимит будет общим на всех участников с указанной ролью.";
         }
 
-        vkChatClient.sendText(chatId, result, true);
+        vkChatClient.sendText(result,peerId, true);
 
     }
 

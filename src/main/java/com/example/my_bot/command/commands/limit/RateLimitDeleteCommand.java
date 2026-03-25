@@ -40,17 +40,18 @@ public class RateLimitDeleteCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long chatId = commandMessage.getChatId();
-        String[] args = commandMessage.getFirstRowArguments();
-        long fromId = commandMessage.getFromId();
+        long chatId = messageDto.getChatId();
+        String[] args = messageDto.getFirstRowArguments();
+        long fromId = messageDto.getFromId();
+        long peerId = messageDto.getPeerId();
 
         if(args.length<1){
-            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE,true);
+            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId,true);
             return;
         }if(!isValidInteger(args[0])){
-            vkChatClient.sendText(chatId, NOT_VALID_INTEGER_MESSAGE,true);
+            vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId,true);
             return;
 
         } List<RoleRateLimitDto> roleLimits;
@@ -58,15 +59,15 @@ public class RateLimitDeleteCommand implements ChatCommand {
         int limitId = Integer.parseInt(args[0]);
 
         if(limitId<1||limitId>(roleLimits = roleRateLimitService.getRoleLimitsSortedByEntityId(chatId)).size()){
-            vkChatClient.sendText(chatId, "Не найдено лимита с таким ID.",true);
+            vkChatClient.sendText("Не найдено лимита с таким ID.",peerId,true);
             return;
         }
         try{
             roleRateLimitService.deleteLimit(roleLimits.get(limitId-1),chatId,fromId);
 
         }catch (RateLimitException | RoleException | CommandException e){
-          vkChatClient.sendText(chatId, e.getMessage(), true);
+          vkChatClient.sendText(e.getMessage(), peerId,true);
           return;
-        } vkChatClient.sendText(chatId, "✅Лимит с ID %d был успешно удалён.".formatted(limitId), true);
+        } vkChatClient.sendText("✅Лимит с ID %d был успешно удалён.".formatted(limitId),peerId, true);
     }
 }

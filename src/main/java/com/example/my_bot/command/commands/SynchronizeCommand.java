@@ -38,11 +38,11 @@ public class SynchronizeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        memberService.synchronizeChatMembers(cmd.getChatId());
+        memberService.synchronizeChatMembers(messageDto.getChatId());
 
-        vkChatClient.sendText(cmd.getChatId(), "✅Текущие участники чата были синхронизированы с моей базой данных.",true);
+        vkChatClient.sendText("✅Текущие участники чата были синхронизированы с моей базой данных.", messageDto.getPeerId(), true);
 
     }
 }

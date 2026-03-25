@@ -9,9 +9,11 @@ import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.httpclient.HttpTransportClient;
+import com.vk.api.sdk.objects.base.BoolInt;
 import com.vk.api.sdk.objects.base.NameCase;
 import com.vk.api.sdk.objects.messages.ConversationMember;
 import com.vk.api.sdk.objects.messages.responses.GetConversationMembersResponse;
+import com.vk.api.sdk.objects.messages.responses.IsMessagesFromGroupAllowedResponse;
 import com.vk.api.sdk.objects.utils.DomainResolvedType;
 import com.vk.api.sdk.objects.utils.responses.ResolveScreenNameResponse;
 import com.vk.api.sdk.queries.execute.ExecuteBatchQuery;
@@ -39,10 +41,10 @@ public class VkChatClient{
         this.groupId = groupId;
     }
 
-    public void sendText(long chatId, String text, boolean disableMentions) throws ClientException, ApiException {
+    public void sendText(String text, long peerId, boolean disableMentions) throws ClientException, ApiException {
         vkApiClient.messages()
                 .sendDeprecated(groupActor)
-                .peerId(extractPeerId(chatId))
+                .peerId(peerId)
                 .message(text)
                 .disableMentions(disableMentions)
                 .randomId((int) (System.currentTimeMillis() & 0xFFFFFFFFL))
@@ -142,4 +144,21 @@ public class VkChatClient{
         }
         return result;
     }
+    public boolean canGroupWriteToUser(long userId) {
+        try {
+            IsMessagesFromGroupAllowedResponse response = vkApiClient.messages()
+                    .isMessagesFromGroupAllowed(groupActor)
+                    .groupId(groupActor.getGroupId())
+                    .userId(userId)
+                    .execute();
+
+            // is_allowed == true → писать можно, false → нельзя
+            BoolInt boolInt =  response.getIsAllowed();
+            return boolInt.getValue()==1;
+        } catch (ApiException | ClientException e) {
+            log.error("Ошибка при проверке разрешения для user {}: {}", userId, e.getMessage());
+            return false;
+        }
+    }
+
 }

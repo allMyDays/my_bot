@@ -52,18 +52,19 @@ public class MemberPermissionCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long chatId = commandMessage.getChatId();
-        String[] args = commandMessage.getFirstRowArguments();
+        long chatId = messageDto.getChatId();
+        String[] args = messageDto.getFirstRowArguments();
+        long peerId = messageDto.getPeerId();
 
         if(args.length<2){
-            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
+            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
             return;
         }
         Optional<Long> targetUserId = memberService.getCachedMemberIdByUserInput(args[0].trim());
         if(targetUserId.isEmpty()){
-            vkChatClient.sendText(chatId, MEMBER_LINK_IS_NOT_CORRECT, true);
+            vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT, peerId,true);
             return;
         }
 
@@ -77,19 +78,19 @@ public class MemberPermissionCreateCommand implements ChatCommand {
         try{
             Set<String> userCommandsToProcess = new HashSet<>();
             userCommandsToProcess.add(args[1].trim());
-                for(int i=1;i<commandMessage.getAllRows().length;i++){
-                    userCommandsToProcess.add(commandMessage.getAllRows()[i].trim());
+                for(int i=1;i<messageDto.getAllRows().length;i++){
+                    userCommandsToProcess.add(messageDto.getAllRows()[i].trim());
                 }
                 permissionResult = memberPermissionService.allowOrForbidCommandForMember(
-                        chatId, commandMessage.getFromId(), userCommandsToProcess, targetUserId.get(), allow);
+                        chatId, messageDto.getFromId(), userCommandsToProcess, targetUserId.get(), allow);
 
         }catch (PermissionException | RoleException | CommandException | MemberException e){
-            vkChatClient.sendText(chatId, e.getMessage(), true);
+            vkChatClient.sendText(e.getMessage(),peerId, true);
             return;
         }
         if(permissionResult==null){
             log.error("chat {} error: permissionResult is null after executing method allowOrForbidCommandForMember", chatId);
-            vkChatClient.sendText(chatId, "Произошла ошибка при попытке обработать команды.", true);
+            vkChatClient.sendText("Произошла ошибка при попытке обработать команды.",peerId, true);
             return;
         }
         char chatPrefix = chatService.getChatPrefix(chatId).orElse(DEFAULT_CHAT_PREFIX);
@@ -113,7 +114,7 @@ public class MemberPermissionCreateCommand implements ChatCommand {
         appendSection(result, permissionResult.getNotFound(), "❓",
                 "❌Аргументы:\n", "%s\nНе являются командами или написаны с опечатками.", userMention);
 
-        vkChatClient.sendText(chatId, result.toString(), true);
+        vkChatClient.sendText(result.toString(),peerId, true);
 
     }
 

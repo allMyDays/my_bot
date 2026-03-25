@@ -41,46 +41,48 @@ public class KickCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long chatId = cmd.getChatId();
+        long chatId = messageDto.getChatId();
+        long peerId = messageDto.getPeerId();
+
 
         long memberToRemove;
 
-        if(cmd.getFirstRowArguments().length==0){
-            if(cmd.hasReplyMessage()){
-                memberToRemove = cmd.getReplyMessageFromId().get();
-            }else if(cmd.hasFwdMessages()){
-                memberToRemove = cmd.getFwdMessageFromIds().get(0);
+        if(messageDto.getFirstRowArguments().length==0){
+            if(messageDto.hasReplyMessage()){
+                memberToRemove = messageDto.getReplyMessageFromId().get();
+            }else if(messageDto.hasFwdMessages()){
+                memberToRemove = messageDto.getFwdMessageFromIds().get(0);
             }else{
-                vkChatClient.sendText(chatId, MEMBER_ARGUMENT_ABSENTS, true);
+                vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS,peerId, true);
                 return;
             }
         }else{
-            Optional<Long> memberOptional = memberService.getCachedMemberIdByUserInput(cmd.getFirstRowArguments()[0]);
+            Optional<Long> memberOptional = memberService.getCachedMemberIdByUserInput(messageDto.getFirstRowArguments()[0]);
 
             if(memberOptional.isEmpty()){
-                vkChatClient.sendText(chatId, MEMBER_LINK_IS_NOT_CORRECT, true);
+                vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT,peerId, true);
                 return;
             } memberToRemove = memberOptional.get();
         }
 
-        if(memberToRemove==cmd.getFromId()){
-            vkChatClient.sendText(chatId, CANNOT_APPLY_THIS_COMMAND_TO_YOURSELF, true);
+        if(memberToRemove==messageDto.getFromId()){
+            vkChatClient.sendText(CANNOT_APPLY_THIS_COMMAND_TO_YOURSELF, peerId,true);
             return;
         }
 
 
-        if(memberService.getCachedMemberRolePriority(chatId, cmd.getFromId())
+        if(memberService.getCachedMemberRolePriority(chatId, messageDto.getFromId())
                 <memberService.getCachedMemberRolePriority(chatId, memberToRemove)){
-            vkChatClient.sendText(chatId, NOT_ENOUGH_ROLE_TO_INTERACT_WITH_MEMBER, true);
+            vkChatClient.sendText(NOT_ENOUGH_ROLE_TO_INTERACT_WITH_MEMBER,peerId, true);
             return;
         }
 
        try{
            vkChatClient.kickChatMember((int)chatId, memberToRemove);
        }catch (ApiException e){
-           vkChatClient.sendText(chatId, "Не удалось исключить пользователя. "+e.getMessage(), true);
+           vkChatClient.sendText("Не удалось исключить пользователя. "+e.getMessage(),peerId, true);
        }
 
     }

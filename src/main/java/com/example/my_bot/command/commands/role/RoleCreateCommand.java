@@ -34,32 +34,35 @@ public class RoleCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long chatId = cmd.getChatId();
-        String[] args = cmd.getFirstRowArguments();
+        long chatId = messageDto.getChatId();
+        String[] args = messageDto.getFirstRowArguments();
+        long peerId = messageDto.getPeerId();
 
         if(args.length<2){
-            vkChatClient.sendText(chatId, NOT_ENOUGH_ARGUMENTS_MESSAGE, true);
+            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
             return;
         }
 
         if(!isValidInteger(args[0])){
-            vkChatClient.sendText(chatId, NOT_VALID_INTEGER_MESSAGE, true);
+            vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE, peerId,true);
             return;
         }
 
         RoleEntity createdRole=null;
         try{
-            createdRole =  roleService.createRole(chatId, cmd.getFromId(), Integer.parseInt(args[0]),
+            createdRole =  roleService.createRole(chatId, messageDto.getFromId(), Integer.parseInt(args[0]),
                    String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
 
         }catch (RoleException e){
-            vkChatClient.sendText(chatId, e.getMessage(), true);
+            vkChatClient.sendText(e.getMessage(), peerId,true);
             return;
         }
-            vkChatClient.sendText(chatId, "✅Вы успешно создали новую роль «%s» с приоритетом %d."
-                    .formatted(createdRole.getRoleName(), createdRole.getRolePriority()), true);
+            vkChatClient.sendText("✅Вы успешно создали новую роль «%s» с приоритетом %d."
+                    .formatted(createdRole.getRoleName(), createdRole.getRolePriority()),
+                    peerId,
+                    true);
 
     }
 }

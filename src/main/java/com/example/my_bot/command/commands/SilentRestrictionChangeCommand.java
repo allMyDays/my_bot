@@ -39,12 +39,12 @@ public class SilentRestrictionChangeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        SwitchChatSettingResult switchResult = chatService.switchSilentRestriction(cmd.getChatId());
+        SwitchChatSettingResult switchResult = chatService.switchSilentRestriction(messageDto.getChatId());
             vkChatClient.sendText(
-                    cmd.getChatId(),
                     "Теперь мне "+ (switchResult==ON?"нельзя":"можно") +" говорить участникам чата о том, что им не хватило прав на использование определенной команды.",
+                    messageDto.getPeerId(),
                     true);
 
 

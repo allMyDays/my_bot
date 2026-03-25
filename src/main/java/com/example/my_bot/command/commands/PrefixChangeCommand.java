@@ -38,10 +38,11 @@ public class PrefixChangeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        String[] args = cmd.getFirstRowArguments();
-        long chatId = cmd.getChatId();
+        String[] args = messageDto.getFirstRowArguments();
+        long chatId = messageDto.getChatId();
+        long peerId = messageDto.getPeerId();
 
         if(args.length==0){
             String message;
@@ -54,23 +55,25 @@ public class PrefixChangeCommand implements ChatCommand {
                 message = String.format("✅Префикс чата был отключён. " +
                         "Теперь команды в чате можно писать как без префикса, так и со стандартным префиксом: %s",DEFAULT_CHAT_PREFIX);
             }
-            vkChatClient.sendText(chatId, message,true);
+            vkChatClient.sendText(message,peerId,true);
             return;
         }
 
         if(args[0].length()>1){
-            vkChatClient.sendText(chatId, "В качестве префикса можно установить только один символ.",true);
+            vkChatClient.sendText("В качестве префикса можно установить только один символ.",peerId,true);
             return;
         }
         try{
          chatService.setChatPrefix(chatId, args[0].charAt(0));
         }catch (ForbiddenPrefixException e){
-            vkChatClient.sendText(chatId, e.getMessage(), true);
+            vkChatClient.sendText(e.getMessage(),peerId, true);
             return;
         }
 
-        vkChatClient.sendText(chatId, (("✅Префикс чата был установлен на: %s\n" +
-                "Теперь команды в чате можно писать ТОЛЬКО с этим префиксом.").formatted(args[0])),true);
+        vkChatClient.sendText((("✅Префикс чата был установлен на: %s\n" +
+                "Теперь команды в чате можно писать ТОЛЬКО с этим префиксом.").formatted(args[0])),
+                peerId,
+                true);
 
     }
 

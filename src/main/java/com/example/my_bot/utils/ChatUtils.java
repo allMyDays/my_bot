@@ -61,5 +61,9 @@ public class ChatUtils {
         return str.trim().matches("-?\\d+");
     }
 
+    public static boolean isGroupId(long memberId) {
+        return memberId<0;
+    }
+
 
 }

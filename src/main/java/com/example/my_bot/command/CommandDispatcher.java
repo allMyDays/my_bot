@@ -18,6 +18,7 @@ import java.util.*;
 
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.utils.ChatUtils.createMention;
+import static com.example.my_bot.utils.ChatUtils.isGroupId;
 import static com.example.my_bot.utils.TimeUtils.formatDuration;
 
 
@@ -35,21 +36,21 @@ public class CommandDispatcher {
 
 
 
-    public void dispatch(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public void dispatch(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-             long fromId = commandMessage.getFromId();
+             long fromId = messageDto.getFromId();
 
-             UserDetailsDto userDetailsDto = userService.getOrCreateUser(fromId);
-
-             if(userDetailsDto.isBanned()){
+             if(isGroupId(fromId)||userService.getOrCreateUser(fromId).isBanned()){
                  return;
              }
 
-             Optional<String> commandOptional = commandMessage.getCommand();
+             Optional<String> commandOptional = messageDto.getCommand();
              if(commandOptional.isEmpty()) return;
              String commandName = commandOptional.get();
 
-             long chatId = commandMessage.getChatId();
+             long chatId = messageDto.getChatId();
+             long peerId = messageDto.getPeerId();
+
 
              ChatDetailsDto chatDetails = chatService.getCachedChatDetails(chatId, true);
 
@@ -86,18 +87,17 @@ public class CommandDispatcher {
                         chatId, cmdAnnotation.mainCommandName(),userRolePriority,fromId);
                 if(!cooldownResult.canExecuteCommand()){
                   if(cooldownResult.canSendCDMessageToUser()){
-                    vkChatClient.sendText(chatId,
-                            "Нельзя так часто использовать эту команду. Она станет вновь доступна %s(Вам) через %s"
-                                    .formatted(createMention(fromId),formatDuration(cooldownResult.getLeftCDSeconds(), true)),
-                            true);
+                    String message = "Нельзя так часто использовать эту команду. Она станет вновь доступна %s(Вам) через %s"
+                            .formatted(createMention(fromId),formatDuration(cooldownResult.getLeftCDSeconds(), true));
+                    vkChatClient.sendText(message, peerId, true);
                   }return;
                 }
-                mainCommand.execute(commandMessage);
+                mainCommand.execute(messageDto);
             }else{
                 if(!chatDetails.isSilentRestriction()){
                 vkChatClient.sendText(
-                        chatId,
                         "Команда «%s» недоступна %s(Вам) для использования.".formatted(cmdAnnotation.mainCommandName(),createMention(fromId)),
+                        peerId,
                         false);
                 }
             }

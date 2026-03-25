@@ -102,6 +102,14 @@ public class UserService {
         );
 
     }
+    @Transactional
+    public void setBoundChatToUser(long chatId, long userId){
+        UserEntity userEntity = userRepository.findById(userId)
+                .orElseThrow(()->new UserNotFoundException(userId));
+
+        userEntity.setBoundChat(chatId);
+        putUserToCache(userEntity);
+    }
 
     public Optional<String> getUserNameInRequiredCase(long userId, @NonNull NameCase requiredNameCase){
 

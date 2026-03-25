@@ -38,9 +38,9 @@ public class StaffShowCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(CommandMessageDto cmd) throws ClientException, ApiException {
+    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long chatId = cmd.getChatId();
+        long chatId = messageDto.getChatId();
 
         StringBuilder sb = new StringBuilder();
 
@@ -74,7 +74,7 @@ public class StaffShowCommand implements ChatCommand {
             }sb.append("\n");
         }
 
-        vkChatClient.sendText(chatId,sb.toString(),true);
+        vkChatClient.sendText(sb.toString(),messageDto.getPeerId(),true);
 
     }
 
