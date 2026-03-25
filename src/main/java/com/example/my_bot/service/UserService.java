@@ -2,10 +2,8 @@ package com.example.my_bot.service;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.config.CaffeineCacheManager;
-import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.user.UserDetailsDto;
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
-import com.example.my_bot.entity.ChatEntity;
 import com.example.my_bot.entity.UserEntity;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.user.UserNotFoundException;
@@ -25,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -103,12 +102,16 @@ public class UserService {
 
     }
     @Transactional
-    public void setBoundChatToUser(long chatId, long userId){
+    public void bindChatToUser(long chatId, long userId){
         UserEntity userEntity = userRepository.findById(userId)
                 .orElseThrow(()->new UserNotFoundException(userId));
 
         userEntity.setBoundChat(chatId);
         putUserToCache(userEntity);
+    }
+
+    public List<Long> findUserIdsByBoundChat(long chatId){
+        return userRepository.findUserIdsByBoundChat(chatId);
     }
 
     public Optional<String> getUserNameInRequiredCase(long userId, @NonNull NameCase requiredNameCase){

@@ -1,4 +1,4 @@
-package com.example.my_bot.command.commands;
+package com.example.my_bot.command.commands.bind;
 
 
 import com.example.my_bot.annotation.Command;
@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import static com.example.my_bot.constant.MessageConstant.CANNOT_USE_THIS_COMMAND_IN_PERSONAL_DIALOGUE;
-import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.utils.ChatUtils.*;
 
@@ -57,7 +56,7 @@ public class BindCommand implements ChatCommand {
             vkChatClient.sendText(message, messageDto.getPeerId(), true);
             return;
         }
-        userService.setBoundChatToUser(messageDto.getChatId(), fromId);
+        userService.bindChatToUser(messageDto.getChatId(), fromId);
         try{
             message = "\uD83D\uDD17 Вы успешно привязали чат к своим личным сообщениям. " +
                     "Теперь вы можете писать команды и получать ответы на них прямо здесь. Команды продолжат выполняться в том чате.";
