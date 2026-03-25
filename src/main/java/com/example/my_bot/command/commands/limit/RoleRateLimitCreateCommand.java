@@ -6,7 +6,6 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.RoleRateLimitEntity;
-import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.limit.RateLimitException;
 import com.example.my_bot.exception.role.RoleException;
@@ -77,9 +76,9 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
             int periodInSeconds = Integer.parseInt(stringPeriodInSeconds);
 
             if(isNumber(args[4])){
-                createdLimit = roleRateLimitService.createCommandLimit(chatId,fromId,args[0],Integer.parseInt(args[4]), maxUsage,periodInSeconds,isPersonal);
+                createdLimit = roleRateLimitService.createCommandRateLimit(chatId,fromId,args[0],Integer.parseInt(args[4]), maxUsage,periodInSeconds,isPersonal);
             }else{
-                createdLimit = roleRateLimitService.createCommandLimit(chatId,fromId,args[0],args[4], maxUsage,periodInSeconds,isPersonal);
+                createdLimit = roleRateLimitService.createCommandRateLimit(chatId,fromId,args[0],args[4], maxUsage,periodInSeconds,isPersonal);
             }
         }catch (RateLimitException | RoleException | CommandException e){
             vkChatClient.sendText(e.getMessage(),peerId, true);

@@ -60,9 +60,8 @@ public class RolePermissionService {
 
         int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
 
-        if(rolePriority>userRolePriority){
-            throw new RoleAccessDeniedException();
-        }
+        roleService.checkRoleInteractionAbility(rolePriority,userRolePriority);
+
         RolePermissionSettingResult result = new RolePermissionSettingResult();
         result.setRoleDto(foundRole);
 

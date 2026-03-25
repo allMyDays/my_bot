@@ -79,7 +79,7 @@ public class MemberService {
     }
 
 
-   public List<MemberEntity> findByChatId(long chatId){
+    public List<MemberEntity> findByChatId(long chatId){
         return memberRepository.findByChatId(chatId);
     }
 
@@ -190,13 +190,11 @@ public class MemberService {
         if(memberToAssign.getRolePriority()==newRolePriority){
             throw new MemberAlreadyHasThisRoleException(userToAssign);
         }
-        long callerRolePriority = getCachedMemberRolePriority(chatId, fromId);
 
-        if(memberToAssign.getRolePriority()>callerRolePriority){
-            throw new MemberAccessDeniedException(userToAssign, fromId);
-        } if(newRolePriority>callerRolePriority){
-            throw new RoleAccessDeniedException();
-        }
+        checkMemberInteractionAbility(chatId, fromId, userToAssign);
+
+        roleService.checkRoleInteractionAbility(newRolePriority,getCachedMemberRolePriority(chatId, fromId));
+
 
         RoleDto roleToChange = roleService.getRoleByPriority(chatId, memberToAssign.getRolePriority())
                 .orElseThrow(RoleNotFoundException::new);
@@ -219,6 +217,17 @@ public class MemberService {
 
         return assignNewRoleToMember(chatId, userToAssign, roleToAssign.getRolePriority(), fromId);
 
+    }
+
+    public void checkMemberInteractionAbility(long chatId, long fromId, long userToInteract){
+
+        int callerRole = getCachedMemberRolePriority(chatId, fromId);
+        int targetUserRole = getCachedMemberRolePriority(chatId, userToInteract);
+
+        if(callerRole<=targetUserRole){
+            // никому нельзя наказывать участников с ролью выше или равной своей
+            throw new MemberAccessDeniedException(userToInteract,fromId);
+        }
     }
 
 

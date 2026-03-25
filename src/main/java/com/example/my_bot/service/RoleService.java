@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
 import static com.example.my_bot.enumeration.DefaultRole.isDefaultRole;
 
 @Slf4j
@@ -56,7 +57,7 @@ public class RoleService {
         if(EmojiManager.containsEmoji(roleName)){
             throw new RoleNameCannotContainEmojiException();
         }
-        checkRoleInteractionAbility(rolePriority, chatId, fromId);
+        checkRoleInteractionAbility(rolePriority, memberService.getCachedMemberRolePriority(chatId, fromId));
 
         if(isDefaultRole(rolePriority)){
             throw new DuplicateRolePriorityException(rolePriority);
@@ -95,7 +96,7 @@ public class RoleService {
         if(EmojiManager.containsEmoji(newRoleName)){
             throw new RoleNameCannotContainEmojiException();
         }
-        checkRoleInteractionAbility(existingRolePriority, chatId, fromId);
+        checkRoleInteractionAbility(existingRolePriority, memberService.getCachedMemberRolePriority(chatId, fromId));
 
         Map<Integer, String> allRoles = getAllRolesWithNoSorting(chatId);
 
@@ -154,7 +155,7 @@ public class RoleService {
             throw new RoleNotFoundException();
         }
 
-        checkRoleInteractionAbility(rolePriority, chatId, fromId);
+        checkRoleInteractionAbility(rolePriority, memberService.getCachedMemberRolePriority(chatId, fromId));
 
         RoleDto roleToReAssign = findTheNearestLowestRole(chatId, rolePriority, true);
 
@@ -255,11 +256,12 @@ public class RoleService {
 
     }
 
-    private void checkRoleInteractionAbility(int rolePriority, long chatId, long fromId){
-        if(rolePriority>memberService.getCachedMemberRolePriority(chatId, fromId)){
+    public void checkRoleInteractionAbility(int roleToEdit, int userRole){
+
+        if(roleToEdit>userRole||(userRole==roleToEdit&&userRole<SENIOR_ADMINISTRATOR.getRolePriority())){
+            // никому нельзя редактировать роль выше своей, но можно редактировать свою роль, если ты ст.админ и выше
             throw new RoleAccessDeniedException();
         }
-
     }
     public ImmutableMap<Integer, String> getCreatedOrModifiedRoles(long chatId){
 

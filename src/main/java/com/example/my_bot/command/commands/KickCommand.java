@@ -6,6 +6,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.exception.member.MemberAccessDeniedException;
 import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -72,12 +73,13 @@ public class KickCommand implements ChatCommand {
             return;
         }
 
-
-        if(memberService.getCachedMemberRolePriority(chatId, messageDto.getFromId())
-                <memberService.getCachedMemberRolePriority(chatId, memberToRemove)){
-            vkChatClient.sendText(NOT_ENOUGH_ROLE_TO_INTERACT_WITH_MEMBER,peerId, true);
+        try{
+            memberService.checkMemberInteractionAbility(chatId, messageDto.getFromId(), memberToRemove);
+        }catch (MemberAccessDeniedException e){
+            vkChatClient.sendText(e.getMessage(),peerId, true);
             return;
         }
+
 
        try{
            vkChatClient.kickChatMember((int)chatId, memberToRemove);

@@ -6,6 +6,8 @@ import com.example.my_bot.dto.user.UserDetailsDto;
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
 import com.example.my_bot.entity.UserEntity;
 import com.example.my_bot.enumeration.user.NameCase;
+import com.example.my_bot.exception.member.MemberAccessDeniedException;
+import com.example.my_bot.exception.user.UserDoesNotHaveRequiredBoundChatException;
 import com.example.my_bot.exception.user.UserNotFoundException;
 import com.example.my_bot.mapper.UserMapper;
 import com.example.my_bot.repository.UserRepository;
@@ -42,6 +44,8 @@ public class UserService {
     private final CaffeineCacheManager cacheManager;
 
     private final UserMapper userMapper;
+
+    private final MemberService memberService;
 
     private static final long AUTO_UPDATE_NAMES_INTERVAL_MINUTES = 60;
 
@@ -109,6 +113,23 @@ public class UserService {
         userEntity.setBoundChat(chatId);
         putUserToCache(userEntity);
     }
+    @Transactional
+    public void unBindChatFromUser(long chatId, long fromId, long userToUnbind){
+
+        if(fromId!=userToUnbind) {
+            memberService.checkMemberInteractionAbility(chatId, fromId, userToUnbind);
+        }
+        UserEntity userEntity = userRepository.findById(userToUnbind)
+                .orElseThrow(()->new UserNotFoundException(userToUnbind));
+
+        if(userEntity.getBoundChat()==null||chatId!=userEntity.getBoundChat()){
+            throw new UserDoesNotHaveRequiredBoundChatException(userToUnbind);
+
+        }
+
+        userEntity.setBoundChat(null);
+        putUserToCache(userEntity);
+    }
 
     public List<Long> findUserIdsByBoundChat(long chatId){
         return userRepository.findUserIdsByBoundChat(chatId);
@@ -134,7 +155,9 @@ public class UserService {
                     case INSTRUMENTAL -> user.getFullNameInIns();
                     case PREPOSITIONAL -> user.getFullNameInAbl();
                 };
+                if(foundCase!=null){
                    result.put(currentNc, foundCase);
+                }
             } return result;
         });
 

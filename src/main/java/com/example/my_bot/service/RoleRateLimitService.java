@@ -24,8 +24,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -66,7 +64,7 @@ public class RoleRateLimitService {
 
 
     @Transactional
-    public RoleRateLimitEntity createCommandLimit(long chatId, long fromId, @NonNull String userCommand, int rolePriority, int maxUsage, int periodInSeconds, boolean isPersonal){
+    public RoleRateLimitEntity createCommandRateLimit(long chatId, long fromId, @NonNull String userCommand, int rolePriority, int maxUsage, int periodInSeconds, boolean isPersonal){
 
         if(periodInSeconds< MIN_LIMIT_PERIOD_IN_SECONDS ||periodInSeconds> MAX_LIMIT_PERIOD_IN_SECONDS){
             throw new RateLimitPeriodOutOfBoundsException(MIN_LIMIT_PERIOD_IN_SECONDS, MAX_LIMIT_PERIOD_IN_SECONDS);
@@ -77,9 +75,9 @@ public class RoleRateLimitService {
                 .orElseThrow(RoleNotFoundException::new);
 
         int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
-        if(rolePriority>userRolePriority){
-            throw new RoleAccessDeniedException();
-        }Optional<String> mainCommandName =  commandRegistry.getMainNameOfCommand(userCommand.trim());
+        roleService.checkRoleInteractionAbility(rolePriority, userRolePriority);
+
+        Optional<String> mainCommandName =  commandRegistry.getMainNameOfCommand(userCommand.trim());
         if(mainCommandName.isEmpty()){
             throw new UserCommandNotFoundException(userCommand);
         }boolean abilityCommandInteraction = commandService.checkCommandAuthorization(
@@ -100,11 +98,11 @@ public class RoleRateLimitService {
         return savedLimit;
     }
     @Transactional
-    public RoleRateLimitEntity createCommandLimit(long chatId, long fromId, @NonNull String userCommand, @NonNull String roleName, int maxUsage, int periodInSeconds, boolean isPersonal){
+    public RoleRateLimitEntity createCommandRateLimit(long chatId, long fromId, @NonNull String userCommand, @NonNull String roleName, int maxUsage, int periodInSeconds, boolean isPersonal){
         int rolePriority = roleService.getRoleByNameIgnoreCase(chatId, roleName.trim())
                 .orElseThrow(RoleNotFoundException::new).getRolePriority();
 
-        return createCommandLimit(chatId, fromId, userCommand, rolePriority,maxUsage, periodInSeconds,isPersonal);
+        return createCommandRateLimit(chatId, fromId, userCommand, rolePriority,maxUsage, periodInSeconds,isPersonal);
     }
 
     @Transactional
@@ -112,9 +110,8 @@ public class RoleRateLimitService {
 
         int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
 
-        if(limitDto.getRolePriority()>userRolePriority){
-            throw new RoleAccessDeniedException();
-        }
+        roleService.checkRoleInteractionAbility(limitDto.getRolePriority(), userRolePriority);
+
         boolean abilityCommandInteraction = commandService.checkCommandAuthorization(
                 chatId, limitDto.getCommandName(),userRolePriority,fromId, false);
         if(!abilityCommandInteraction){
@@ -156,6 +153,8 @@ public class RoleRateLimitService {
     private void invalidateCommandLimitCache(long chatId){
         cacheManager.getRoleLimitCache().invalidate(chatId);
     }
+
+
     public static int getMaxCustomLimits() {
         return MAX_CUSTOM_LIMITS;
     }

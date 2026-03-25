@@ -53,7 +53,7 @@ public class BindListShowCommand implements ChatCommand {
 
         sb.append("Этот чат привязан у %d участников:\n\n".formatted(users.size()));
         AtomicInteger counter = new AtomicInteger(1);
-        users.forEach(userId->sb.append(counter.getAndIncrement()).append(". %s".formatted(createMention(userId))));
+        users.forEach(userId->sb.append(counter.getAndIncrement()).append(". %s\n".formatted(createMention(userId))));
 
         vkChatClient.sendText(sb.toString(), messageDto.getPeerId(), true);
 

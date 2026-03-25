@@ -58,9 +58,8 @@ public class MemberPermissionService {
 
         int callerRole = memberService.getCachedMemberRolePriority(chatId,fromId);
 
-        if(memberService.getCachedMemberRolePriority(chatId, targetUserId)>callerRole){
-            throw new MemberAccessDeniedException(targetUserId, fromId);
-        }
+        memberService.checkMemberInteractionAbility(chatId, fromId, targetUserId);
+
         MemberPermissionSettingResult result = new MemberPermissionSettingResult();
         UserCommandValidationResult commandNormalizationResult = commandRegistry.getMainNamesOfRequiredCommands(userCommands);
         result.setNotFound(commandNormalizationResult.getNotFoundCommands());
@@ -124,9 +123,9 @@ public class MemberPermissionService {
 
         if(!commandService.checkCommandAuthorization(chatId, mainCommandName, callerRole, fromId, false)){
             throw new CommandAccessDeniedException(fromId, mainCommandName);
-        }if(memberService.getCachedMemberRolePriority(chatId, targetUserId)>callerRole){
-            throw new MemberAccessDeniedException(targetUserId, fromId);
         }
+        memberService.checkMemberInteractionAbility(chatId, fromId, targetUserId);
+
         memberPermissionRepository.deleteMemberPermissionForOneCommand(chatId, mainCommandName, targetUserId);
 
        invalidateMemberPermissionCache(chatId);
