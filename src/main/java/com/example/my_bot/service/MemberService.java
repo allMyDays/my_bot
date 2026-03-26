@@ -193,8 +193,7 @@ public class MemberService {
         }member.get().setPresenceType(presenceType);
 
     }
-    
-    
+
     
     @Transactional
     public AssignMemberResult assignNewRoleToMember(long chatId, long userToAssign, int newRolePriority, long fromId){

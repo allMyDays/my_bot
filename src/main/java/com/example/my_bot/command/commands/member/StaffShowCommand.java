@@ -1,4 +1,4 @@
-package com.example.my_bot.command.commands.role;
+package com.example.my_bot.command.commands.member;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
@@ -6,7 +6,6 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.enumeration.member.MemberPresenceType;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -46,19 +45,23 @@ public class StaffShowCommand implements ChatCommand {
 
         StringBuilder sb = new StringBuilder();
 
-        long exitedMembers = 0;
+        long exitedStaffMembers = 0;
+        long allStaffMembers = 0;
 
         TreeMap<Integer, List<MemberDto>> staffMap =  new TreeMap<>(Comparator.reverseOrder());
-        Collection<MemberDto> staff = memberService.getCachedMembersWithRole(chatId).values();
+        Collection<MemberDto> allMembersWithNotZeroRole = memberService.getCachedMembersWithRole(chatId).values();
 
-        for (MemberDto dto : staff) {
-            staffMap.computeIfAbsent(dto.getRolePriority(), k -> new ArrayList<>()).add(dto);
-            if (dto.getPresenceType()!= IN_CHAT) {
-                exitedMembers++;
+        for (MemberDto memberDto : allMembersWithNotZeroRole) {
+            if(memberDto.getRolePriority()<= MEMBER.getRolePriority()){  // отсеиваю участников с отрицательной ролью
+                continue;
             }
+            staffMap.computeIfAbsent(memberDto.getRolePriority(), k -> new ArrayList<>()).add(memberDto);
+            if (memberDto.getPresenceType()!= IN_CHAT) {
+                exitedStaffMembers++;
+            }allStaffMembers++;
         }
 
-        sb.append("В чате %d участников имеют роль (из них %d сейчас отсутствует).\n\n".formatted(staff.size(), exitedMembers));
+        sb.append("В чате %d управляющих (из них %d сейчас отсутствует).\n\n".formatted(allStaffMembers, exitedStaffMembers));
 
         Map<Integer, String> roleMap = roleService.getAllRolesWithNoSorting(chatId);
 
