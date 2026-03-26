@@ -53,17 +53,14 @@ public class ChatActionService {
                 memberService.setPresenceTypeToUser(chatId, memberId, presenceType, true);
                 break;
 
-
-        }
-
-
+           }
 
         }
 
 
     public void checkLastChatSynchronizationAndExecute(long chatId) throws ClientException, ApiException {
 
-        ChatDetailsDto chatDto = chatService.getCachedChatDetails(chatId, false);
+        ChatDetailsDto chatDto = chatService.getCachedChatDetails(chatId, true);
 
         Optional<Instant> lastSync = chatDto.getOptionalLastSyncTime();
 

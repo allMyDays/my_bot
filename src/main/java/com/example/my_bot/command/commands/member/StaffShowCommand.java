@@ -56,7 +56,7 @@ public class StaffShowCommand implements ChatCommand {
                 continue;
             }
             staffMap.computeIfAbsent(memberDto.getRolePriority(), k -> new ArrayList<>()).add(memberDto);
-            if (memberDto.getPresenceType()!= IN_CHAT) {
+            if (!memberDto.getPresenceType().equals(IN_CHAT)) {
                 exitedStaffMembers++;
             }allStaffMembers++;
         }
@@ -72,7 +72,7 @@ public class StaffShowCommand implements ChatCommand {
             if(member.isChatAdmin()){
                 sb.append("\uD83D\uDCA0 ");
             } sb.append(createMention(member.getUserId()));
-            if(member.getPresenceType()!=IN_CHAT){
+            if(!member.getPresenceType().equals(IN_CHAT)){
                 sb.append(" \uD83D\uDEAA");
             } sb.append("\n");
 

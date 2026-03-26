@@ -190,8 +190,26 @@ public class MemberService {
                 memberRepository.save(new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, presenceType, null, Instant.now()));
                 return;
             }throw new UserNeverBeenInChatException(userId);
-        }member.get().setPresenceType(presenceType);
+        }
+        if(member.get().getPresenceType()!=presenceType){
+            member.get().setPresenceType(presenceType);
+            invalidateMemberRoleCache(chatId);
+        }
 
+
+
+    }
+    @Transactional
+    public RoleDto removePositiveRoleFromExitedMembers(long chatId, long fromId){         // возвращает роль человека, который вызвал метод
+
+        RoleDto callerRole = roleService.getRoleByPriority(chatId, getCachedMemberRolePriority(chatId, fromId))
+                .orElseThrow(RoleNotFoundException::new);
+
+        if(callerRole.getRolePriority()<=0) return callerRole; // у человека роль участника или ниже, значит он никого не снимет
+
+        memberRepository.removePositiveRoleFromExitedMembers(chatId, callerRole.getRolePriority());
+        invalidateMemberRoleCache(chatId);
+        return callerRole;
     }
 
     

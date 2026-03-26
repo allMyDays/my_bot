@@ -1,7 +1,6 @@
 package com.example.my_bot.repository;
 
 import com.example.my_bot.entity.MemberEntity;
-import com.example.my_bot.enumeration.member.MemberPresenceType;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -44,16 +43,20 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
     int setUnknownLeaveAndChatAdminFalseForMembersNotInList(@Param("chatId") long chatId,
                                                             @Param("userIds") Set<Long> userIds);
 
-   /* @Modifying
-    @Query("UPDATE MemberEntity m SET m.presenceType = :presenceType, m.isChatAdmin = false " +
-            "WHERE m.chatId = :chatId AND m.userId = :userId")
-    int setPresenceTypeAndChatAdminFalseForMember(@Param("chatId") long chatId,
-                                                  @Param("userId") long userId,
-                                                  @Param("presenceType") MemberPresenceType presenceType);*/
+
 
     List<MemberEntity> findByChatIdAndUserIdIn(long chatId, Set<Long> userIds);
 
     Optional<MemberEntity> findByChatIdAndUserId(long chatId, long userId);
+
+    @Modifying
+    @Query("UPDATE MemberEntity m SET m.rolePriority = 0 " +
+            "WHERE m.chatId = :chatId " +
+            "AND m.presenceType != 'IN_CHAT' " +
+            "AND m.rolePriority > 0 " +
+            "AND m.rolePriority < :thresholdRolePriority")
+    int removePositiveRoleFromExitedMembers(@Param("chatId") long chatId,
+                                            @Param("thresholdRolePriority") int thresholdRolePriority);
 
 
 
