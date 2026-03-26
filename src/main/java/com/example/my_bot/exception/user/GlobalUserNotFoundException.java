@@ -1,11 +1,7 @@
 package com.example.my_bot.exception.user;
 
-import com.example.my_bot.exception.member.MemberException;
-
-import static com.example.my_bot.utils.ChatUtils.createMention;
-
-public class UserNotFoundException extends UserException {
-    public UserNotFoundException(long userId) {
+public class GlobalUserNotFoundException extends UserException {
+    public GlobalUserNotFoundException(long userId) {
         super("пользователь с id %d не найден в базе данных, вероятнее всего, он не является лицом, когда-либо писавшим сообщения в чатах с ботом."
                 .formatted(userId));
     }

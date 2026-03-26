@@ -6,9 +6,8 @@ import com.example.my_bot.dto.user.UserDetailsDto;
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
 import com.example.my_bot.entity.UserEntity;
 import com.example.my_bot.enumeration.user.NameCase;
-import com.example.my_bot.exception.member.MemberAccessDeniedException;
-import com.example.my_bot.exception.user.UserDoesNotHaveRequiredBoundChatException;
-import com.example.my_bot.exception.user.UserNotFoundException;
+import com.example.my_bot.exception.user.GlobalUserDoesNotHaveRequiredBoundChatException;
+import com.example.my_bot.exception.user.GlobalUserNotFoundException;
 import com.example.my_bot.mapper.UserMapper;
 import com.example.my_bot.repository.UserRepository;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -101,14 +100,14 @@ public class UserService {
     public void updateUserNameCases(long userId){
         selfLink.updateUserNameCases(
                 userRepository.findById(userId).orElseThrow(()->
-                        new UserNotFoundException(userId))
+                        new GlobalUserNotFoundException(userId))
         );
 
     }
     @Transactional
     public void bindChatToUser(long chatId, long userId){
         UserEntity userEntity = userRepository.findById(userId)
-                .orElseThrow(()->new UserNotFoundException(userId));
+                .orElseThrow(()->new GlobalUserNotFoundException(userId));
 
         userEntity.setBoundChat(chatId);
         putUserToCache(userEntity);
@@ -120,10 +119,10 @@ public class UserService {
             memberService.checkMemberInteractionAbility(chatId, fromId, userToUnbind);
         }
         UserEntity userEntity = userRepository.findById(userToUnbind)
-                .orElseThrow(()->new UserNotFoundException(userToUnbind));
+                .orElseThrow(()->new GlobalUserNotFoundException(userToUnbind));
 
         if(userEntity.getBoundChat()==null||chatId!=userEntity.getBoundChat()){
-            throw new UserDoesNotHaveRequiredBoundChatException(userToUnbind);
+            throw new GlobalUserDoesNotHaveRequiredBoundChatException(userToUnbind);
 
         }
 

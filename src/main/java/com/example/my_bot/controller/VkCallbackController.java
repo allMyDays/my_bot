@@ -2,9 +2,8 @@ package com.example.my_bot.controller;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
-import com.example.my_bot.dto.user.UserDetailsDto;
 import com.example.my_bot.mapper.CommandMapper;
-import com.example.my_bot.service.ChatService;
+import com.example.my_bot.service.ChatActionService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.UserService;
 import com.google.gson.Gson;
@@ -12,9 +11,7 @@ import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.callback.MessageNew;
 import com.vk.api.sdk.objects.callback.Type;
-import com.vk.api.sdk.objects.messages.ActionOneOf;
 import com.vk.api.sdk.objects.messages.Message;
-import com.vk.api.sdk.objects.messages.MessageActionStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,12 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.UNKNOWN_ERROR_MESSAGE;
-import static com.example.my_bot.constant.MessageConstant.WELCOME_MESSAGE;
 import static com.example.my_bot.utils.ChatUtils.extractConversationId;
 import static com.example.my_bot.utils.ChatUtils.isPersonalChat;
 import static com.vk.api.sdk.objects.callback.Type.CONFIRMATION;
 import static com.vk.api.sdk.objects.callback.Type.MESSAGE_NEW;
-import static com.vk.api.sdk.objects.messages.MessageActionStatus.CHAT_INVITE_USER;
 
 @RestController
 @Slf4j
@@ -37,32 +32,28 @@ public class VkCallbackController {
 
     private final String confirmationCode;
 
-    private final long groupId;
-
     private final CommandDispatcher commandDispatcher;
 
     private final VkChatClient vkChatClient;
-
-    private final MemberService memberService;
 
     private final CommandMapper commandMapper;
 
     private final UserService userService;
 
-    public VkCallbackController(MemberService memberService,
-                                CommandMapper commandMapper,
+    private final ChatActionService chatActionService;
+
+    public VkCallbackController(CommandMapper commandMapper,
                                 VkChatClient vkChatClient,
                                 CommandDispatcher commandDispatcher,
                                 UserService userService,
-                                @Value("${vk.group.id}") long groupId,
+                                ChatActionService chatActionService,
                                 @Value("${vk.group.confirmation}")String confirmationCode) {
-        this.memberService = memberService;
         this.commandMapper = commandMapper;
         this.vkChatClient = vkChatClient;
         this.commandDispatcher = commandDispatcher;
-        this.groupId = groupId;
         this.confirmationCode = confirmationCode;
         this.userService = userService;
+        this.chatActionService = chatActionService;
     }
 
 
@@ -95,7 +86,14 @@ public class VkCallbackController {
 
             try {
                  commandDispatcher.dispatch(commandMapper.toCommandMessageDto(chatId, message));
-                 memberService.checkLastSyncAndPerform(chatId);
+                 chatActionService.checkLastChatSynchronizationAndExecute(chatId);
+
+                 if(!isPersonalChat(peerId)){
+                     chatActionService.handleChatAction(chatId,fromId,message.getAction());
+                 }
+
+
+
             }catch (Exception e) {
                 log.error("Произошла ошибка: ",e);
                 try {

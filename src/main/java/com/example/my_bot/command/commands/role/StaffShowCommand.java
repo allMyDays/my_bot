@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.member.MemberPresenceType;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -18,6 +19,7 @@ import org.springframework.context.annotation.Lazy;
 import java.util.*;
 
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
+import static com.example.my_bot.enumeration.member.MemberPresenceType.IN_CHAT;
 import static com.example.my_bot.utils.ChatUtils.createMention;
 
 @Command(mainCommandName = "управляющие", alternativeCommandNames = {"staff", "админы"}, defaultRole = MEMBER, eventable = true)
@@ -51,7 +53,7 @@ public class StaffShowCommand implements ChatCommand {
 
         for (MemberDto dto : staff) {
             staffMap.computeIfAbsent(dto.getRolePriority(), k -> new ArrayList<>()).add(dto);
-            if (!dto.isInChat()) {
+            if (dto.getPresenceType()!= IN_CHAT) {
                 exitedMembers++;
             }
         }
@@ -67,7 +69,7 @@ public class StaffShowCommand implements ChatCommand {
             if(member.isChatAdmin()){
                 sb.append("\uD83D\uDCA0 ");
             } sb.append(createMention(member.getUserId()));
-            if(!member.isInChat()){
+            if(member.getPresenceType()!=IN_CHAT){
                 sb.append(" \uD83D\uDEAA");
             } sb.append("\n");
 

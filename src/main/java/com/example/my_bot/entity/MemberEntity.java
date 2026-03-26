@@ -1,10 +1,13 @@
 package com.example.my_bot.entity;
 
+import com.example.my_bot.enumeration.member.MemberPresenceType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.time.Instant;
 
 @Entity
 @Getter
@@ -31,12 +34,26 @@ public class MemberEntity {
     @Column(nullable = false)
     private boolean isChatAdmin;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private boolean isInChat;
+    private MemberPresenceType presenceType;
+
 
     @Column(nullable = true)
     private Long invitedById;
 
+    @Column(nullable = false)
+    private Instant firstAppearance;
+
+    public MemberEntity(Long chatId, Long userId, int rolePriority, boolean isChatAdmin, MemberPresenceType presenceType, Long invitedById, Instant firstAppearance) {
+        this.chatId = chatId;
+        this.userId = userId;
+        this.rolePriority = rolePriority;
+        this.isChatAdmin = isChatAdmin;
+        this.presenceType = presenceType;
+        this.invitedById = invitedById;
+        this.firstAppearance = firstAppearance;
+    }
 }
 
 

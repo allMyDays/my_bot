@@ -1,6 +1,7 @@
 package com.example.my_bot.repository;
 
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.enumeration.member.MemberPresenceType;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -36,9 +37,19 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
 
 
     @Modifying
-    @Query("UPDATE MemberEntity m SET m.isInChat = false, m.isChatAdmin = false " +
+    @Query("UPDATE MemberEntity m " +
+            "SET m.presenceType = CASE WHEN m.presenceType = 'IN_CHAT' THEN 'UNKNOWN_LEAVE' ELSE m.presenceType END, " +
+            "m.isChatAdmin = false " +
             "WHERE m.chatId = :chatId AND m.userId NOT IN :userIds")
-    int markMembersAsLeft(@Param("chatId") long chatId, @Param("userIds") Set<Long> userIds);
+    int setUnknownLeaveAndChatAdminFalseForMembersNotInList(@Param("chatId") long chatId,
+                                                            @Param("userIds") Set<Long> userIds);
+
+   /* @Modifying
+    @Query("UPDATE MemberEntity m SET m.presenceType = :presenceType, m.isChatAdmin = false " +
+            "WHERE m.chatId = :chatId AND m.userId = :userId")
+    int setPresenceTypeAndChatAdminFalseForMember(@Param("chatId") long chatId,
+                                                  @Param("userId") long userId,
+                                                  @Param("presenceType") MemberPresenceType presenceType);*/
 
     List<MemberEntity> findByChatIdAndUserIdIn(long chatId, Set<Long> userIds);
 

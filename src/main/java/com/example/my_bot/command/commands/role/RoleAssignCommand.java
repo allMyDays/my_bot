@@ -91,7 +91,7 @@ public class RoleAssignCommand implements ChatCommand {
             String username = userService.getUserNameInRequiredCase(userToAssign, NameCase.GENITIVE)
                     .orElse("этого участника");
 
-            vkChatClient.sendText(String.format("✅Роль %s(%s) изменена: «%s»(%d) ➜ «%s»(%d)",
+            vkChatClient.sendText(String.format("✅Роль %s(%s) изменена: «%s»(%d) ➜ «%s»(%d).",
                     createMention(userToAssign),username,oldRole.getRoleName(), oldRole.getRolePriority(), newRole.getRoleName(), newRole.getRolePriority()),
                     peerId,
                     false);

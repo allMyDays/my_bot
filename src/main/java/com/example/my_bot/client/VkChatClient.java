@@ -1,6 +1,8 @@
 package com.example.my_bot.client;
 
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
+import com.example.my_bot.enumeration.member.MemberPresenceType;
+import com.example.my_bot.service.MemberService;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -19,11 +21,14 @@ import com.vk.api.sdk.objects.utils.responses.ResolveScreenNameResponse;
 import com.vk.api.sdk.queries.execute.ExecuteBatchQuery;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 
+import static com.example.my_bot.enumeration.member.MemberPresenceType.KICKED;
 import static com.example.my_bot.utils.ChatUtils.extractPeerId;
 
 @Component
@@ -32,13 +37,19 @@ public class VkChatClient{
     private final VkApiClient vkApiClient;
     private final GroupActor groupActor;
     private final long groupId;
+    private MemberService memberService;
 
     public VkChatClient(
             @Value("${vk.group.id}") long groupId,
-            @Value("${vk.group.token}") String accessToken) {
+            @Value("${vk.group.token}") String accessToken){
         this.vkApiClient = new VkApiClient(new HttpTransportClient());
         this.groupActor =  new GroupActor(groupId, accessToken);
         this.groupId = groupId;
+    }
+    @Autowired
+    @Lazy
+    public void setMemberService(MemberService memberService) {
+        this.memberService = memberService;
     }
 
     public void sendText(String text, long peerId, boolean disableMentions) throws ClientException, ApiException {
@@ -93,7 +104,7 @@ public class VkChatClient{
     }
 
 
-    public void kickChatMember(int chatId, long memberId) throws ClientException, ApiException {
+    public void kickOneChatMember(int chatId, long memberId) throws ClientException, ApiException {
 
         if (memberId==(groupId*-1)){
             return;
@@ -103,6 +114,9 @@ public class VkChatClient{
                 .chatId(chatId)
                 .memberId(memberId)
                 .execute();
+
+        memberService.setPresenceTypeToUser(chatId, memberId, KICKED, true);
+
     }
 
 

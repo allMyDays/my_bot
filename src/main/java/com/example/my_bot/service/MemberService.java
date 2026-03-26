@@ -2,16 +2,15 @@ package com.example.my_bot.service;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.config.CaffeineCacheManager;
-import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.member.AssignMemberResult;
 import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.enumeration.member.MemberPresenceType;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.exception.member.MemberAccessDeniedException;
 import com.example.my_bot.exception.member.MemberAlreadyHasThisRoleException;
 import com.example.my_bot.exception.member.UserNeverBeenInChatException;
-import com.example.my_bot.exception.role.RoleAccessDeniedException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.repository.MemberRepository;
@@ -19,29 +18,27 @@ import com.google.common.collect.ImmutableMap;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ConversationMember;
-import jakarta.transaction.Transactional;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import javax.annotation.concurrent.Immutable;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.*;
+import static com.example.my_bot.enumeration.member.MemberPresenceType.IN_CHAT;
 import static com.example.my_bot.utils.ChatUtils.isValidLong;
 
 @Service
-@RequiredArgsConstructor
+@Slf4j
 public class MemberService {
 
     private final MemberRepository memberRepository;
@@ -52,25 +49,32 @@ public class MemberService {
 
     private final ChatService chatService;
 
-    private MemberService selfLink;
+    private final CaffeineCacheManager cacheManager;
 
     private RoleService roleService;
 
-    private final CaffeineCacheManager cacheManager;
-
-    private static final long AUTO_SYNC_INTERVAL_MINUTES = 15;
+    private long groupId;
 
     private final Pattern MEMBER_MENTION = Pattern.compile("\\[(id|club)(\\d+)\\|[^]]+]");
 
     private static final Pattern VK_URL_PATTERN = Pattern.compile(
             "(?:https?://)?(?:www\\.)?(?:m\\.)?(?:(?:vk\\.(?:com|ru))|vkontakte\\.ru)/(((id|club|public)\\d{1,11})|[a-zA-Z0-9_.]{4,32})");
 
-
-    @Autowired
-    @Lazy
-    public void setSelfLink(MemberService selfLink) {
-        this.selfLink = selfLink;
+    public MemberService(
+            MemberRepository memberRepository,
+            VkChatClient vkChatClient,
+            MemberMapper memberMapper,
+            ChatService chatService,
+            CaffeineCacheManager cacheManager,
+            @Value("${vk.group.id}") long groupId) {
+        this.memberRepository = memberRepository;
+        this.vkChatClient = vkChatClient;
+        this.memberMapper = memberMapper;
+        this.chatService = chatService;
+        this.cacheManager = cacheManager;
+        this.groupId = groupId;
     }
+
 
     @Autowired
     @Lazy
@@ -88,40 +92,44 @@ public class MemberService {
     public void synchronizeChatMembers(long chatId) throws ClientException, ApiException {
 
 
-        List<ConversationMember> membersWhoAreInChat = vkChatClient.getAllConversationMembers(chatId);
-        Set<Long> vkUserIds = membersWhoAreInChat.stream()
+        List<ConversationMember> currentChatMembers = vkChatClient.getAllConversationMembers(chatId);
+        Set<Long> vkUserIds = currentChatMembers.stream()
                 .map(ConversationMember::getMemberId)
                 .collect(Collectors.toSet());
 
-        memberRepository.markMembersAsLeft(chatId, vkUserIds);
+        memberRepository.setUnknownLeaveAndChatAdminFalseForMembersNotInList(chatId, vkUserIds);
 
 
-        Map<Long, MemberEntity> dbMembersMap =  memberRepository.findByChatIdAndUserIdIn(chatId, vkUserIds).stream()
+        Map<Long, MemberEntity> currentChatMemberMap =  memberRepository.findByChatIdAndUserIdIn(chatId, vkUserIds).stream()
                 .collect(Collectors.toMap(MemberEntity::getUserId, Function.identity()));
 
 
         List<MemberEntity> newMembers = new ArrayList<>();
-        for (ConversationMember vkMember : membersWhoAreInChat) {
-            long userId = vkMember.getMemberId();
-            MemberEntity entity = dbMembersMap.get(userId);
+        for (ConversationMember vkMember : currentChatMembers) {
+            long memberId = vkMember.getMemberId();
+            if(memberId==(groupId*-1)){
+                continue;
+            }
+            MemberEntity entity = currentChatMemberMap.get(memberId);
 
             if (entity == null) {
                 entity = new MemberEntity();
-                entity.setUserId(userId);
+                entity.setUserId(memberId);
                 entity.setChatId(chatId);
+                entity.setFirstAppearance(Instant.now());
                 newMembers.add(entity);
+                entity.setInvitedById(vkMember.getInvitedBy());
             }
 
-            entity.setInvitedById(vkMember.getInvitedBy());
-            entity.setInChat(true);
+            entity.setPresenceType(IN_CHAT);
 
             if (Boolean.TRUE.equals(vkMember.getIsOwner())) {
                 entity.setRolePriority(CHAT_CREATOR.getRolePriority());
                 entity.setChatAdmin(true);
             } else if (Boolean.TRUE.equals(vkMember.getIsAdmin())) {
-                int requiredRolePriority = SENIOR_ADMINISTRATOR.getRolePriority();
-                if(entity.getRolePriority()<requiredRolePriority){
-                    entity.setRolePriority(requiredRolePriority);
+                int requiredRoleToAssign = SENIOR_ADMINISTRATOR.getRolePriority();
+                if(entity.getRolePriority()<requiredRoleToAssign){
+                    entity.setRolePriority(requiredRoleToAssign);
                 }
                 entity.setChatAdmin(true);
             } else {
@@ -135,20 +143,6 @@ public class MemberService {
 
         chatService.setLastSyncToNow(chatId);
         invalidateMemberRoleCache(chatId);
-
-    }
-
-    public void checkLastSyncAndPerform(long chatId) throws ClientException, ApiException {
-
-        ChatDetailsDto chatDto = chatService.getCachedChatDetails(chatId, false);
-
-        Optional<Instant> lastSync = chatDto.getOptionalLastSyncTime();
-
-        if (lastSync.isEmpty()||
-                Duration.between(lastSync.get(), Instant.now()).toMinutes() >= AUTO_SYNC_INTERVAL_MINUTES) {
-
-            selfLink.synchronizeChatMembers(chatId);
-        }
 
     }
 
@@ -175,6 +169,33 @@ public class MemberService {
         return changedRows>0;
 
     }
+
+    @Transactional
+    public void createNewMemberOrMarkAsPresent(long chatId, long userId, Long invitedById) {
+        Optional<MemberEntity> existing = memberRepository.findByChatIdAndUserId(chatId, userId);
+        if (existing.isPresent()) {
+            MemberEntity member = existing.get();
+            member.setPresenceType(IN_CHAT);
+            member.setChatAdmin(false);
+            invalidateMemberRoleCache(chatId);
+        } else {
+            memberRepository.save(new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, IN_CHAT, invitedById, Instant.now()));
+        }
+    }
+    @Transactional
+    public void setPresenceTypeToUser(long chatId, long userId, @NonNull MemberPresenceType presenceType, boolean createIfAbsent){
+        Optional<MemberEntity> member = memberRepository.findByChatIdAndUserId(chatId, userId);
+        if(member.isEmpty()){
+            if(createIfAbsent){
+                memberRepository.save(new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, presenceType, null, Instant.now()));
+                return;
+            }throw new UserNeverBeenInChatException(userId);
+        }member.get().setPresenceType(presenceType);
+
+    }
+    
+    
+    
     @Transactional
     public AssignMemberResult assignNewRoleToMember(long chatId, long userToAssign, int newRolePriority, long fromId){
 
@@ -268,6 +289,7 @@ public class MemberService {
         cacheManager.getMemberRoleCache().invalidate(chatId);
 
         }
+
         public ImmutableMap<Long, MemberDto> getCachedMembersWithRole(long chatId){
 
         return cacheManager.getMemberRoleCache().get(chatId,

@@ -82,7 +82,7 @@ public class KickCommand implements ChatCommand {
 
 
        try{
-           vkChatClient.kickChatMember((int)chatId, memberToRemove);
+           vkChatClient.kickOneChatMember((int)chatId, memberToRemove);
        }catch (ApiException e){
            vkChatClient.sendText("Не удалось исключить пользователя. "+e.getMessage(),peerId, true);
        }
