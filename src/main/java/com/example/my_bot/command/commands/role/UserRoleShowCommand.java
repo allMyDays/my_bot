@@ -8,7 +8,7 @@ import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
-import com.example.my_bot.service.UserService;
+import com.example.my_bot.service.GlobalUserService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -38,7 +38,7 @@ public class UserRoleShowCommand implements ChatCommand {
 
     private final RoleService roleService;
 
-    private final UserService userService;
+    private final GlobalUserService userService;
 
     @Autowired
     @Lazy

@@ -2,14 +2,14 @@ package com.example.my_bot.service;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.config.CaffeineCacheManager;
-import com.example.my_bot.dto.user.UserDetailsDto;
+import com.example.my_bot.dto.user.GlobalUserDetailsDto;
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
-import com.example.my_bot.entity.UserEntity;
+import com.example.my_bot.entity.GlobalUserEntity;
 import com.example.my_bot.enumeration.user.NameCase;
-import com.example.my_bot.exception.user.GlobalUserDoesNotHaveRequiredBoundChatException;
-import com.example.my_bot.exception.user.GlobalUserNotFoundException;
-import com.example.my_bot.mapper.UserMapper;
-import com.example.my_bot.repository.UserRepository;
+import com.example.my_bot.exception.user.GlobalGlobalUserDoesNotHaveRequiredBoundChatException;
+import com.example.my_bot.exception.user.GlobalGlobalUserNotFoundException;
+import com.example.my_bot.mapper.GlobalUserMapper;
+import com.example.my_bot.repository.GlobalUserRepository;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.NonNull;
@@ -32,17 +32,17 @@ import java.util.concurrent.ConcurrentMap;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class UserService {
+public class GlobalUserService {
 
-    private final UserRepository userRepository;
+    private final GlobalUserRepository globalUserRepository;
 
     private final VkChatClient vkChatClient;
 
-    private UserService selfLink;
+    private GlobalUserService selfLink;
 
     private final CaffeineCacheManager cacheManager;
 
-    private final UserMapper userMapper;
+    private final GlobalUserMapper globalUserMapper;
 
     private final MemberService memberService;
 
@@ -50,48 +50,48 @@ public class UserService {
 
     @Autowired
     @Lazy
-    public void setSelfLink(UserService selfLink) {
+    public void setSelfLink(GlobalUserService selfLink) {
         this.selfLink = selfLink;
     }
 
 
 
-    public UserDetailsDto getOrCreateUser(long userId){
+    public GlobalUserDetailsDto getOrCreateUser(long userId){
 
-        UserDetailsDto userDetailsDto = cacheManager.getUserDetailsCache().get(userId,k->{
-            UserEntity userEntity = userRepository.findById(userId).orElseGet(()->
-                    userRepository.save(new UserEntity(userId))
-            );return userMapper.toUserDetailsDto(userEntity);
+        GlobalUserDetailsDto globalUserDetailsDto = cacheManager.getUserDetailsCache().get(userId, k->{
+            GlobalUserEntity globalUserEntity = globalUserRepository.findById(userId).orElseGet(()->
+                    globalUserRepository.save(new GlobalUserEntity(userId))
+            );return globalUserMapper.toUserDetailsDto(globalUserEntity);
         });
 
-        if(isItTimeToUpdateUserFullName(userDetailsDto.getLastFullNameUpdate())){
-            selfLink.updateUserNameCases(userDetailsDto.getUserId());
+        if(isItTimeToUpdateUserFullName(globalUserDetailsDto.getLastFullNameUpdate())){
+            selfLink.updateUserNameCases(globalUserDetailsDto.getUserId());
 
-        }return userDetailsDto;
+        }return globalUserDetailsDto;
     }
 
     @Async
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateUserNameCases(@NonNull UserEntity userEntity){
+    public void updateUserNameCases(@NonNull GlobalUserEntity globalUserEntity){
 
         UserFullNameInEachCase fullNameDto;
         try {
-            fullNameDto = vkChatClient.getAllNameCases(userEntity.getUserId());
+            fullNameDto = vkChatClient.getAllNameCases(globalUserEntity.getUserId());
         } catch (ClientException | ApiException e) {
-            log.error("could not update name for user with id: {}",userEntity.getUserId(),e);
+            log.error("could not update name for user with id: {}", globalUserEntity.getUserId(),e);
             return;
         }
-        userEntity.setFullNameInAbl(fullNameDto.getPrepositional());
-        userEntity.setFullNameInDat(fullNameDto.getDative());
-        userEntity.setFullNameInAcc(fullNameDto.getAccusative());
-        userEntity.setFullNameInNom(fullNameDto.getNominative());
-        userEntity.setFullNameInGen(fullNameDto.getGenitive());
-        userEntity.setFullNameInIns(fullNameDto.getInstrumental());
+        globalUserEntity.setFullNameInAbl(fullNameDto.getPrepositional());
+        globalUserEntity.setFullNameInDat(fullNameDto.getDative());
+        globalUserEntity.setFullNameInAcc(fullNameDto.getAccusative());
+        globalUserEntity.setFullNameInNom(fullNameDto.getNominative());
+        globalUserEntity.setFullNameInGen(fullNameDto.getGenitive());
+        globalUserEntity.setFullNameInIns(fullNameDto.getInstrumental());
 
-        userEntity.setLastFullNameUpdate(Instant.now());
-        UserEntity savedUser = userRepository.save(userEntity);
+        globalUserEntity.setLastFullNameUpdate(Instant.now());
+        GlobalUserEntity savedUser = globalUserRepository.save(globalUserEntity);
         invalidateFullNameCacheByUserId(savedUser.getUserId());
-        putUserToCache(userEntity);
+        putUserToCache(globalUserEntity);
 
 
 
@@ -99,18 +99,18 @@ public class UserService {
 
     public void updateUserNameCases(long userId){
         selfLink.updateUserNameCases(
-                userRepository.findById(userId).orElseThrow(()->
-                        new GlobalUserNotFoundException(userId))
+                globalUserRepository.findById(userId).orElseThrow(()->
+                        new GlobalGlobalUserNotFoundException(userId))
         );
 
     }
     @Transactional
     public void bindChatToUser(long chatId, long userId){
-        UserEntity userEntity = userRepository.findById(userId)
-                .orElseThrow(()->new GlobalUserNotFoundException(userId));
+        GlobalUserEntity globalUserEntity = globalUserRepository.findById(userId)
+                .orElseThrow(()->new GlobalGlobalUserNotFoundException(userId));
 
-        userEntity.setBoundChat(chatId);
-        putUserToCache(userEntity);
+        globalUserEntity.setBoundChat(chatId);
+        putUserToCache(globalUserEntity);
     }
     @Transactional
     public void unBindChatFromUser(long chatId, long fromId, long userToUnbind){
@@ -118,30 +118,31 @@ public class UserService {
         if(fromId!=userToUnbind) {
             memberService.checkMemberInteractionAbility(chatId, fromId, userToUnbind);
         }
-        UserEntity userEntity = userRepository.findById(userToUnbind)
-                .orElseThrow(()->new GlobalUserNotFoundException(userToUnbind));
+        GlobalUserEntity globalUserEntity = globalUserRepository.findById(userToUnbind)
+                .orElseThrow(()->new GlobalGlobalUserNotFoundException(userToUnbind));
 
-        if(userEntity.getBoundChat()==null||chatId!=userEntity.getBoundChat()){
-            throw new GlobalUserDoesNotHaveRequiredBoundChatException(userToUnbind);
+        if(globalUserEntity.getBoundChat()==null||chatId!= globalUserEntity.getBoundChat()){
+            throw new GlobalGlobalUserDoesNotHaveRequiredBoundChatException(userToUnbind);
 
         }
 
-        userEntity.setBoundChat(null);
-        putUserToCache(userEntity);
+        globalUserEntity.setBoundChat(null);
+        putUserToCache(globalUserEntity);
     }
 
     public List<Long> findUserIdsByBoundChat(long chatId){
-        return userRepository.findUserIdsByBoundChat(chatId);
+        return globalUserRepository.findUserIdsByBoundChat(chatId);
     }
 
     public Optional<String> getUserNameInRequiredCase(long userId, @NonNull NameCase requiredNameCase){
 
         ConcurrentMap<NameCase, String> userCases = cacheManager.getFullNameCache().get(userId,k->{
-            Optional<UserEntity> userEntityOptional = userRepository.findById(userId);
+            Optional<GlobalUserEntity> userEntityOptional = globalUserRepository.findById(userId);
             ConcurrentHashMap<NameCase, String> result = new ConcurrentHashMap<>();
             if(userEntityOptional.isEmpty()){
                 return result;
-            }UserEntity user = userEntityOptional.get();
+            }
+            GlobalUserEntity user = userEntityOptional.get();
             if(isItTimeToUpdateUserFullName(user.getLastFullNameUpdate())){
                 selfLink.updateUserNameCases(user);
             }
@@ -172,9 +173,9 @@ public class UserService {
         cacheManager.getFullNameCache().invalidate(userId);
 
     }
-    private UserDetailsDto putUserToCache(@NonNull UserEntity user){
+    private GlobalUserDetailsDto putUserToCache(@NonNull GlobalUserEntity user){
 
-        UserDetailsDto userDto = userMapper.toUserDetailsDto(user);
+        GlobalUserDetailsDto userDto = globalUserMapper.toUserDetailsDto(user);
 
         cacheManager.getUserDetailsCache().put(user.getUserId(), userDto);
 

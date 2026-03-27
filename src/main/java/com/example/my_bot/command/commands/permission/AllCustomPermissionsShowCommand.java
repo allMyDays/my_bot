@@ -43,7 +43,7 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
 
     private final ChatService chatService;
     private final RoleService roleService;
-    private final UserService userService;
+    private final GlobalUserService userService;
 
 
     @Override

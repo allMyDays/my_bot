@@ -6,7 +6,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.service.UserService;
+import com.example.my_bot.service.GlobalUserService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -31,7 +31,7 @@ public class BindListShowCommand implements ChatCommand {
 
     private VkChatClient vkChatClient;
 
-    private final UserService userService;
+    private final GlobalUserService userService;
 
     @Autowired
     @Lazy

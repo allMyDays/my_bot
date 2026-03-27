@@ -62,7 +62,7 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
 
 
     @Query("SELECT m FROM MemberEntity m WHERE m.chatId = :chatId AND m.rolePriority < :rolePriority AND (m.presenceType = 'SELF_LEAVE' OR m.presenceType = 'UNKNOWN_LEAVE')")
-    Page<MemberEntity> findSelfLeftOrUnknownLeftMembersWithRoleLessThan(
+    Page<MemberEntity> findLeftButNotKickedMembersWithRoleLessThan(
             @Param("chatId") Long chatId,
             @Param("rolePriority") int rolePriority,
             Pageable pageable);
@@ -70,6 +70,13 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
     @Query("SELECT m FROM MemberEntity m WHERE m.chatId = :chatId AND m.rolePriority < :rolePriority AND m.userId < 0 AND m.presenceType != 'KICKED'")
     Page<MemberEntity> findNotKickedCommunitiesWithRoleLessThan(
             @Param("chatId") Long chatId,
+            @Param("rolePriority") int rolePriority,
+            Pageable pageable);
+
+    @Query("SELECT m FROM MemberEntity m WHERE m.chatId = :chatId AND m.rolePriority < :rolePriority AND m.invitedById = :inviterId AND m.presenceType != 'KICKED'")
+    Page<MemberEntity> findNotKickedMembersInvitedByAndWithRoleLessThan(
+            @Param("chatId") Long chatId,
+            @Param("inviterId") Long inviterId,
             @Param("rolePriority") int rolePriority,
             Pageable pageable);
 }

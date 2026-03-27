@@ -123,7 +123,7 @@ public class VkChatClient{
 
     public Set<Long> kickManyChatMembers(long chatId, @NonNull List<Long> allMemberIds) throws ClientException, ApiException {
 
-        final int maxBatchSize = 20;
+        final int maxBatchSize = 25;
         List<AbstractQueryBuilder> batchQueries = new ArrayList<>();
         List<Long> batchMemberIds = new ArrayList<>();
         HashSet<Long> kickedMembers = new HashSet<>();
@@ -166,7 +166,7 @@ public class VkChatClient{
                 batchQueries.clear();
                 batchMemberIds.clear();
                 try {
-                    Thread.sleep(1000); // пауза между пакетами
+                    Thread.sleep(250); // пауза между пакетами
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }

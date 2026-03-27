@@ -7,11 +7,10 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.enumeration.user.NameCase;
-import com.example.my_bot.exception.member.MemberAccessDeniedException;
 import com.example.my_bot.exception.member.MemberException;
-import com.example.my_bot.exception.user.UserException;
+import com.example.my_bot.exception.user.GlobalUserException;
+import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
-import com.example.my_bot.service.UserService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -22,11 +21,9 @@ import org.springframework.context.annotation.Lazy;
 
 import java.util.Optional;
 
-import static com.example.my_bot.constant.MessageConstant.CANNOT_USE_THIS_COMMAND_IN_PERSONAL_DIALOGUE;
 import static com.example.my_bot.constant.MessageConstant.MEMBER_LINK_IS_NOT_CORRECT;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.utils.ChatUtils.createMention;
-import static com.example.my_bot.utils.ChatUtils.isPersonalChat;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -38,7 +35,7 @@ public class UnBindCommand implements ChatCommand {
 
     private VkChatClient vkChatClient;
 
-    private final UserService userService;
+    private final GlobalUserService userService;
 
     private final MemberService memberService;
 
@@ -69,7 +66,7 @@ public class UnBindCommand implements ChatCommand {
         }
         try {
             userService.unBindChatFromUser(messageDto.getChatId(), fromId, userToUnbind);
-        }catch (MemberException | UserException e){
+        }catch (MemberException | GlobalUserException e){
             vkChatClient.sendText(e.getMessage(), messageDto.getPeerId(), true);
             return;
         }

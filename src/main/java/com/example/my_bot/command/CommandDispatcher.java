@@ -30,7 +30,7 @@ public class CommandDispatcher {
     private final VkChatClient vkChatClient;
     private final CommandRegistry commandRegistry;
     private final CommandAccessService commandAccessService;
-    private final UserService userService;
+    private final GlobalUserService userService;
 
 
 

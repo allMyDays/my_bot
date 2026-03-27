@@ -239,11 +239,15 @@ public class MemberService {
     }
 
     public Page<MemberEntity> getLeftButNotKickedMembersWithRoleLessThan(long chatId, int rolePriority, int limit){
-        return memberRepository.findSelfLeftOrUnknownLeftMembersWithRoleLessThan(chatId, rolePriority, PageRequest.of(0, limit));
+        return memberRepository.findLeftButNotKickedMembersWithRoleLessThan(chatId, rolePriority, PageRequest.of(0, limit));
 
     }
     public Page<MemberEntity> getNotKickedCommunitiesWithRoleLessThan(long chatId, int rolePriority, int limit){
         return memberRepository.findNotKickedCommunitiesWithRoleLessThan(chatId, rolePriority, PageRequest.of(0, limit));
+
+    }
+    public Page<MemberEntity> getNotKickedMembersInvitedByAndWithRoleLessThan(long chatId, long inviter, int rolePriority, int limit){
+        return memberRepository.findNotKickedMembersInvitedByAndWithRoleLessThan(chatId,inviter, rolePriority, PageRequest.of(0, limit));
 
     }
 

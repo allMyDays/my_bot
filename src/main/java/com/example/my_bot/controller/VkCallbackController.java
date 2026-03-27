@@ -3,7 +3,7 @@ package com.example.my_bot.controller;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.mapper.CommandMapper;
-import com.example.my_bot.service.UserService;
+import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.chat.ChatActionService;
 import com.google.gson.Gson;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -37,14 +37,14 @@ public class VkCallbackController {
 
     private final CommandMapper commandMapper;
 
-    private final UserService userService;
+    private final GlobalUserService userService;
 
     private final ChatActionService chatActionService;
 
     public VkCallbackController(CommandMapper commandMapper,
                                 VkChatClient vkChatClient,
                                 CommandDispatcher commandDispatcher,
-                                UserService userService,
+                                GlobalUserService userService,
                                 ChatActionService chatActionService,
                                 @Value("${vk.group.confirmation}")String confirmationCode) {
         this.commandMapper = commandMapper;

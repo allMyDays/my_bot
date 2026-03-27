@@ -14,7 +14,7 @@ import java.util.Optional;
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
-public class UserDetailsDto {
+public class GlobalUserDetailsDto {
 
 
     private long userId;

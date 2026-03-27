@@ -14,7 +14,7 @@ import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.permission.MemberPermissionService;
 import com.example.my_bot.service.MemberService;
-import com.example.my_bot.service.UserService;
+import com.example.my_bot.service.GlobalUserService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -48,7 +48,7 @@ public class MemberPermissionCreateCommand implements ChatCommand {
 
     private final MemberPermissionService memberPermissionService;
 
-    private final UserService userService;
+    private final GlobalUserService userService;
 
 
     @Override

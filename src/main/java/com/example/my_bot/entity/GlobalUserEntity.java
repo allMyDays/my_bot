@@ -17,7 +17,7 @@ import java.time.Instant;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "all_users")
-public class UserEntity {
+public class GlobalUserEntity {
     @Id
     private Long userId;
 
@@ -42,7 +42,7 @@ public class UserEntity {
 
 
 
-    public UserEntity(Long userId) {
+    public GlobalUserEntity(Long userId) {
         this.userId = userId;
     }
 }

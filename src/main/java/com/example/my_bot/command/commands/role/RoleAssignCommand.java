@@ -12,7 +12,7 @@ import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.service.MemberService;
-import com.example.my_bot.service.UserService;
+import com.example.my_bot.service.GlobalUserService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -37,7 +37,7 @@ public class RoleAssignCommand implements ChatCommand {
 
     private final MemberService memberService;
 
-    private final UserService userService;
+    private final GlobalUserService userService;
 
 
 
