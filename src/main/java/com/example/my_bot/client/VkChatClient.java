@@ -166,7 +166,7 @@ public class VkChatClient{
                 batchQueries.clear();
                 batchMemberIds.clear();
                 try {
-                    Thread.sleep(250); // пауза между пакетами
+                    Thread.sleep(500); // пауза между пакетами
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
