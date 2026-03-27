@@ -2,6 +2,8 @@ package com.example.my_bot.repository;
 
 import com.example.my_bot.entity.MemberEntity;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -59,6 +61,13 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
                                             @Param("thresholdRolePriority") int thresholdRolePriority);
 
 
-
-
+    @Query("SELECT m FROM MemberEntity m WHERE m.chatId = :chatId AND m.rolePriority < :rolePriority AND (m.presenceType = 'SELF_LEAVE' OR m.presenceType = 'UNKNOWN_LEAVE')")
+    Page<MemberEntity> findSelfLeftOrUnknownLeftMembersWithRoleLessThan(
+            @Param("chatId") Long chatId,
+            @Param("rolePriority") int rolePriority,
+            Pageable pageable);
 }
+
+
+
+

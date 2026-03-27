@@ -7,6 +7,9 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.service.*;
+import com.example.my_bot.service.chat.ChatService;
+import com.example.my_bot.service.permission.MemberPermissionService;
+import com.example.my_bot.service.permission.RolePermissionService;
 import com.example.my_bot.utils.ChatUtils;
 import com.google.common.collect.ImmutableMap;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -21,8 +24,8 @@ import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
-import static com.example.my_bot.service.MemberPermissionService.getMaxCustomMemberPermissionsCount;
-import static com.example.my_bot.service.RolePermissionService.getMaxCustomRolePermissionsCount;
+import static com.example.my_bot.service.permission.MemberPermissionService.getMaxCustomMemberPermissionsCount;
+import static com.example.my_bot.service.permission.RolePermissionService.getMaxCustomRolePermissionsCount;
 
 @Slf4j
 @Command(mainCommandName = "права", alternativeCommandNames = {"разрешения"}, defaultRole = MODERATOR, eventable = true)

@@ -1,4 +1,4 @@
-package com.example.my_bot.command.commands;
+package com.example.my_bot.command.commands.kick;
 
 
 import com.example.my_bot.annotation.Command;

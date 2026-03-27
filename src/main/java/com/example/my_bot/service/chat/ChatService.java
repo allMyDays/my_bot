@@ -1,4 +1,4 @@
-package com.example.my_bot.service;
+package com.example.my_bot.service.chat;
 
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.ChatDetailsDto;

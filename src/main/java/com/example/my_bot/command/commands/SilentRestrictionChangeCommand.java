@@ -6,17 +6,13 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.enumeration.chat.SwitchChatSettingResult;
-import com.example.my_bot.exception.chat.ForbiddenPrefixException;
-import com.example.my_bot.service.ChatService;
+import com.example.my_bot.service.chat.ChatService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
-import java.util.Optional;
-
-import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
 import static com.example.my_bot.enumeration.chat.SwitchChatSettingResult.ON;
 

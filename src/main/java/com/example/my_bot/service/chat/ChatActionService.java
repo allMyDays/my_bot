@@ -1,11 +1,8 @@
-package com.example.my_bot.service;
+package com.example.my_bot.service.chat;
 
-import com.example.my_bot.client.VkChatClient;
-import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.enumeration.member.MemberPresenceType;
-import com.example.my_bot.mapper.ChatMapper;
-import com.example.my_bot.repository.ChatRepository;
+import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ActionOneOf;
@@ -50,7 +47,7 @@ public class ChatActionService {
                 break;
             case CHAT_KICK_USER:
                 MemberPresenceType presenceType = (fromId==memberId?SELF_LEAVE:KICKED);   // самостоятельный выход или исключение
-                memberService.setPresenceTypeToUser(chatId, memberId, presenceType, true);
+                memberService.setPresenceTypeToMember(chatId, memberId, presenceType, true);
                 break;
 
            }

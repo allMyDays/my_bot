@@ -14,6 +14,7 @@ import com.example.my_bot.exception.member.UserNeverBeenInChatException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.repository.MemberRepository;
+import com.example.my_bot.service.chat.ChatService;
 import com.google.common.collect.ImmutableMap;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -23,6 +24,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -183,7 +186,7 @@ public class MemberService {
         }
     }
     @Transactional
-    public void setPresenceTypeToUser(long chatId, long userId, @NonNull MemberPresenceType presenceType, boolean createIfAbsent){
+    public void setPresenceTypeToMember(long chatId, long userId, @NonNull MemberPresenceType presenceType, boolean createIfAbsent){
         Optional<MemberEntity> member = memberRepository.findByChatIdAndUserId(chatId, userId);
         if(member.isEmpty()){
             if(createIfAbsent){
@@ -196,9 +199,50 @@ public class MemberService {
             invalidateMemberRoleCache(chatId);
         }
 
+    }
 
+    @Transactional
+    public void setPresenceTypeToMembers(long chatId, @NonNull Set<Long> userIds, @NonNull MemberPresenceType presenceType, boolean createIfAbsent) {
+        if (userIds.isEmpty()) {
+            return;
+        }
+
+        List<MemberEntity> existingMembers = memberRepository.findByChatIdAndUserIdIn(chatId, userIds);
+        Map<Long, MemberEntity> existingMap = existingMembers.stream()
+                .collect(Collectors.toMap(MemberEntity::getUserId, Function.identity()));
+
+        List<MemberEntity> toSave = new ArrayList<>();
+        List<Long> missingUserIds = new ArrayList<>();
+
+        for (Long userId : userIds) {
+            MemberEntity member = existingMap.get(userId);
+            if (member != null) {
+                if (member.getPresenceType() != presenceType) {
+                    member.setPresenceType(presenceType);
+                }
+            } else if (createIfAbsent) {
+                MemberEntity newMember = new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, presenceType, null, Instant.now());
+                toSave.add(newMember);
+            } else {
+                missingUserIds.add(userId);
+            }
+        }
+
+        if (!missingUserIds.isEmpty()) {
+            throw new UserNeverBeenInChatException(missingUserIds);
+        } if (!toSave.isEmpty()) {
+            memberRepository.saveAll(toSave);
+        }
+        if (!existingMap.isEmpty()) {
+            invalidateMemberRoleCache(chatId);
+        }
+    }
+
+    public Page<MemberEntity> getSelfLeftOrUnknownLeftMembersWithRoleLessThan(long chatId, int rolePriority, int limit){
+        return memberRepository.findSelfLeftOrUnknownLeftMembersWithRoleLessThan(chatId, rolePriority, PageRequest.of(0, limit));
 
     }
+
     @Transactional
     public RoleDto removePositiveRoleFromExitedMembers(long chatId, long fromId){         // возвращает роль человека, который вызвал метод
 

@@ -1,11 +1,12 @@
 package com.example.my_bot.client;
 
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
-import com.example.my_bot.enumeration.member.MemberPresenceType;
 import com.example.my_bot.service.MemberService;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.vk.api.sdk.client.AbstractQueryBuilder;
 import com.vk.api.sdk.client.VkApiClient;
 import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -19,6 +20,7 @@ import com.vk.api.sdk.objects.messages.responses.IsMessagesFromGroupAllowedRespo
 import com.vk.api.sdk.objects.utils.DomainResolvedType;
 import com.vk.api.sdk.objects.utils.responses.ResolveScreenNameResponse;
 import com.vk.api.sdk.queries.execute.ExecuteBatchQuery;
+import com.vk.api.sdk.queries.messages.MessagesRemoveChatUserQuery;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -106,7 +108,7 @@ public class VkChatClient{
 
     public void kickOneChatMember(int chatId, long memberId) throws ClientException, ApiException {
 
-        if (memberId==(groupId*-1)){
+        if (memberId==-groupId){
             return;
         }
 
@@ -115,8 +117,64 @@ public class VkChatClient{
                 .memberId(memberId)
                 .execute();
 
-        memberService.setPresenceTypeToUser(chatId, memberId, KICKED, true);
+        memberService.setPresenceTypeToMember(chatId, memberId, KICKED, true);
 
+    }
+
+    public Set<Long> kickManyChatMembers(long chatId, @NonNull List<Long> allMemberIds) throws ClientException, ApiException {
+
+        final int maxBatchSize = 20;
+        List<AbstractQueryBuilder> batchQueries = new ArrayList<>();
+        List<Long> batchMemberIds = new ArrayList<>();
+        HashSet<Long> kickedMembers = new HashSet<>();
+
+        for (int i = 0; i < allMemberIds.size(); i += maxBatchSize) {
+            List<Long> batch = allMemberIds.subList(i, Math.min(i + maxBatchSize, allMemberIds.size()));
+
+            for (Long memberId : batch) {
+                if (memberId == null) {
+                    log.error("chat {} error: memberId is null in method kickManyChatMembers", chatId);
+                    continue;
+                }
+                if (memberId.equals(-groupId)) {
+                    continue;
+                }
+                MessagesRemoveChatUserQuery removeQuery = vkApiClient.messages()
+                        .removeChatUser(groupActor, (int) chatId)
+                        .memberId(memberId);
+                batchQueries.add(removeQuery);
+                batchMemberIds.add(memberId);
+            }
+
+            if (!batchQueries.isEmpty()) {
+                JsonElement batchResponse = vkApiClient.execute()
+                        .batch(groupActor, batchQueries)
+                        .execute();
+
+                JsonArray results = batchResponse.getAsJsonArray();
+                for (int j = 0; j < results.size(); j++) {
+                    JsonElement res = results.get(j);
+                    JsonPrimitive prim =res.getAsJsonPrimitive();
+                    if ((prim.isNumber() && prim.getAsInt() == 1) || (prim.isBoolean() && prim.getAsBoolean())){
+                        kickedMembers.add(batchMemberIds.get(j));
+                    } else {
+                        log.error("chat {} error: could not kick member {} in method kickManyChatMembers: {}",
+                                chatId, batchMemberIds.get(j), res);
+                    }
+                }
+
+                batchQueries.clear();
+                batchMemberIds.clear();
+                try {
+                    Thread.sleep(1000); // пауза между пакетами
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        memberService.setPresenceTypeToMembers(chatId, kickedMembers,KICKED, true);
+
+        return kickedMembers;
     }
 
 

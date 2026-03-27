@@ -1,4 +1,4 @@
-package com.example.my_bot.service;
+package com.example.my_bot.service.permission;
 
 import com.example.my_bot.command.CommandRegistry;
 import com.example.my_bot.config.CaffeineCacheManager;
@@ -10,8 +10,10 @@ import com.example.my_bot.entity.RolePermissionEntity;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
-import com.example.my_bot.exception.role.RoleAccessDeniedException;
 import com.example.my_bot.repository.RolePermissionRepository;
+import com.example.my_bot.service.CommandAccessService;
+import com.example.my_bot.service.MemberService;
+import com.example.my_bot.service.RoleService;
 import com.google.common.collect.ImmutableMap;
 import jakarta.transaction.Transactional;
 import lombok.NonNull;
@@ -22,8 +24,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
