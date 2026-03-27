@@ -66,6 +66,12 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
             @Param("chatId") Long chatId,
             @Param("rolePriority") int rolePriority,
             Pageable pageable);
+
+    @Query("SELECT m FROM MemberEntity m WHERE m.chatId = :chatId AND m.rolePriority < :rolePriority AND m.userId < 0 AND m.presenceType != 'KICKED'")
+    Page<MemberEntity> findNotKickedCommunitiesWithRoleLessThan(
+            @Param("chatId") Long chatId,
+            @Param("rolePriority") int rolePriority,
+            Pageable pageable);
 }
 
 

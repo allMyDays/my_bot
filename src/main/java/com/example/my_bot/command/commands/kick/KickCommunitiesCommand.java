@@ -20,15 +20,16 @@ import org.springframework.data.domain.Page;
 
 import java.util.Set;
 
-import static com.example.my_bot.enumeration.DefaultRole.*;
+import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "киквышедших", alternativeCommandNames = {"kickleft"}, defaultRole = ADMINISTRATOR, eventable = true)
-public class KickSelfLeftMembersCommand implements ChatCommand {
+@Command(mainCommandName = "кикгрупп", alternativeCommandNames = {"kickgroups"}, defaultRole = ADMINISTRATOR, eventable = true)
+public class KickCommunitiesCommand implements ChatCommand {
 
     @Getter
-    private final CommandCooldown cooldown = new CommandCooldown(2,60*3);
+    private final CommandCooldown cooldown = new CommandCooldown(3,60*3);
 
     private VkChatClient vkChatClient;
 
@@ -49,16 +50,16 @@ public class KickSelfLeftMembersCommand implements ChatCommand {
 
         DefaultRole requiredRole = MODERATOR;
 
-        Page<MemberEntity> allRequiredMembers = memberService.getLeftButNotKickedMembersWithRoleLessThan(chatId, requiredRole.getRolePriority(), 100);
+        Page<MemberEntity> allRequiredCommunities = memberService.getNotKickedCommunitiesWithRoleLessThan(chatId, requiredRole.getRolePriority(), 100);
 
-        Set<Long> kickedMembers = vkChatClient.kickManyChatMembers(chatId,
-                allRequiredMembers.getContent().stream()
+        Set<Long> kickedCommunities = vkChatClient.kickManyChatMembers(chatId,
+                allRequiredCommunities.getContent().stream()
                         .filter(m->!m.isChatAdmin())
                         .map(MemberEntity::getUserId)
                         .toList());
 
-        vkChatClient.sendText("✅Было исключено %d из %d вышедших, но не исключённых участников с ролью ниже чем «%s»."
-                .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), requiredRole.getRoleName()), messageDto.getPeerId(), true);
+        vkChatClient.sendText("✅Было исключено %d из %d сообществ с ролью ниже чем «%s»."
+                .formatted(kickedCommunities.size(), allRequiredCommunities.getTotalElements(), requiredRole.getRoleName()), messageDto.getPeerId(), true);
 
 
 
