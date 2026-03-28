@@ -61,8 +61,6 @@ public class KickCommand implements ChatCommand {
             return;
         }
 
-
-
         if(memberToRemove==messageDto.getFromId()){
             vkChatClient.sendText(CANNOT_APPLY_THIS_COMMAND_TO_YOURSELF, peerId,true);
             return;

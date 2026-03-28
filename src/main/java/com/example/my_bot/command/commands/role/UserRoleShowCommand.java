@@ -17,6 +17,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 
 import java.util.Optional;
@@ -26,7 +27,6 @@ import static com.example.my_bot.utils.ChatUtils.createMention;
 
 @Slf4j
 @Command(mainCommandName = "роль", alternativeCommandNames = {"role", "ктоя"}, defaultRole = MEMBER, eventable = true)
-@RequiredArgsConstructor
 public class UserRoleShowCommand implements ChatCommand {
 
     @Getter
@@ -41,6 +41,22 @@ public class UserRoleShowCommand implements ChatCommand {
     private final RoleService roleService;
 
     private final GlobalUserService userService;
+
+    private final long groupId;
+
+
+    public UserRoleShowCommand(MemberService memberService,
+                               MemberInputResolver memberInputResolver,
+                               RoleService roleService,
+                               GlobalUserService userService,
+                               @Value("${vk.group.id}") long groupId
+    ) {
+        this.memberService = memberService;
+        this.memberInputResolver = memberInputResolver;
+        this.roleService = roleService;
+        this.userService = userService;
+        this.groupId = groupId;
+    }
 
     @Autowired
     @Lazy
@@ -66,7 +82,9 @@ public class UserRoleShowCommand implements ChatCommand {
         }
 
         int userRolePriority =  memberService.getCachedMemberRolePriority(chatId, memberToCheck);
-        String roleName = roleService.getRoleName(chatId, userRolePriority).orElse("Unknown role");
+        String roleName = memberToCheck==-groupId
+                ? "Чат-менеджер"
+                : roleService.getRoleName(chatId, userRolePriority).orElse("Unknown role");
         String userName = userService.getUserNameInRequiredCase(memberToCheck, NameCase.GENITIVE)
                 .orElse("участника");
 

@@ -56,7 +56,7 @@ public class MemberService {
 
     private RoleService roleService;
 
-    private long groupId;
+    private final long groupId;
 
     public MemberService(
             MemberRepository memberRepository,
@@ -105,9 +105,6 @@ public class MemberService {
         List<MemberEntity> newMembers = new ArrayList<>();
         for (ConversationMember vkMember : currentChatMembers) {
             long memberId = vkMember.getMemberId();
-            if(memberId==(groupId*-1)){
-                continue;
-            }
             MemberEntity entity = currentChatMemberMap.get(memberId);
 
             if (entity == null) {
@@ -120,7 +117,6 @@ public class MemberService {
             }
 
             entity.setPresenceType(IN_CHAT);
-
             if (Boolean.TRUE.equals(vkMember.getIsOwner())) {
                 entity.setRolePriority(CHAT_CREATOR.getRolePriority());
                 entity.setChatAdmin(true);
@@ -132,7 +128,11 @@ public class MemberService {
                 entity.setChatAdmin(true);
             } else {
                 entity.setChatAdmin(false);
+            } if(memberId==(groupId*-1)){
+                entity.setRolePriority(CHAT_CREATOR.getRolePriority()*10);
+                // даю боту роль выше чем у создателя, чтобы его никто не мог наказывать
             }
+
         }
 
         if (!newMembers.isEmpty()) {
