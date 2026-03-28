@@ -32,13 +32,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.*;
 import static com.example.my_bot.enumeration.member.MemberPresenceType.IN_CHAT;
-import static com.example.my_bot.utils.ChatUtils.isValidLong;
 
 @Service
 @Slf4j
@@ -111,7 +108,7 @@ public class MemberService {
                 entity = new MemberEntity();
                 entity.setUserId(memberId);
                 entity.setChatId(chatId);
-                entity.setFirstAppearance(Instant.now());
+                entity.setFirstAppearance(Instant.ofEpochSecond(vkMember.getJoinDate()));
                 newMembers.add(entity);
                 entity.setInvitedById(vkMember.getInvitedBy());
             }
@@ -245,6 +242,12 @@ public class MemberService {
         return memberRepository.findNotKickedMembersInvitedByAndWithRoleLessThan(chatId,inviter, rolePriority, PageRequest.of(0, limit));
 
     }
+
+    public Page<MemberEntity> findNotKickedNewMembersWithRoleLessThan(long chatId, Instant after , int rolePriority, int limit){
+        return memberRepository.findNotKickedNewMembersWithRoleLessThan(chatId,after,rolePriority, PageRequest.of(0, limit));
+    }
+
+
 
     @Transactional
     public RoleDto removePositiveRoleFromExitedMembers(long chatId, long fromId){         // возвращает роль человека, который вызвал метод

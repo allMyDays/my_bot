@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -79,6 +80,16 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
             @Param("inviterId") Long inviterId,
             @Param("rolePriority") int rolePriority,
             Pageable pageable);
+
+    @Query("SELECT m FROM MemberEntity m WHERE m.chatId = :chatId AND m.rolePriority < :rolePriority AND m.firstAppearance >= :after AND m.presenceType != 'KICKED'")
+    Page<MemberEntity> findNotKickedNewMembersWithRoleLessThan(
+            @Param("chatId") Long chatId,
+            @Param("after") Instant after,
+            @Param("rolePriority") int rolePriority,
+            Pageable pageable);
+
+
+
 }
 
 

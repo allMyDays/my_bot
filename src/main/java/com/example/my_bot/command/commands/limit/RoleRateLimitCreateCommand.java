@@ -18,7 +18,6 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.math.BigInteger;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
@@ -83,7 +82,7 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
             return;
         }
         String result = "✅Успешно добавлен новый лимит в %d использований за %s для команды «%s», воздействующий только на роль «%s»."
-                .formatted(createdLimit.getMaxUsage(), TimeUtils.formatDuration(createdLimit.getPeriodInSeconds(),true),
+                .formatted(createdLimit.getMaxUsage(), TimeUtils.formatDurationFromSeconds(createdLimit.getPeriodInSeconds(),true),
                         createdLimit.getCommandName(), roleService.getRoleName(chatId,createdLimit.getRolePriority()).orElse("unknown"));
 
         if(createdLimit.isPersonal()){

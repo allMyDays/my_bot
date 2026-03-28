@@ -1,12 +1,19 @@
 package com.example.my_bot.utils;
 
 import lombok.Getter;
+import lombok.NonNull;
 
 import java.math.BigInteger;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
 public class TimeUtils {
+
+    private static final DateTimeFormatter RUSSIAN_DATE_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("dd MMMM yyyy, HH:mm", new Locale("ru"));
 
     @Getter
     private enum TimeUnit {
@@ -25,7 +32,7 @@ public class TimeUtils {
         }
     }
 
-    public static String formatDuration(long seconds, boolean includeSeconds) {
+    public static String formatDurationFromSeconds(long seconds, boolean includeSeconds) {
         if (seconds < 0) throw new IllegalArgumentException("seconds must be >= 0");
         if (seconds == 0) return includeSeconds ? "0 секунд." : "";
 
@@ -96,6 +103,16 @@ public class TimeUtils {
                 return Optional.empty();
             }
         }
+
+    public static String getStringFullDateFromLocalDateTime(@NonNull LocalDateTime localDateTime) {
+        return localDateTime.format(RUSSIAN_DATE_TIME_FORMATTER);
+    }
+
+
+
+
+
+
     }
 
 

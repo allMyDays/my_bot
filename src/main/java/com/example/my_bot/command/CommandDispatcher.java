@@ -18,7 +18,7 @@ import java.util.*;
 import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.utils.ChatUtils.createMention;
 import static com.example.my_bot.utils.ChatUtils.isGroupId;
-import static com.example.my_bot.utils.TimeUtils.formatDuration;
+import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
 
 @Component
@@ -87,7 +87,7 @@ public class CommandDispatcher {
                 if(!cooldownResult.canExecuteCommand()){
                   if(cooldownResult.canSendCDMessageToUser()){
                     String message = "Нельзя так часто использовать эту команду. Она станет вновь доступна %s(Вам) через %s"
-                            .formatted(createMention(fromId),formatDuration(cooldownResult.getLeftCDSeconds(), true));
+                            .formatted(createMention(fromId), formatDurationFromSeconds(cooldownResult.getLeftCDSeconds(), true));
                     vkChatClient.sendText(message, peerId, true);
                   }return;
                 }
