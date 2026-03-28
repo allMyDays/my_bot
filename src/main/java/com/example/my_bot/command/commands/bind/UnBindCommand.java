@@ -6,11 +6,12 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.user.GlobalUserException;
+import com.example.my_bot.resolver.MemberInputResolver;
 import com.example.my_bot.service.GlobalUserService;
-import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -21,7 +22,6 @@ import org.springframework.context.annotation.Lazy;
 
 import java.util.Optional;
 
-import static com.example.my_bot.constant.MessageConstant.MEMBER_LINK_IS_NOT_CORRECT;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.utils.ChatUtils.createMention;
 
@@ -37,7 +37,7 @@ public class UnBindCommand implements ChatCommand {
 
     private final GlobalUserService userService;
 
-    private final MemberService memberService;
+    private final MemberInputResolver memberInputResolver;
 
     @Autowired
     @Lazy
@@ -55,15 +55,15 @@ public class UnBindCommand implements ChatCommand {
         String[] args = messageDto.getFirstRowArguments();
 
         long userToUnbind;
-        if(args.length>0){
-            Optional<Long> optionalUserId =  memberService.getCachedMemberIdByUserInput(args[0]);
-            if(optionalUserId.isEmpty()){
-                vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT,peerId,true);
-                return;
-            }userToUnbind = optionalUserId.get();
+
+        ParseMemberInputResult parseResult = memberInputResolver.getMemberIdByAnyInput(messageDto, 0);
+
+        if(parseResult.getMemberId().isPresent()){
+            userToUnbind = parseResult.getMemberId().get();
         }else{
-            userToUnbind = fromId;
+            userToUnbind = messageDto.getFromId();
         }
+
         try {
             userService.unBindChatFromUser(messageDto.getChatId(), fromId, userToUnbind);
         }catch (MemberException | GlobalUserException e){

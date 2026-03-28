@@ -6,7 +6,9 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.exception.member.MemberAccessDeniedException;
+import com.example.my_bot.resolver.MemberInputResolver;
 import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -33,6 +35,8 @@ public class KickCommand implements ChatCommand {
 
     private final MemberService memberService;
 
+    private final MemberInputResolver memberInputResolver;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -47,26 +51,17 @@ public class KickCommand implements ChatCommand {
         long chatId = messageDto.getChatId();
         long peerId = messageDto.getPeerId();
 
-
         long memberToRemove;
 
-        if(messageDto.getFirstRowArguments().length==0){
-            if(messageDto.hasReplyMessage()){
-                memberToRemove = messageDto.getReplyMessageFromId().get();
-            }else if(messageDto.hasFwdMessages()){
-                memberToRemove = messageDto.getFwdMessageFromIds().get(0);
-            }else{
-                vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS,peerId, true);
-                return;
-            }
+        ParseMemberInputResult inputResult = memberInputResolver.getMemberIdByAnyInput(messageDto, 0);
+        if(inputResult.getMemberId().isPresent()){
+            memberToRemove = inputResult.getMemberId().get();
         }else{
-            Optional<Long> memberOptional = memberService.getCachedMemberIdByUserInput(messageDto.getFirstRowArguments()[0]);
-
-            if(memberOptional.isEmpty()){
-                vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT,peerId, true);
-                return;
-            } memberToRemove = memberOptional.get();
+            vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS, peerId,true);
+            return;
         }
+
+
 
         if(memberToRemove==messageDto.getFromId()){
             vkChatClient.sendText(CANNOT_APPLY_THIS_COMMAND_TO_YOURSELF, peerId,true);

@@ -1,8 +1,9 @@
-package com.example.my_bot.service;
+package com.example.my_bot.handler;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.mapper.CommandMapper;
+import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.chat.ChatActionService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -11,7 +12,6 @@ import com.vk.api.sdk.objects.messages.Message;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
@@ -22,7 +22,7 @@ import static com.example.my_bot.constant.MessageConstant.UNKNOWN_ERROR_MESSAGE;
 import static com.example.my_bot.utils.ChatUtils.extractConversationId;
 import static com.example.my_bot.utils.ChatUtils.isPersonalChat;
 
-@Service
+@Component
 @Slf4j
 @RequiredArgsConstructor
 public class AsyncEventHandler {

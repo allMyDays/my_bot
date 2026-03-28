@@ -9,8 +9,8 @@ import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.permission.PermissionException;
+import com.example.my_bot.resolver.MemberInputResolver;
 import com.example.my_bot.service.permission.MemberPermissionService;
-import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.permission.RolePermissionService;
 import com.example.my_bot.service.GlobalUserService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -21,8 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.Optional;
 
-import static com.example.my_bot.constant.MessageConstant.MEMBER_LINK_IS_NOT_CORRECT;
-import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
+import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.utils.ChatUtils.createMention;
 
@@ -40,7 +39,7 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
 
     private final MemberPermissionService memberPermissionService;
 
-    private final MemberService memberService;
+    private final MemberInputResolver memberInputResolver;
 
     private final GlobalUserService userService;
 
@@ -60,9 +59,9 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
             vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
             return;
         }if(args.length==2){
-            userId = memberService.getCachedMemberIdByUserInput(args[1]);
+            userId = memberInputResolver.getMemberIdByStringInput(args[1]);
             if(userId.isEmpty()){
-                vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT,peerId, true);
+                vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS,peerId, true);
                 return;
             }
         }

@@ -5,7 +5,9 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.enumeration.user.NameCase;
+import com.example.my_bot.resolver.MemberInputResolver;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.service.GlobalUserService;
@@ -18,8 +20,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import java.util.Optional;
-
-import static com.example.my_bot.constant.MessageConstant.MEMBER_LINK_IS_NOT_CORRECT;
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 import static com.example.my_bot.utils.ChatUtils.createMention;
 
@@ -35,6 +35,8 @@ public class UserRoleShowCommand implements ChatCommand {
     private VkChatClient vkChatClient;
 
     private final MemberService memberService;
+
+    private final MemberInputResolver memberInputResolver;
 
     private final RoleService roleService;
 
@@ -52,23 +54,17 @@ public class UserRoleShowCommand implements ChatCommand {
 
         long chatId = messageDto.getChatId();
         long peerId = messageDto.getPeerId();
+
         long memberToCheck;
 
-        if(messageDto.getFirstRowArguments().length==0){
-            if(messageDto.hasReplyMessage()){
-                memberToCheck = messageDto.getReplyMessageFromId().get();
-            }else if(messageDto.hasFwdMessages()){
-                memberToCheck = messageDto.getFwdMessageFromIds().get(0);
-            }else{
-                memberToCheck= messageDto.getFromId();
-            }
+        ParseMemberInputResult parseResult = memberInputResolver.getMemberIdByAnyInput(messageDto, 0);
+
+        if(parseResult.getMemberId().isPresent()){
+            memberToCheck = parseResult.getMemberId().get();
         }else{
-            Optional<Long> memberOptional = memberService.getCachedMemberIdByUserInput(messageDto.getFirstRowArguments()[0]);
-            if(memberOptional.isEmpty()){
-                vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT, peerId,true);
-                return;
-            } memberToCheck = memberOptional.get();
+            memberToCheck = messageDto.getFromId();
         }
+
         int userRolePriority =  memberService.getCachedMemberRolePriority(chatId, memberToCheck);
         String roleName = roleService.getRoleName(chatId, userRolePriority).orElse("Unknown role");
         String userName = userService.getUserNameInRequiredCase(memberToCheck, NameCase.GENITIVE)

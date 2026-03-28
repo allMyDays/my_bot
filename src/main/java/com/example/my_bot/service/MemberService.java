@@ -58,11 +58,6 @@ public class MemberService {
 
     private long groupId;
 
-    private final Pattern MEMBER_MENTION = Pattern.compile("\\[(id|club)(\\d+)\\|[^]]+]");
-
-    private static final Pattern VK_URL_PATTERN = Pattern.compile(
-            "(?:https?://)?(?:www\\.)?(?:m\\.)?(?:(?:vk\\.(?:com|ru))|vkontakte\\.ru)/(((id|club|public)\\d{1,11})|[a-zA-Z0-9_.]{4,32})");
-
     public MemberService(
             MemberRepository memberRepository,
             VkChatClient vkChatClient,
@@ -320,40 +315,6 @@ public class MemberService {
         }
     }
 
-
-    public Optional<Long> getCachedMemberIdByUserInput(@NonNull String userInput){
-
-        userInput=userInput.toLowerCase().trim();
-
-        Matcher matcher = MEMBER_MENTION.matcher(userInput);
-        if (matcher.find()) {
-            String type = matcher.group(1); // "id" или "club"
-            if(!isValidLong(matcher.group(2))){
-                return Optional.empty();
-            } long id = Long.parseLong(matcher.group(2));
-
-            return Optional.of(type.equals("id")?id:(id*-1));
-        }
-        Matcher m = VK_URL_PATTERN.matcher(userInput);
-        if (!m.find()) return Optional.empty();
-
-        if (m.group(2) != null) {
-            String prefix = m.group(3);
-            String fullMatch = m.group(2);
-            String numStr = fullMatch.substring(prefix.length());
-            long id = Long.parseLong(numStr);
-            if (prefix.equals("id")) {
-                return Optional.of(id);
-            } else {
-                return Optional.of(-id);
-            }
-        } else {
-            String userNickname = m.group(1);
-            return cacheManager.getNicknameCache().get(userNickname,
-                    k -> vkChatClient.getMemberIdByNickname(userNickname));
-
-        }
-    }
         private void invalidateMemberRoleCache(long chatId){
         cacheManager.getMemberRoleCache().invalidate(chatId);
 

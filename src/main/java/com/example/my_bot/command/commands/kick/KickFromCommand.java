@@ -6,10 +6,12 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
+import com.example.my_bot.resolver.MemberInputResolver;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -25,7 +27,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import static com.example.my_bot.constant.MessageConstant.MEMBER_ARGUMENT_ABSENTS;
-import static com.example.my_bot.constant.MessageConstant.MEMBER_LINK_IS_NOT_CORRECT;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.utils.ChatUtils.createMention;
@@ -41,6 +42,8 @@ public class KickFromCommand implements ChatCommand {
     private VkChatClient vkChatClient;
 
     private final MemberService memberService;
+
+    private final MemberInputResolver memberInputResolver;
 
     private final GlobalUserService globalUserService;
 
@@ -63,23 +66,15 @@ public class KickFromCommand implements ChatCommand {
 
         long inviterId;
 
-        if(messageDto.getFirstRowArguments().length==0){
-            if(messageDto.hasReplyMessage()){
-                inviterId = messageDto.getReplyMessageFromId().get();
-            }else if(messageDto.hasFwdMessages()){
-                inviterId = messageDto.getFwdMessageFromIds().get(0);
-            }else{
-                vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS,peerId, true);
-                return;
-            }
+        ParseMemberInputResult inputResult = memberInputResolver.getMemberIdByAnyInput(messageDto, 0);
+        if(inputResult.getMemberId().isPresent()){
+            inviterId = inputResult.getMemberId().get();
         }else{
-            Optional<Long> memberOptional = memberService.getCachedMemberIdByUserInput(messageDto.getFirstRowArguments()[0]);
-
-            if(memberOptional.isEmpty()){
-                vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT,peerId, true);
-                return;
-            } inviterId = memberOptional.get();
+            vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS,peerId, true);
+            return;
         }
+
+
         if(inviterId!=messageDto.getFromId()){
         try{
             memberService.checkMemberInteractionAbility(chatId, messageDto.getFromId(), inviterId);

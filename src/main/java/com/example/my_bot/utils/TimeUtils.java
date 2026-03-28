@@ -1,8 +1,8 @@
 package com.example.my_bot.utils;
 
 import lombok.Getter;
-import lombok.NonNull;
 
+import java.math.BigInteger;
 import java.util.Optional;
 import java.util.Set;
 
@@ -53,19 +53,48 @@ public class TimeUtils {
         return result;
     }
         /**
-         * Возвращает количество секунд для указанной единицы времени.
+         * Возвращает количество секунд для указанной единицы времени и числового значения. например: 3 часа, 3 дня и т.д.
          *
          * @param unit строка с единицей времени (например, "секунды", "минута", "часов")
-         * @return количество секунд в optional, optional пуст если единица времени не распознана
+         * @param num строка-число, которое умножается на единицу времени, переведенную в секунды
+         * @return количество секунд в optional, optional пуст если единица времени не распознана, некорректное число, или некорректно большой или отрицательный период
          */
-        public static Optional<Integer> toSeconds(String unit) {
-            String normalized = unit.trim().toLowerCase();
+        public static Optional<Long> toSecondsFromString(String num, String unit) {
+            if (num == null || unit == null) {
+                return Optional.empty();
+            }
+
+            String normalizedUnit = unit.trim().toLowerCase();
+            TimeUnit foundTimeUnit = null;
+
             for (TimeUnit tu : TimeUnit.values()) {
-                if (tu.keywords.contains(normalized)) {
-                    return Optional.of(tu.seconds);
+                if (tu.keywords.contains(normalizedUnit)) {
+                    foundTimeUnit = tu;
                 }
             }
-            return Optional.empty();
+
+            if (foundTimeUnit == null) {
+                return Optional.empty();
+            }
+
+            BigInteger number;
+            try {
+                number = new BigInteger(num);
+            } catch (Exception e) {
+                return Optional.empty();
+            }
+
+            if (number.signum() < 0) {
+                return Optional.empty();
+            }
+
+            BigInteger seconds = BigInteger.valueOf(foundTimeUnit.seconds).multiply(number);
+            try {
+                long result = seconds.longValueExact();
+                return Optional.of(result);
+            } catch (Exception e) {
+                return Optional.empty();
+            }
         }
     }
 

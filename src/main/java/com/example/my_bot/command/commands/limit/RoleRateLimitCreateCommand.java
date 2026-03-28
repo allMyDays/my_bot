@@ -53,19 +53,13 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
             return;
         }
 
-        if((isNumber(args[4])&&!isValidInteger(args[4]))||!isValidInteger(args[1])){
+        if((isNumber(args[4])&&!isValidInteger(args[4]))){
                 vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId, true);
                 return;
         }
-        Optional<Integer> timeUnitInSeconds =  TimeUtils.toSeconds(args[2]);
-        if(timeUnitInSeconds.isEmpty()){
-            vkChatClient.sendText(INVALID_TIME_UNIT_MESSAGE, peerId,true);
-            return;
-        }
-
-        String stringPeriodInSeconds = new BigInteger(timeUnitInSeconds.get().toString()).multiply(new BigInteger(args[1])).toString();
-        if(!isValidInteger(stringPeriodInSeconds)){
-            vkChatClient.sendText(TIME_PERIOD_IS_TOO_LONG, peerId,true);
+        Optional<Long> timePeriodInSeconds =  TimeUtils.toSecondsFromString(args[1],args[2]);
+        if(timePeriodInSeconds.isEmpty()){
+            vkChatClient.sendText(INVALID_TIME_PERIOD_MESSAGE, peerId,true);
             return;
         }
 
@@ -73,12 +67,11 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
         try{
             int maxUsage = Integer.parseInt(args[3]);
             boolean isPersonal = args.length==6&&args[5].equalsIgnoreCase("личный");
-            int periodInSeconds = Integer.parseInt(stringPeriodInSeconds);
 
             if(isNumber(args[4])){
-                createdLimit = roleRateLimitService.createCommandRateLimit(chatId,fromId,args[0],Integer.parseInt(args[4]), maxUsage,periodInSeconds,isPersonal);
+                createdLimit = roleRateLimitService.createCommandRateLimit(chatId,fromId,args[0],Integer.parseInt(args[4]), maxUsage,timePeriodInSeconds.get(),isPersonal);
             }else{
-                createdLimit = roleRateLimitService.createCommandRateLimit(chatId,fromId,args[0],args[4], maxUsage,periodInSeconds,isPersonal);
+                createdLimit = roleRateLimitService.createCommandRateLimit(chatId,fromId,args[0],args[4], maxUsage,timePeriodInSeconds.get(),isPersonal);
             }
         }catch (RateLimitException | RoleException | CommandException e){
             vkChatClient.sendText(e.getMessage(),peerId, true);

@@ -64,7 +64,7 @@ public class RoleRateLimitService {
 
 
     @Transactional
-    public RoleRateLimitEntity createCommandRateLimit(long chatId, long fromId, @NonNull String userCommand, int rolePriority, int maxUsage, int periodInSeconds, boolean isPersonal){
+    public RoleRateLimitEntity createCommandRateLimit(long chatId, long fromId, @NonNull String userCommand, int rolePriority, int maxUsage, long periodInSeconds, boolean isPersonal){
 
         if(periodInSeconds< MIN_LIMIT_PERIOD_IN_SECONDS ||periodInSeconds> MAX_LIMIT_PERIOD_IN_SECONDS){
             throw new RateLimitPeriodOutOfBoundsException(MIN_LIMIT_PERIOD_IN_SECONDS, MAX_LIMIT_PERIOD_IN_SECONDS);
@@ -91,14 +91,14 @@ public class RoleRateLimitService {
            throw new RateLimitWithThatCommandAndRoleAlreadyExistsException(mainCommandName.get(), foundRole.getRoleName());
         }
         RoleRateLimitEntity savedLimit = roleRateLimitRepository.save(new RoleRateLimitEntity(
-                chatId, mainCommandName.get(), rolePriority, isPersonal, maxUsage, periodInSeconds
+                chatId, mainCommandName.get(), rolePriority, isPersonal, maxUsage, (int)periodInSeconds
                 ));
 
         invalidateCommandLimitCache(chatId);
         return savedLimit;
     }
     @Transactional
-    public RoleRateLimitEntity createCommandRateLimit(long chatId, long fromId, @NonNull String userCommand, @NonNull String roleName, int maxUsage, int periodInSeconds, boolean isPersonal){
+    public RoleRateLimitEntity createCommandRateLimit(long chatId, long fromId, @NonNull String userCommand, @NonNull String roleName, int maxUsage, long periodInSeconds, boolean isPersonal){
         int rolePriority = roleService.getRoleByNameIgnoreCase(chatId, roleName.trim())
                 .orElseThrow(RoleNotFoundException::new).getRolePriority();
 

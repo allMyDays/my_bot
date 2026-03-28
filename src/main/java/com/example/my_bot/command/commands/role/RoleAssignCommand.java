@@ -7,10 +7,12 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.AssignMemberResult;
+import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.role.RoleException;
+import com.example.my_bot.resolver.MemberInputResolver;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.GlobalUserService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -37,6 +39,8 @@ public class RoleAssignCommand implements ChatCommand {
 
     private final MemberService memberService;
 
+    private final MemberInputResolver memberInputResolver;
+
     private final GlobalUserService userService;
 
 
@@ -57,22 +61,16 @@ public class RoleAssignCommand implements ChatCommand {
             return;
         }
         long userToAssign;
-        if(args.length==2){
-            Optional<Long> optionalMember = memberService.getCachedMemberIdByUserInput(args[1]);
-            if(optionalMember.isEmpty()){
-                vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT,peerId, true);
-                return;
-            } userToAssign = optionalMember.get();
+        ParseMemberInputResult parseResult = memberInputResolver.getMemberIdByAnyInput(messageDto,1);
+        if(parseResult.getMemberId().isPresent()){
+            userToAssign = parseResult.getMemberId().get();
         }else{
-            if(messageDto.hasReplyMessage()){
-                userToAssign=messageDto.getReplyMessageFromId().get();
-            }else if(messageDto.hasFwdMessages()){
-                userToAssign=messageDto.getFwdMessageFromIds().get(0);
-            }else{
-                vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS,peerId, true);
-                return;
-            }
+            vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS,peerId, true);
+            return;
+
         }
+
+
         AssignMemberResult assignResult;
         try{
          if(isNumber(args[0])){
