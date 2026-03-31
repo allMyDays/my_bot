@@ -5,7 +5,9 @@ import lombok.NonNull;
 
 import java.math.BigInteger;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
@@ -14,6 +16,7 @@ public class TimeUtils {
 
     private static final DateTimeFormatter RUSSIAN_DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("dd MMMM yyyy, HH:mm", new Locale("ru"));
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     @Getter
     private enum TimeUnit {
@@ -107,6 +110,71 @@ public class TimeUtils {
     public static String getStringFullDateFromLocalDateTime(@NonNull LocalDateTime localDateTime) {
         return localDateTime.format(RUSSIAN_DATE_TIME_FORMATTER);
     }
+
+    /**
+     * Парсит строку времени в формате "HH:mm" (например, "07:30").
+     *
+     * @param timeStr строка с временем
+     * @return Optional, содержащий LocalTime, если парсинг успешен, иначе пустой Optional
+     */
+    public static Optional<LocalTime> parseTimeOfDay(@NonNull String timeStr) {
+        try {
+            LocalTime time = LocalTime.parse(timeStr, TIME_FORMATTER);
+            return Optional.of(time);
+        } catch (DateTimeParseException e) {
+            return Optional.empty();
+        }
+    }
+    /**
+     * Преобразует строку формата "часы:минуты" в общее количество секунд.
+     * <p>
+     * Пример: "877:30" → 877 * 3600 + 30 * 60 = 3_159_000 секунд.
+     * </p>
+     *
+     * @param timeStr строка с временем, например "877:30"
+     * @return Optional с количеством секунд, если строка корректна, иначе пустой Optional
+     */
+    public static Optional<Long> parseManyHoursWithMinutes(@NonNull String timeStr) {
+
+        String[] parts = timeStr.split(":");
+        if (parts.length != 2) return Optional.empty();
+
+        try {
+            long hours = Long.parseLong(parts[0].trim());
+            long minutes = Long.parseLong(parts[1].trim());
+
+            if (hours < 0 || minutes < 0 || minutes >= 60) {
+                return Optional.empty();
+            }
+
+            long totalSeconds = hours * 3600 + minutes * 60;
+
+            return Optional.of(totalSeconds);
+
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Парсит строку с датой и временем в формате "HH:mm dd.MM.yyyy".
+     * <p>
+     * Пример: "00:00 01.01.2027" → LocalDateTime.of(2027, 1, 1, 0, 0, 0)
+     * </p>
+     *
+     * @param dateTimeStr строка с датой и временем
+     * @return Optional, содержащий LocalDateTime при успешном парсинге, иначе пустой Optional
+     */
+    public static Optional<LocalDateTime> parseDateTime(@NonNull String dateTimeStr) {
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm dd.MM.yyyy");
+            return Optional.of(LocalDateTime.parse(dateTimeStr, formatter));
+        } catch (DateTimeParseException e) {
+            return Optional.empty();
+        }
+    }
+
+
 
 
 

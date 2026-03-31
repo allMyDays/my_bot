@@ -77,21 +77,20 @@ public class RoleRateLimitService {
         int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
         roleService.checkRoleInteractionAbility(rolePriority, userRolePriority);
 
-        Optional<String> mainCommandName =  commandRegistry.getMainNameOfCommand(userCommand.trim());
-        if(mainCommandName.isEmpty()){
-            throw new UserCommandNotFoundException(userCommand);
-        }boolean abilityCommandInteraction = commandService.checkCommandAuthorization(
-                chatId,mainCommandName.get(), userRolePriority,fromId, false);
+        String mainCommandName =  commandRegistry.getMainNameOfCommand(userCommand.trim())
+                .orElseThrow(()->new UserCommandNotFoundException(userCommand));
+        boolean abilityCommandInteraction = commandService.checkCommandAuthorization(
+                chatId,mainCommandName, userRolePriority,fromId);
         if(!abilityCommandInteraction){
-            throw new CommandAccessDeniedException(fromId, mainCommandName.get());
+            throw new CommandAccessDeniedException(fromId, mainCommandName);
         }
-        ImmutableMap<Integer, RoleRateLimitDto> currentCommandRoleLimits = getCachedCustomRoleLimits(chatId).get(mainCommandName.get());
+        ImmutableMap<Integer, RoleRateLimitDto> currentCommandRoleLimits = getCachedCustomRoleLimits(chatId).get(mainCommandName);
 
         if(currentCommandRoleLimits!=null&&currentCommandRoleLimits.get(rolePriority)!=null){
-           throw new RateLimitWithThatCommandAndRoleAlreadyExistsException(mainCommandName.get(), foundRole.getRoleName());
+           throw new RateLimitWithThatCommandAndRoleAlreadyExistsException(mainCommandName, foundRole.getRoleName());
         }
         RoleRateLimitEntity savedLimit = roleRateLimitRepository.save(new RoleRateLimitEntity(
-                chatId, mainCommandName.get(), rolePriority, isPersonal, maxUsage, (int)periodInSeconds
+                chatId, mainCommandName, rolePriority, isPersonal, maxUsage, (int)periodInSeconds
                 ));
 
         invalidateCommandLimitCache(chatId);
@@ -113,7 +112,7 @@ public class RoleRateLimitService {
         roleService.checkRoleInteractionAbility(limitDto.getRolePriority(), userRolePriority);
 
         boolean abilityCommandInteraction = commandService.checkCommandAuthorization(
-                chatId, limitDto.getCommandName(),userRolePriority,fromId, false);
+                chatId, limitDto.getCommandName(),userRolePriority,fromId);
         if(!abilityCommandInteraction){
             throw new CommandAccessDeniedException(fromId, limitDto.getCommandName());
         }

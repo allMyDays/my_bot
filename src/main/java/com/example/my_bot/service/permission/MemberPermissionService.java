@@ -67,7 +67,7 @@ public class MemberPermissionService {
         }
 
         CommandAuthorizationResult commandAuthorizationResult =
-                commandService.checkCommandsAuthorization(chatId, commandNormalizationResult.getNormalizedCommands(), callerRole, fromId, false);
+                commandService.checkCommandsAuthorization(chatId, commandNormalizationResult.getNormalizedCommands(), callerRole, fromId);
         result.setForbiddenToEdit(commandAuthorizationResult.getForbidden());
 
         ImmutableMap<String, ImmutableMap<Long, Boolean>> existingMemberPermissions = getCachedCustomMemberPermissions(chatId);
@@ -120,7 +120,7 @@ public class MemberPermissionService {
                 .orElseThrow(()->new UserCommandNotFoundException(userCommand));
         int callerRole = memberService.getCachedMemberRolePriority(chatId, fromId);
 
-        if(!commandService.checkCommandAuthorization(chatId, mainCommandName, callerRole, fromId, false)){
+        if(!commandService.checkCommandAuthorization(chatId, mainCommandName, callerRole, fromId)){
             throw new CommandAccessDeniedException(fromId, mainCommandName);
         }
         memberService.checkMemberInteractionAbility(chatId, fromId, targetUserId);

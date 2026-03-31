@@ -79,7 +79,7 @@ public class CommandDispatcher {
             int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
 
             boolean canExecute = commandAccessService.checkCommandAuthorization(
-                    chatId, cmdAnnotation.mainCommandName(),userRolePriority,fromId,false);
+                    chatId, cmdAnnotation.mainCommandName(),userRolePriority,fromId);
 
             if(canExecute){
                 CooldownResult cooldownResult = commandAccessService.checkCommandRateLimit(

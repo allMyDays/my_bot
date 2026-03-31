@@ -87,9 +87,9 @@ public class CommandAccessService {
     }
 
     public CommandAuthorizationResult checkCommandsAuthorization(
-            long chatId, @NonNull Set<String> userCommands, int userRolePriority, long fromId, boolean normalizeCommandsAndThrowIfNotExist){
+            long chatId, @NonNull Set<String> userCommands, int userRolePriority, long fromId){
 
-        Set<String> normalizedCommands=(normalizeCommandsAndThrowIfNotExist? normalizeCommands(userCommands):userCommands);
+        Set<String> normalizedCommands=normalizeCommands(userCommands);
 
         ImmutableMap<String, Integer> customRolePermissions = rolePermissionService.getCachedCustomRolePermissions(chatId);
         ImmutableMap<String, ImmutableMap<Long, Boolean>> customMemberPermissions = memberPermissionService.getCachedCustomMemberPermissions(chatId);
@@ -136,9 +136,9 @@ public class CommandAccessService {
 
     }
     public boolean checkCommandAuthorization(
-            long chatId, @NonNull String userCommand, int userRolePriority, long fromId, boolean normalizeCommandAndThrowIfNotExist){
+            long chatId, @NonNull String userCommand, int userRolePriority, long fromId){
 
-        String normalizedCommand = (normalizeCommandAndThrowIfNotExist?normalizeCommand(userCommand):userCommand);
+        String normalizedCommand = normalizeCommand(userCommand);
 
         ImmutableMap<String, Integer> customRolePermissions = rolePermissionService.getCachedCustomRolePermissions(chatId);
         ImmutableMap<String, ImmutableMap<Long, Boolean>> customMemberPermissions = memberPermissionService.getCachedCustomMemberPermissions(chatId);
@@ -325,11 +325,9 @@ public class CommandAccessService {
         return validationResult.getNormalizedCommands();
     }
     private String normalizeCommand(String userCommand){
-        Optional<String> validationResult = commandRegistry.getMainNameOfCommand(userCommand);
-        if(validationResult.isEmpty()){
-            throw new UserCommandNotFoundException(userCommand);
-        }
-        return validationResult.get();
+        return commandRegistry.getMainNameOfCommand(userCommand)
+                .orElseThrow(()->new UserCommandNotFoundException(userCommand));
     }
+
 
 }

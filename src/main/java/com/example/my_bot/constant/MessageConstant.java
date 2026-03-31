@@ -21,6 +21,10 @@ public class MessageConstant {
 
     public static final String INVALID_TIME_PERIOD_MESSAGE = "Указанный вами аргумент не является корректным временным периодом. Пример: 2 минуты/ 3 часа/ 1 день";
 
+    public static final String NOT_VALID_TIME = "Введён некорректный аргумент времени. Пример: 07:30";
+
+    public static final String NOT_VALID_DATE_TIME = "Введён некорректный аргумент времени с датой. Пример: 07:30 01.01.2027";
+
 
 
 

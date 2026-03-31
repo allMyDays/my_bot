@@ -2,6 +2,8 @@ package com.example.my_bot.utils;
 
 import lombok.NonNull;
 
+import java.util.Arrays;
+
 public class ChatUtils {
 
     public static final long PEER_ID_CHAT_OFFSET = 2_000_000_000L;
@@ -63,6 +65,14 @@ public class ChatUtils {
 
     public static boolean isGroupId(long memberId) {
         return memberId<0;
+    }
+
+
+    public static String collectArgumentsSinceIndex(@NonNull String[] args, int index){
+           if(index<0||index>= args.length){
+               throw new ArrayIndexOutOfBoundsException();
+           } return String.join(" ", Arrays.copyOfRange(args, index, args.length));
+
     }
 
 

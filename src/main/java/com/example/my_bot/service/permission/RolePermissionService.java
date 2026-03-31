@@ -73,7 +73,7 @@ public class RolePermissionService {
         }
 
         CommandAuthorizationResult commandAuthorizationResult =
-                commandService.checkCommandsAuthorization(chatId, commandNormalizationResult.getNormalizedCommands(), userRolePriority,fromId, false);
+                commandService.checkCommandsAuthorization(chatId, commandNormalizationResult.getNormalizedCommands(), userRolePriority,fromId);
         result.setForbiddenToEdit(commandAuthorizationResult.getForbidden());
         
 
@@ -126,7 +126,7 @@ public class RolePermissionService {
 
         int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
 
-        if(!commandService.checkCommandAuthorization(chatId, mainCommandName, userRolePriority, fromId, false)){
+        if(!commandService.checkCommandAuthorization(chatId, mainCommandName, userRolePriority, fromId)){
             throw new CommandAccessDeniedException(fromId, mainCommandName);
         }
 
