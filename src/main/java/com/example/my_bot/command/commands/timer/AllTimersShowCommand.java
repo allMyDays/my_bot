@@ -53,7 +53,7 @@ public class AllTimersShowCommand implements ChatCommand {
         long chatId = messageDto.getChatId();
         long peerId = messageDto.getPeerId();
 
-        List<TimerEntity> timers = timerService.getAllChatTimersSortedByIdAsc(chatId);
+        List<TimerEntity> timers = timerService.getChatTimersSortedByIdAsc(chatId);
 
         StringBuilder sb = new StringBuilder();
         sb.append("В чате установлено (%d/%d) таймеров.\n\n".formatted(timers.size(), timerService.getMaxTimers()));

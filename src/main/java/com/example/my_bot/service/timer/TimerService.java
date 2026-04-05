@@ -2,7 +2,6 @@ package com.example.my_bot.service.timer;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.command.CommandRegistry;
-import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.entity.TimerEntity;
 import com.example.my_bot.enumeration.timer.TimerType;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
@@ -24,13 +23,11 @@ import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ScheduledFuture;
 
 import static com.example.my_bot.enumeration.DefaultRole.isDefaultRole;
 import static com.example.my_bot.enumeration.timer.TimerType.*;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 import static java.lang.String.format;
-import static java.time.temporal.ChronoUnit.DAYS;
 
 @Slf4j
 @Service
@@ -148,7 +145,7 @@ public class TimerService {
         return newNextExecution;
     }
 
-    public List<TimerEntity> getAllChatTimersSortedByIdAsc(long chatId){
+    public List<TimerEntity> getChatTimersSortedByIdAsc(long chatId){
         return timerRepository.findByChatIdOrderByIdAsc(chatId);
     }
     public List<TimerEntity> getAllTimersWithNextExecutionLessThan(@NonNull Instant requiredDateTime, @Nullable Set<Long> excludedTimerIds){
