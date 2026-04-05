@@ -27,8 +27,7 @@ import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 
 import static com.example.my_bot.enumeration.DefaultRole.isDefaultRole;
-import static com.example.my_bot.enumeration.timer.TimerType.DAILY;
-import static com.example.my_bot.enumeration.timer.TimerType.ONCE;
+import static com.example.my_bot.enumeration.timer.TimerType.*;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 import static java.lang.String.format;
 import static java.time.temporal.ChronoUnit.DAYS;
@@ -130,13 +129,21 @@ public class TimerService {
             throw new IllegalTimerTypeException(ONCE);
         }
 
-       ZoneId zone = ZoneId.of("Europe/Moscow");
+        ZoneId zone = ZoneId.of("Europe/Moscow");
 
-        Instant oldExecution = timer.getNextExecution();
-        Instant newNextExecution = timer.getType()==DAILY
-                ? oldExecution.atZone(zone).plusDays(1).toInstant()
-                : oldExecution.plusSeconds(timer.getIntervalSeconds());
+       Instant newNextExecution;
 
+       if(timer.getType()==EACH){
+           newNextExecution = Instant.now().plusSeconds(timer.getIntervalSeconds());  //всегда приплюсовываю к текущему моменту
+       }else {
+           ZonedDateTime next = timer.getNextExecution().atZone(zone).plusDays(1);
+           ZonedDateTime now = ZonedDateTime.now(zone);
+           if (next.isBefore(now)) {   // таймер отстал, догоняю по времени
+               next = next.plusDays(
+                       ChronoUnit.DAYS.between(next.toLocalDate(), now.toLocalDate()) + 1
+               );
+           }newNextExecution = next.toInstant();
+       }
         timer.setNextExecution(newNextExecution);
         return newNextExecution;
     }
