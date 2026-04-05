@@ -20,7 +20,7 @@ public class ChatUtils {
         return peerId<PEER_ID_CHAT_OFFSET;
     }
 
-    public static long extractPeerId(long chatId){
+    public static long convertToPeerId(long chatId){
         if(chatId<0||chatId>1_000_000_000){
             throw new IllegalArgumentException("ChatId is invalid, cannot extract PeerId");
         } return chatId+PEER_ID_CHAT_OFFSET;

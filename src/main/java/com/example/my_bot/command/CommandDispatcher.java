@@ -5,6 +5,8 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.cooldown.CooldownResult;
+import com.example.my_bot.exception.command.ForbiddenCommandForCurrentModeException;
+import com.example.my_bot.exception.command.UnknownCommandException;
 import com.example.my_bot.service.*;
 import com.example.my_bot.service.chat.ChatService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -55,26 +57,34 @@ public class CommandDispatcher {
 
              Optional<Character> chatPrefix = chatDetails.getOptionalPrefix();
 
-             boolean mustCutPrefix=true;
-
-             if(chatPrefix.isPresent()){
-                 if(commandName.charAt(0)!=chatPrefix.get()) return;
-             }else{
-                 if(commandName.charAt(0)!=DEFAULT_CHAT_PREFIX){
+             if(!messageDto.isTimerMode()){   // в таймерах все команды обязаны быть без префикса
+                 boolean mustCutPrefix=true;
+                 if(chatPrefix.isPresent()){
+                   if(commandName.charAt(0)!=chatPrefix.get()) return;
+                 }else{
+                    if(commandName.charAt(0)!=DEFAULT_CHAT_PREFIX){
                      mustCutPrefix=false;
-
+                    }
+                 }
+                 if(mustCutPrefix){
+                   commandName = commandName.substring(1);
                  }
              }
-              if(mustCutPrefix){
-                  commandName = commandName.substring(1);
-              }
 
-
-        Optional<ChatCommand> cmdOptional = commandRegistry.getCommand(commandName);
-        if (cmdOptional.isPresent()) {
+        final String finalCommandName = commandName;
+        Optional<ChatCommand> cmdOptional = commandRegistry.getCommand(finalCommandName);
+        if(cmdOptional.isEmpty()){
+            if(messageDto.isTimerMode()){
+                throw new UnknownCommandException(finalCommandName);
+            }
+        }
+        else {
             ChatCommand mainCommand = cmdOptional.get();
-            Command cmdAnnotation = commandRegistry.getCommandAnnotation(commandName)
-                    .orElseThrow(()->new RuntimeException("Cannot find required init-annotation @Command"));
+            Command cmdAnnotation = commandRegistry.getCommandAnnotation(finalCommandName)
+                    .orElseThrow(()->new RuntimeException("Cannot find required init-annotation @Command for "+ finalCommandName));
+            if(messageDto.isTimerMode()&&!cmdAnnotation.eventable()){
+                throw new ForbiddenCommandForCurrentModeException(finalCommandName);
+            }
 
             int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
 

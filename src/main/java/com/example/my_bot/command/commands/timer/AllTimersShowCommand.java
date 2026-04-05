@@ -8,10 +8,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.TimerEntity;
 import com.example.my_bot.enumeration.timer.TimerType;
-import com.example.my_bot.exception.command.CommandException;
-import com.example.my_bot.exception.timer.TimerException;
-import com.example.my_bot.service.TimerService;
-import com.example.my_bot.utils.TimeUtils;
+import com.example.my_bot.service.timer.TimerService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -21,15 +18,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Optional;
 
-import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.enumeration.timer.TimerType.*;
-import static com.example.my_bot.utils.ChatUtils.collectArgumentsSinceIndex;
 import static com.example.my_bot.utils.ChatUtils.createMention;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 import static com.example.my_bot.utils.TimeUtils.getStringFullDateFromLocalDateTime;
@@ -74,17 +67,16 @@ public class AllTimersShowCommand implements ChatCommand {
                     .append(". Команда «%s» ".formatted(timer.getFullCommand()))
                     .append(type.equals(ONCE)?"одноразово ":"циклично ");
                     if(!type.equals(ONCE)){
-                        sb.append(type.equals(DAILY)?"каждый день в одно время":"через каждые ");
+                        sb.append(type.equals(DAILY)?"каждый день в одно время. ":"через каждые ");
                     }
                     if(type.equals(EACH)){
-                        LocalDateTime creationDate = timer.getCreationDate().atZone(zone).toLocalDateTime();
-                        sb.append(formatDurationFromSeconds(timer.getIntervalSeconds(), true))
-                                .append(" после ")
-                                .append(getStringFullDateFromLocalDateTime(creationDate));
+                        sb.append(formatDurationFromSeconds(timer.getIntervalSeconds(), true));
+                        sb.append(" ");
                     }
                     if(!type.equals(ONCE)){
-                        sb.append(". След. вызов: ");
-                    }sb.append(getStringFullDateFromLocalDateTime(nextExecution));
+                        sb.append("Следующий вызов: ");
+                    }
+                    sb.append(getStringFullDateFromLocalDateTime(nextExecution));
                     sb.append("\n");
 
         }

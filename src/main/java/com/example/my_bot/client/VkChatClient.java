@@ -31,7 +31,7 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 
 import static com.example.my_bot.enumeration.member.MemberPresenceType.KICKED;
-import static com.example.my_bot.utils.ChatUtils.extractPeerId;
+import static com.example.my_bot.utils.ChatUtils.convertToPeerId;
 
 @Component
 @Slf4j
@@ -69,7 +69,7 @@ public class VkChatClient{
 
         GetConversationMembersResponse membersResponse =
                 vkApiClient.messages()
-                        .getConversationMembers(groupActor, extractPeerId(chatId))
+                        .getConversationMembers(groupActor, convertToPeerId(chatId))
                         .execute();
         return membersResponse.getItems();
 

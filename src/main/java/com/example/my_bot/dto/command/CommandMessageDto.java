@@ -37,6 +37,9 @@ public class CommandMessageDto {
     @Getter
     private long peerId;
 
+    @Getter
+    private boolean timerMode = false;
+
 
     public Optional<Long> getReplyMessageFromId() {
         return Optional.ofNullable(replyMessageFromId);

@@ -38,30 +38,25 @@ public class TimerEntity {
     private String fullCommand;
 
     @Column(nullable = false)
-    private Instant creationDate;
-
-    @Column(nullable = false)
     private Instant nextExecution;
 
     @Column(nullable = true)
     private long intervalSeconds;  // период в секундах для типа "каждые"
 
 
-    public TimerEntity(long chatId, long creatorId, TimerType type, String fullCommand, Instant creationDate, Instant nextExecution) {
+    public TimerEntity(long chatId, long creatorId, TimerType type, String fullCommand, Instant nextExecution) {
         this.chatId = chatId;
         this.creatorId = creatorId;
         this.type = type;
         this.fullCommand = fullCommand;
-        this.creationDate = creationDate;
         this.nextExecution = nextExecution;
     }
 
-    public TimerEntity(Long chatId, Long creatorId, TimerType type, String fullCommand, Instant creationDate, long intervalSeconds, Instant nextExecution) {
+    public TimerEntity(Long chatId, Long creatorId, TimerType type, String fullCommand, long intervalSeconds, Instant nextExecution) {
         this.chatId = chatId;
         this.creatorId = creatorId;
         this.type = type;
         this.fullCommand = fullCommand;
-        this.creationDate = creationDate;
         this.intervalSeconds = intervalSeconds;
         this.nextExecution = nextExecution;
     }
