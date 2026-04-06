@@ -8,7 +8,9 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.enumeration.DefaultRole;
+import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -20,7 +22,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 
 import java.time.Instant;
-import java.time.ZoneId;
 import java.util.Optional;
 import java.util.Set;
 
@@ -39,6 +40,8 @@ public class KickNewCommand implements ChatCommand {
     private VkChatClient vkChatClient;
 
     private final MemberService memberService;
+
+    private final ChatService chatService;
 
     private final int MAX_COMMAND_PERIOD_IN_SECONDS = 86_400;
 
@@ -80,9 +83,9 @@ public class KickNewCommand implements ChatCommand {
 
         Instant kickAfter = Instant.now().minusSeconds(periodInSeconds);
 
-        String dateToShow = TimeUtils.getStringFullDateFromLocalDateTime(
-                kickAfter.atZone(ZoneId.of("Europe/Moscow")).toLocalDateTime()
-        );
+        TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
+
+        String dateToShow = TimeUtils.getStringDateTimeWithTimeZone(kickAfter, chatTimeZone);
         Page<MemberEntity> allRequiredMembers = memberService.findNotKickedNewMembersWithRoleLessThan(chatId,kickAfter,requiredRole.getRolePriority(), 100);
 
         Set<Long> kickedCommunities = vkChatClient.kickManyChatMembers(chatId,

@@ -3,6 +3,7 @@ package com.example.my_bot.service.timer;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.command.CommandRegistry;
 import com.example.my_bot.entity.TimerEntity;
+import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.timer.TimerType;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
@@ -10,6 +11,7 @@ import com.example.my_bot.exception.timer.*;
 import com.example.my_bot.repository.TimerRepository;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.service.chat.ChatService;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.List;
 import java.util.Set;
 
@@ -28,6 +31,7 @@ import static com.example.my_bot.enumeration.DefaultRole.isDefaultRole;
 import static com.example.my_bot.enumeration.timer.TimerType.*;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 import static java.lang.String.format;
+import static java.util.concurrent.TimeUnit.DAYS;
 
 @Slf4j
 @Service
@@ -37,13 +41,14 @@ public class TimerService {
     private final CommandAccessService commandAccessService;
     private final MemberService memberService;
     private final TimerExecutionService timerExecutionService;
+    private final ChatService chatService;
     private CommandRegistry commandRegistry;
 
     private static final long MIN_INTERVAL_BETWEEN_EXECUTING = 5*60;
     private static final long MAX_INTERVAL_BETWEEN_EXECUTING = 2_592_000;
     private static final String FORMATTED_MIN_INTERVAL = formatDurationFromSeconds(MIN_INTERVAL_BETWEEN_EXECUTING, true);
     private static final String FORMATTED_MAX_INTERVAL = formatDurationFromSeconds(MAX_INTERVAL_BETWEEN_EXECUTING, true);
-    private static final Instant MAX_DATE_FOR_ONCE_TIMER =  Instant.parse("2036-12-31T23:59:59Z");
+    private static final Instant MAX_DATE_FOR_ONCE_TIMER =  Instant.parse("2046-12-31T23:59:59Z");
     private static final int MAX_TIMERS = 30;
 
 
@@ -61,7 +66,8 @@ public class TimerService {
     @Transactional
     public TimerEntity createOnceTimer(long chatId, @NonNull LocalDateTime executionDate, @NonNull String fullCommandWithArgs, long fromId){
 
-        Instant executionInstantDate = executionDate.atZone(ZoneId.of("Europe/Moscow")).toInstant();
+        ZoneOffset chatTimeZoneOffset = chatService.getChatTimeZone(chatId).getZoneOffset();
+        Instant executionInstantDate = executionDate.atZone(chatTimeZoneOffset).toInstant();
         checkNextExecutionDateCondition(executionInstantDate);
         checkTimersLimitAndCommandUsageAbility(chatId, fromId, fullCommandWithArgs);
         TimerEntity savedTimer = timerRepository.save(
@@ -98,7 +104,8 @@ public class TimerService {
     public TimerEntity createDailyTimer(long chatId, @NonNull LocalTime dailyTime, @NonNull String fullCommandWithArgs, long fromId){
         checkTimersLimitAndCommandUsageAbility(chatId, fromId, fullCommandWithArgs);
 
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Europe/Moscow"));   // время чата сейчас
+        ZoneOffset chatTimeZoneOffset = chatService.getChatTimeZone(chatId).getZoneOffset();
+        ZonedDateTime now = ZonedDateTime.now(chatTimeZoneOffset);   // время чата сейчас
         ZonedDateTime next = now.with(dailyTime); //  текущая дата, но с нужным временем
         if (next.isBefore(now)) {
             next = next.plusDays(1); // если время уже прошло сегодня, то беру завтра
@@ -126,20 +133,18 @@ public class TimerService {
             throw new IllegalTimerTypeException(ONCE);
         }
 
-        ZoneId zone = ZoneId.of("Europe/Moscow");
+       // ZoneId zone = ZoneId.of("Europe/Moscow");
 
        Instant newNextExecution;
+       Instant now = Instant.now();
 
        if(timer.getType()==EACH){
-           newNextExecution = Instant.now().plusSeconds(timer.getIntervalSeconds());  //всегда приплюсовываю к текущему моменту
+           newNextExecution = now.plusSeconds(timer.getIntervalSeconds());  //всегда приплюсовываю к текущему моменту
        }else {
-           ZonedDateTime next = timer.getNextExecution().atZone(zone).plusDays(1);
-           ZonedDateTime now = ZonedDateTime.now(zone);
-           if (next.isBefore(now)) {   // таймер отстал, догоняю по времени
-               next = next.plusDays(
-                       ChronoUnit.DAYS.between(next.toLocalDate(), now.toLocalDate()) + 1
-               );
-           }newNextExecution = next.toInstant();
+           newNextExecution = timer.getNextExecution();
+           do{
+             newNextExecution = newNextExecution.plus(1, ChronoUnit.DAYS);
+           }while (newNextExecution.isBefore(now));  // догоняю ежедневный таймер, если он отстал
        }
         timer.setNextExecution(newNextExecution);
         return newNextExecution;

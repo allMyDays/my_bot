@@ -9,6 +9,7 @@ import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.TimerEntity;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.timer.TimerException;
+import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.timer.TimerService;
 import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -40,6 +41,8 @@ public class TimerCreateCommand implements ChatCommand {
     private final TimerService timerService;
 
     private VkChatClient vkChatClient;
+
+    private final ChatService chatService;
 
     @Autowired
     @Lazy
@@ -103,8 +106,8 @@ public class TimerCreateCommand implements ChatCommand {
 
       }
 
-        String dateToShow = TimeUtils.getStringFullDateFromLocalDateTime(
-                createdTimer.getNextExecution().atZone(ZoneId.of("Europe/Moscow")).toLocalDateTime());
+        String dateToShow = TimeUtils.getStringDateTimeWithTimeZone(
+                createdTimer.getNextExecution(), chatService.getChatTimeZone(chatId));
 
         vkChatClient.sendText("✅Вы успешно создали новый таймер. Дата следующего срабатывания — %s".formatted(dateToShow),peerId, true);
 

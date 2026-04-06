@@ -1,5 +1,6 @@
 package com.example.my_bot.dto;
 
+import com.example.my_bot.enumeration.TimeZoneType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 
@@ -18,6 +19,8 @@ public class ChatDetailsDto {
     private Instant lastSyncTime;
 
     private boolean silentRestriction;
+
+    private TimeZoneType timeZoneType;
 
     @JsonIgnore
     public Optional<Character> getOptionalPrefix() {

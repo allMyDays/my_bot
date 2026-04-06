@@ -7,8 +7,11 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.TimerEntity;
+import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.timer.TimerType;
+import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.timer.TimerService;
+import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -18,14 +21,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.enumeration.timer.TimerType.*;
 import static com.example.my_bot.utils.ChatUtils.createMention;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
-import static com.example.my_bot.utils.TimeUtils.getStringFullDateFromLocalDateTime;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -38,6 +39,8 @@ public class AllTimersShowCommand implements ChatCommand {
     private final TimerService timerService;
 
     private VkChatClient vkChatClient;
+
+    private final ChatService chatService;
 
     @Autowired
     @Lazy
@@ -58,9 +61,8 @@ public class AllTimersShowCommand implements ChatCommand {
         StringBuilder sb = new StringBuilder();
         sb.append("В чате установлено (%d/%d) таймеров.\n\n".formatted(timers.size(), timerService.getMaxTimers()));
         int index =1;
-        final ZoneId zone = ZoneId.of("Europe/Moscow"); // часовой пояс чата
+        TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
         for(TimerEntity timer: timers){
-            LocalDateTime nextExecution = timer.getNextExecution().atZone(zone).toLocalDateTime();
 
             TimerType type = timer.getType();
             sb.append("%s(%d)".formatted(createMention(timer.getCreatorId()),index++))
@@ -76,7 +78,7 @@ public class AllTimersShowCommand implements ChatCommand {
                     if(!type.equals(ONCE)){
                         sb.append("Следующий вызов: ");
                     }
-                    sb.append(getStringFullDateFromLocalDateTime(nextExecution));
+                    sb.append(TimeUtils.getStringDateTimeWithTimeZone(timer.getNextExecution(), chatTimeZone));
                     sb.append("\n");
 
         }

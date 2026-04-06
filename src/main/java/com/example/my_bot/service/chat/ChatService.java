@@ -3,6 +3,7 @@ package com.example.my_bot.service.chat;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.entity.ChatEntity;
+import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.chat.SwitchChatSettingResult;
 import com.example.my_bot.exception.chat.ChatEntityAlreadyExistsException;
 import com.example.my_bot.exception.chat.ChatEntityNotFoundException;
@@ -62,7 +63,7 @@ public class ChatService {
                 return chatMapper.toChatDetailsDto(optionalChat.get());
             }
             if (createIfAbsent) {
-                ChatEntity newEntity = selfLink.createNewChat(id, null);
+                ChatEntity newEntity = selfLink.createNewChatWithStandardSettings(id);
                 return chatMapper.toChatDetailsDto(newEntity);
             } else {
                 throw new ChatEntityNotFoundException(id);
@@ -109,6 +110,18 @@ public class ChatService {
        return getCachedChatDetails(chatId, false).getOptionalPrefix();
 
     }
+    public TimeZoneType getChatTimeZone(long chatId){
+        return getCachedChatDetails(chatId, false).getTimeZoneType();
+
+    }
+
+    @Transactional
+    public void setChatTimeZone(long chatId, @NonNull TimeZoneType timeZone){
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+        chat.setTimeZoneType(timeZone);
+        putChatToCache(chatRepository.save(chat));
+    }
+
     @Transactional
     public void setLastSyncToNow(long chatId){
 
@@ -118,18 +131,16 @@ public class ChatService {
         putChatToCache(chatRepository.save(chat));
     }
     @Transactional
-    public ChatEntity createNewChat(long chatId, @Nullable Character prefix){
+    public ChatEntity createNewChatWithStandardSettings(long chatId){
 
         if(getChatEntity(chatId).isPresent()){
             throw new ChatEntityAlreadyExistsException(chatId);
         }
-        if (prefix != null && FORBIDDEN_PREFIXES.contains(prefix)) {
-            throw new ForbiddenPrefixException(prefix);
-        }
 
         ChatEntity chat = new ChatEntity();
         chat.setChatId(chatId);
-        chat.setPrefix(prefix==null?DEFAULT_CHAT_PREFIX:prefix);
+        chat.setPrefix(DEFAULT_CHAT_PREFIX);
+        chat.setTimeZoneType(TimeZoneType.GMT_PLUS_3);
         return chatRepository.save(chat);
 
     }

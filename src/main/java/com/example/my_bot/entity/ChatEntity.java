@@ -1,9 +1,7 @@
 package com.example.my_bot.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.example.my_bot.enumeration.TimeZoneType;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
@@ -26,8 +24,12 @@ public class ChatEntity {
     @Column(nullable = true)
     private Instant lastSyncTime;
 
-    @Column(nullable = true)
+    @Column(nullable = false)
     private boolean silentRestriction;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private TimeZoneType timeZoneType;
 
 
 }

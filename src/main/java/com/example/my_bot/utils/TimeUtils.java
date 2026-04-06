@@ -1,9 +1,11 @@
 package com.example.my_bot.utils;
 
+import com.example.my_bot.enumeration.TimeZoneType;
 import lombok.Getter;
 import lombok.NonNull;
 
 import java.math.BigInteger;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -107,8 +109,9 @@ public class TimeUtils {
             }
         }
 
-    public static String getStringFullDateFromLocalDateTime(@NonNull LocalDateTime localDateTime) {
-        return localDateTime.format(RUSSIAN_DATE_TIME_FORMATTER);
+    public static String getStringDateTimeWithTimeZone(@NonNull Instant instant, @NonNull TimeZoneType timeZone) {
+       LocalDateTime localDateTime = instant.atZone(timeZone.getZoneOffset()).toLocalDateTime();
+        return localDateTime.format(RUSSIAN_DATE_TIME_FORMATTER)+" "+timeZone.getStringType();
     }
 
     /**
