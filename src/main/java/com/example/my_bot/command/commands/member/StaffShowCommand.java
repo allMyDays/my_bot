@@ -23,7 +23,6 @@ import static com.example.my_bot.enumeration.member.MemberPresenceType.IN_CHAT;
 import static com.example.my_bot.utils.ChatUtils.createMention;
 
 @Command(mainCommandName = "управляющие", alternativeCommandNames = {"staff", "админы"}, defaultRole = MEMBER, eventable = true)
-//@RequiredArgsConstructor
 public class StaffShowCommand implements ChatCommand {
 
     @Getter

@@ -1,4 +1,4 @@
-package com.example.my_bot.command.commands.role;
+package com.example.my_bot.command.commands.member;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
@@ -14,20 +14,18 @@ import com.example.my_bot.service.GlobalUserService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 
-import java.util.Optional;
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 import static com.example.my_bot.utils.ChatUtils.createMention;
 
 
 @Slf4j
 @Command(mainCommandName = "роль", alternativeCommandNames = {"role", "ктоя"}, defaultRole = MEMBER, eventable = true)
-public class UserRoleShowCommand implements ChatCommand {
+public class MemberRoleShowCommand implements ChatCommand {
 
     @Getter
     private final CommandCooldown cooldown = new CommandCooldown(5,60);
@@ -45,11 +43,11 @@ public class UserRoleShowCommand implements ChatCommand {
     private final long groupId;
 
 
-    public UserRoleShowCommand(MemberService memberService,
-                               MemberInputResolver memberInputResolver,
-                               RoleService roleService,
-                               GlobalUserService userService,
-                               @Value("${vk.group.id}") long groupId
+    public MemberRoleShowCommand(MemberService memberService,
+                                 MemberInputResolver memberInputResolver,
+                                 RoleService roleService,
+                                 GlobalUserService userService,
+                                 @Value("${vk.group.id}") long groupId
     ) {
         this.memberService = memberService;
         this.memberInputResolver = memberInputResolver;

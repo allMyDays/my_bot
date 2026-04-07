@@ -1,4 +1,4 @@
-package com.example.my_bot.command.commands.role;
+package com.example.my_bot.command.commands.member;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
@@ -21,8 +21,6 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Optional;
-
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.utils.ChatUtils.*;
@@ -30,7 +28,7 @@ import static com.example.my_bot.utils.ChatUtils.*;
 @Slf4j
 @Command(mainCommandName = "назначить", alternativeCommandNames = {"выдатьроль", "датьроль"}, defaultRole = ADMINISTRATOR, eventable = true)
 @RequiredArgsConstructor
-public class RoleAssignCommand implements ChatCommand {
+public class AssignMemberCommand implements ChatCommand {
 
     @Getter
     private final CommandCooldown cooldown = new CommandCooldown(5,60);
@@ -89,11 +87,13 @@ public class RoleAssignCommand implements ChatCommand {
             String username = userService.getUserNameInRequiredCase(userToAssign, NameCase.GENITIVE)
                     .orElse("этого участника");
 
-            vkChatClient.sendText(String.format("✅Роль %s(%s) изменена: «%s»(%d) ➜ «%s»(%d).",
-                    createMention(userToAssign),username,oldRole.getRoleName(), oldRole.getRolePriority(), newRole.getRoleName(), newRole.getRolePriority()),
+            vkChatClient.sendText(String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,
+                    createMention(userToAssign),username,oldRole.getRoleName(), newRole.getRoleName()),
                     peerId,
                     false);
 
+        }else{
+            log.warn("chat {} error: AssignMemberResult is null in AssignMemberCommand",chatId);
         }
 
     }

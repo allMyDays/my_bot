@@ -196,6 +196,18 @@ public class RoleService {
         }
         return new RoleDto(foundRole.getValue(), foundRole.getKey());
     }
+    public RoleDto findTheNearestHighestRole(long chatId, int rolePriority){
+
+        TreeMap<Integer, String> allSortedRoles = getAllRolesSortedInDescendingOrder(chatId);
+
+        Map.Entry<Integer, String> foundRole = allSortedRoles.lowerEntry(rolePriority);
+
+        if(foundRole==null){
+                throw new RoleNotFoundException();
+        }
+        return new RoleDto(foundRole.getValue(), foundRole.getKey());
+    }
+
 
 
     public TreeMap<Integer, String> getAllRolesSortedInDescendingOrder(long chatId){
