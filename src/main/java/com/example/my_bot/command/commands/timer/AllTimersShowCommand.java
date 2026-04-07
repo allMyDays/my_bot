@@ -20,7 +20,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
@@ -63,22 +66,27 @@ public class AllTimersShowCommand implements ChatCommand {
         int index =1;
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
         for(TimerEntity timer: timers){
+            Instant nextExecution = timer.getNextExecution();
 
             TimerType type = timer.getType();
             sb.append("%s(%d)".formatted(createMention(timer.getCreatorId()),index++))
-                    .append(". Команда «%s» ".formatted(timer.getFullCommand()))
-                    .append(type.equals(ONCE)?"одноразово ":"циклично ");
-                    if(!type.equals(ONCE)){
-                        sb.append(type.equals(DAILY)?"каждый день в одно время. ":"через каждые ");
+                    .append(". Команда «%s» ".formatted(timer.getFullCommand()));
+                    if(type.equals(ONCE)){
+                        sb.append("одноразово ");
                     }
-                    if(type.equals(EACH)){
-                        sb.append(formatDurationFromSeconds(timer.getIntervalSeconds(), true));
-                        sb.append(" ");
+                    else{
+                        sb.append("циклично ");
+                        if(type.equals(EACH)){
+                            sb.append("через каждые ")
+                                    .append(formatDurationFromSeconds(timer.getIntervalSeconds(), true));
+                        }else{
+                            sb.append("каждый день в ")
+                                    .append(nextExecution.atZone(chatTimeZone.getZoneOffset()).toLocalTime())
+                                    .append(".");
+                        }
+                        sb.append(" Следующий вызов: ");
                     }
-                    if(!type.equals(ONCE)){
-                        sb.append("Следующий вызов: ");
-                    }
-                    sb.append(TimeUtils.getStringDateTimeWithTimeZone(timer.getNextExecution(), chatTimeZone));
+                    sb.append(TimeUtils.getStringDateTimeWithTimeZone(nextExecution, chatTimeZone));
                     sb.append("\n");
 
         }
