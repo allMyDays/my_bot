@@ -132,9 +132,6 @@ public class TimerService {
         if(timer.getType()==ONCE){
             throw new IllegalTimerTypeException(ONCE);
         }
-
-       // ZoneId zone = ZoneId.of("Europe/Moscow");
-
        Instant newNextExecution;
        Instant now = Instant.now();
 
@@ -148,6 +145,26 @@ public class TimerService {
        }
         timer.setNextExecution(newNextExecution);
         return newNextExecution;
+    }
+
+
+    @Transactional
+    public void changeNextExecutionForEachTimer(long timerId, @NonNull LocalDateTime newNextExecution){
+
+        TimerEntity timer = timerRepository.findById(timerId)
+                .orElseThrow(()->new TimerNotFoundException(timerId));
+        if(!timer.getType().equals(EACH)){
+            throw new IllegalTimerTypeException(timer.getType());
+        }
+        ZoneOffset chatTimeZoneOffset = chatService.getChatTimeZone(timer.getChatId()).getZoneOffset();
+        Instant newNextExecutionInstant = newNextExecution.atZone(chatTimeZoneOffset).toInstant();
+        if(newNextExecutionInstant.compareTo(timer.getNextExecution())==0){
+            throw new TimerAlreadyHasThatNextExecutionException();
+        }
+        checkNextExecutionDateCondition(newNextExecutionInstant);
+        timer.setNextExecution(newNextExecutionInstant);
+        timerExecutionService.cancelTaskAndRemoveFromCache(timerId);
+        timerExecutionService.putTimerToSchedulerIfExecutionIsNear(timer);
     }
 
     public List<TimerEntity> getChatTimersSortedByIdAsc(long chatId){

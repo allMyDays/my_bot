@@ -6,6 +6,6 @@ public class IllegalTimerTypeException extends TimerException {
 
 
     public IllegalTimerTypeException(TimerType illegalType) {
-        super("Cannot use timer with type %s in current function".formatted(illegalType));
+        super("В данной функции нельзя использовать таймер с типом «%s».".formatted(illegalType.getCyrillicType()));
     }
 }

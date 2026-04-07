@@ -17,7 +17,7 @@ import java.util.Set;
 public class TimeUtils {
 
     private static final DateTimeFormatter RUSSIAN_DATE_TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("dd MMMM yyyy, HH:mm", new Locale("ru"));
+            DateTimeFormatter.ofPattern("dd MMMM yyyy в HH:mm", new Locale("ru"));
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     @Getter
@@ -111,6 +111,10 @@ public class TimeUtils {
 
     public static String getStringDateTimeWithTimeZone(@NonNull Instant instant, @NonNull TimeZoneType timeZone) {
        LocalDateTime localDateTime = instant.atZone(timeZone.getZoneOffset()).toLocalDateTime();
+        return localDateTime.format(RUSSIAN_DATE_TIME_FORMATTER)+" "+timeZone.getStringType();
+    }
+
+    public static String getStringDateTimeWithTimeZone(@NonNull LocalDateTime localDateTime, @NonNull TimeZoneType timeZone) {
         return localDateTime.format(RUSSIAN_DATE_TIME_FORMATTER)+" "+timeZone.getStringType();
     }
 
