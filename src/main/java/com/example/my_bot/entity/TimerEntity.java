@@ -8,6 +8,7 @@ import lombok.Setter;
 import org.hibernate.annotations.Check;
 
 import java.time.Instant;
+import java.util.Optional;
 
 @Entity
 @Getter
@@ -41,7 +42,13 @@ public class TimerEntity {
     private Instant nextExecution;
 
     @Column(nullable = true)
-    private long intervalSeconds;  // период в секундах для типа "каждые"
+    private Long intervalSeconds;  // период в секундах для типа "каждые"
+
+    @Column(nullable = true)
+    private Integer customExecutionLimit;
+
+    @Column(nullable = false)
+    private int executionCounter;
 
 
     public TimerEntity(long chatId, long creatorId, TimerType type, String fullCommand, Instant nextExecution) {
@@ -59,5 +66,13 @@ public class TimerEntity {
         this.fullCommand = fullCommand;
         this.intervalSeconds = intervalSeconds;
         this.nextExecution = nextExecution;
+    }
+
+    public Optional<Long> getOptionalIntervalSeconds() {
+        return Optional.ofNullable(intervalSeconds);
+    }
+
+    public Optional<Integer> getOptionalCustomExecutionLimit() {
+        return Optional.ofNullable(customExecutionLimit);
     }
 }

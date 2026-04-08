@@ -3,7 +3,6 @@ package com.example.my_bot.service.timer;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.command.CommandRegistry;
 import com.example.my_bot.entity.TimerEntity;
-import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.timer.TimerType;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
@@ -23,15 +22,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static com.example.my_bot.enumeration.DefaultRole.isDefaultRole;
 import static com.example.my_bot.enumeration.timer.TimerType.*;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 import static java.lang.String.format;
-import static java.util.concurrent.TimeUnit.DAYS;
 
 @Slf4j
 @Service
@@ -50,6 +48,7 @@ public class TimerService {
     private static final String FORMATTED_MAX_INTERVAL = formatDurationFromSeconds(MAX_INTERVAL_BETWEEN_EXECUTING, true);
     private static final Instant MAX_DATE_FOR_ONCE_TIMER =  Instant.parse("2046-12-31T23:59:59Z");
     private static final int MAX_TIMERS = 30;
+    private static final int SYSTEM_MAX_EXECUTION_LIMIT = 100;
 
 
     @Autowired
@@ -125,12 +124,17 @@ public class TimerService {
     }
 
    @Transactional
-    public Instant incrementNextExecutionForPeriodicTimer(long timerId){
+    public Instant incrementNextExecutionAndExecutionCounter(long timerId){
         TimerEntity timer = timerRepository.findById(timerId)
                 .orElseThrow(()->new TimerNotFoundException(timerId));
 
         if(timer.getType()==ONCE){
             throw new IllegalTimerTypeException(ONCE);
+        }
+        int nextExecutionCounter = timer.getExecutionCounter()+1;
+        Optional<Integer> customLimit = timer.getOptionalCustomExecutionLimit();
+        if(nextExecutionCounter>=SYSTEM_MAX_EXECUTION_LIMIT||(customLimit.isPresent()&&nextExecutionCounter>=customLimit.get())){
+            throw new TimerHasReachedExecutionLimitException();
         }
        Instant newNextExecution;
        Instant now = Instant.now();
@@ -144,9 +148,32 @@ public class TimerService {
            }while (newNextExecution.isBefore(now));  // догоняю ежедневный таймер, если он отстал
        }
         timer.setNextExecution(newNextExecution);
+        timer.setExecutionCounter(timer.getExecutionCounter()+1);
         return newNextExecution;
     }
 
+    @Transactional
+    public void setCustomExecutionLimit(long timerId, int newLimit){
+        TimerEntity timer = timerRepository.findById(timerId)
+                .orElseThrow(()->new TimerNotFoundException(timerId));
+
+        if(timer.getType()==ONCE){
+            throw new IllegalTimerTypeException(ONCE);
+        }
+        Optional<Integer> currentCustomLimit = timer.getOptionalCustomExecutionLimit();
+        if((currentCustomLimit.isPresent()&&currentCustomLimit.get()==newLimit)){
+            throw new TimerAlreadyHasThatExecutionLimitException();
+        }if(newLimit>SYSTEM_MAX_EXECUTION_LIMIT){
+            throw new IncorrectTimerExecutionLimitException(
+                    "Максимальный лимит срабатывания для таймеров — %d.".formatted(SYSTEM_MAX_EXECUTION_LIMIT)
+            );
+        }if(newLimit<=timer.getExecutionCounter()){
+            throw new IncorrectTimerExecutionLimitException(
+                    "Данный таймер уже успел выполниться %d раз, поэтому выберите более высокое число в качестве лимита срабатывания."
+                            .formatted(timer.getExecutionCounter())
+            );
+        }timer.setCustomExecutionLimit(newLimit);
+    }
 
     @Transactional
     public void changeNextExecutionForEachTimer(long timerId, @NonNull LocalDateTime newNextExecution){

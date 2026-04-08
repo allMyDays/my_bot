@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.enumeration.timer.TimerType.*;
@@ -84,6 +85,8 @@ public class AllTimersShowCommand implements ChatCommand {
                                     .append(nextExecution.atZone(chatTimeZone.getZoneOffset()).toLocalTime())
                                     .append(".");
                         }
+                        Optional<Integer> customExecutionLimit = timer.getOptionalCustomExecutionLimit();
+                        customExecutionLimit.ifPresent(limit -> sb.append(" (%d/%d).".formatted(timer.getExecutionCounter(), limit)));
                         sb.append(" Следующий вызов: ");
                     }
                     sb.append(TimeUtils.getStringDateTimeWithTimeZone(nextExecution, chatTimeZone));

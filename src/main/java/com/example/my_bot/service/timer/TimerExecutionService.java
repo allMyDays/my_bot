@@ -4,6 +4,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.entity.TimerEntity;
+import com.example.my_bot.exception.timer.TimerHasReachedExecutionLimitException;
 import com.example.my_bot.mapper.CommandMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.NonNull;
@@ -84,42 +85,53 @@ public class TimerExecutionService {
         return () -> {
             long chatId = timer.getChatId();
             long timerId = timer.getId();
-            try{
-                commandDispatcher.dispatch(
-                        commandMapper.toCommandMessageDto(chatId, timer.getCreatorId(), timer.getFullCommand(), true)
-                );
-            }catch (Exception e) {
-                log.warn("error while execution timer {} in chat {}, the timer is gonna be deleted.",timerId,chatId, e);
-                try {
-                    timerService.deleteTimerById(timerId);
-                } catch (Exception ex) {
-                    log.warn("chat {} error: couldn't delete timer {} that had error while execution.",chatId, timerId, ex);
-                }try {
-                    vkChatClient.sendText("Ваш таймер с командой «%s» завершился с ошибкой, поэтому был удалён.".formatted(timer.getFullCommand()), convertToPeerId(timer.getChatId()), true);
-                } catch (Exception ex) {
-                    log.warn("couldn't send message to chat {} about error in timer {}.",chatId, timerId, ex);
+                try{
+                    commandDispatcher.dispatch(
+                            commandMapper.toCommandMessageDto(chatId, timer.getCreatorId(), timer.getFullCommand(), true)
+                    );
+                }catch (Exception e) {
+                    log.warn("error while execution timer {} in chat {}, the timer is gonna be deleted.",timerId,chatId, e);
+                    deleteTimerAndSendNotification(timerId, timer.getFullCommand(), chatId,
+                            "Ваш таймер с командой «%s» завершился с ошибкой, поэтому был удалён.");
+                    return;
                 }
-                return;
-            }
+                try{
+                    if (timer.getType() == ONCE) {
+                        timerService.deleteTimerById(timerId); // удаляю одноразовый таймер
 
-            try{
-                if (timer.getType() == ONCE) {
-                    timerService.deleteTimerById(timerId); // удаляю одноразовый таймер
-
-                }else{     // обновляю дату следующего срабатывания для многоразового таймера
-                    Instant newNextExecution = timerService.incrementNextExecutionForPeriodicTimer(timerId);
-                    if(Duration.between(Instant.now(), newNextExecution).toHours()>=12){
-                        // отменяю многоразовый таймер потому-что следующий вызов только через 12 часов и более
-                        cancelTaskAndRemoveFromCache(timerId);
+                    }else{     // обновляю дату следующего срабатывания для многоразового таймера
+                        Instant newNextExecution = timerService.incrementNextExecutionAndExecutionCounter(timerId);
+                        if(Duration.between(Instant.now(), newNextExecution).toHours()>=12){
+                            // отменяю многоразовый таймер потому-что следующий вызов только через 12 часов и более
+                            cancelTaskAndRemoveFromCache(timerId);
+                        }
                     }
-                }
-            } catch (Exception e) {
-                log.error("error updating timer {} info after it's just been executed in chat {}: ",timerId,chatId, e);
+                } catch(TimerHasReachedExecutionLimitException e){
+                    deleteTimerAndSendNotification(timerId, timer.getFullCommand(), chatId,
+                            "Ваш таймер с командой «%s» достиг конца своего жизненного цикла и был удалён.");
 
-            }
+                } catch (Exception e) {
+                    log.error("error updating timer {} info after it's just been executed in chat {}: ",timerId,chatId, e);
+                    deleteTimerAndSendNotification(timerId, timer.getFullCommand(), chatId,
+                            "Таймер с командой «%s» сломан и был удалён.");
+
+                }
 
         };
     }
+    private void deleteTimerAndSendNotification(long timerId, String command, long chatId, String messageTemplate) {
+        try {
+            timerService.deleteTimerById(timerId);
+        } catch (Exception e) {
+            log.warn("Failed to delete timer {} after error", timerId, e);
+        }
+        try {
+            vkChatClient.sendText(messageTemplate.formatted(command), convertToPeerId(chatId), true);
+        } catch (Exception e) {
+            log.warn("Failed to send notification about timer {} deletion after error", timerId, e);
+        }
+    }
+
     @Scheduled(fixedRate = MAX_SECONDS_BETWEEN_NOW_AND_EXECUTION*1_000)
     private void putAllNearTimersToScheduledExecutor(){
         log.info("method putAllNearTimersToScheduledExecutor started");
