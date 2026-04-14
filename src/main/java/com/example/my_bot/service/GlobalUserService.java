@@ -58,7 +58,7 @@ public class GlobalUserService {
 
     public GlobalUserDetailsDto getOrCreateUser(long userId){
 
-        GlobalUserDetailsDto globalUserDetailsDto = cacheManager.getUserDetailsCache().get(userId, k->{
+        GlobalUserDetailsDto globalUserDetailsDto = cacheManager.getGlobalUserDetailsCache().get(userId, k->{
             GlobalUserEntity globalUserEntity = globalUserRepository.findById(userId).orElseGet(()->
                     globalUserRepository.save(new GlobalUserEntity(userId))
             );return globalUserMapper.toUserDetailsDto(globalUserEntity);
@@ -177,7 +177,7 @@ public class GlobalUserService {
 
         GlobalUserDetailsDto userDto = globalUserMapper.toUserDetailsDto(user);
 
-        cacheManager.getUserDetailsCache().put(user.getUserId(), userDto);
+        cacheManager.getGlobalUserDetailsCache().put(user.getUserId(), userDto);
 
         return userDto;
 

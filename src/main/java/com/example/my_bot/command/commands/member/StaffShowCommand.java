@@ -6,12 +6,12 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
@@ -55,16 +55,16 @@ public class StaffShowCommand implements ChatCommand {
         long exitedStaffMembers = 0;
         long allStaffMembers = 0;
 
-        TreeMap<Integer, List<MemberDto>> staffMap =  new TreeMap<>(Comparator.reverseOrder());
-        Collection<MemberDto> allMembersWithNotZeroRole = memberService.getCachedMembersWithRole(chatId).values();
+        TreeMap<Integer, List<MemberEntity>> staffMap =  new TreeMap<>(Comparator.reverseOrder());
+        Collection<MemberEntity> membersWithPositiveRole = memberService.getMembersWithPositiveRole(chatId);
 
-        for (MemberDto memberDto : allMembersWithNotZeroRole) {
-            if(memberDto.getRolePriority()<= MEMBER.getRolePriority()||memberDto.getUserId()==-groupId){
-                // отсеиваю участников с отрицательной ролью и самого бота
+        for (MemberEntity memberEntity : membersWithPositiveRole) {
+            if(memberEntity.getUserId()==-groupId){
+                // отсеиваю самого бота
                 continue;
             }
-            staffMap.computeIfAbsent(memberDto.getRolePriority(), k -> new ArrayList<>()).add(memberDto);
-            if (!memberDto.getPresenceType().equals(IN_CHAT)) {
+            staffMap.computeIfAbsent(memberEntity.getRolePriority(), k -> new ArrayList<>()).add(memberEntity);
+            if (!memberEntity.getPresenceType().equals(IN_CHAT)) {
                 exitedStaffMembers++;
             }allStaffMembers++;
         }
@@ -74,9 +74,9 @@ public class StaffShowCommand implements ChatCommand {
         Map<Integer, String> roleMap = roleService.getAllRolesWithNoSorting(chatId);
 
 
-        for(Map.Entry<Integer, List<MemberDto>> entry: staffMap.entrySet()){
+        for(Map.Entry<Integer, List<MemberEntity>> entry: staffMap.entrySet()){
             sb.append(roleMap.get(entry.getKey())).append(" ").append("(%d):\n".formatted(entry.getKey()));
-            for(MemberDto member:entry.getValue()){
+            for(MemberEntity member:entry.getValue()){
             if(member.isChatAdmin()){
                 sb.append("\uD83D\uDCA0 ");
             } sb.append(createMention(member.getUserId()));

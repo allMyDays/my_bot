@@ -58,7 +58,7 @@ public class RolePermissionService {
         RoleDto foundRole = roleService.getRoleByPriority(chatId, rolePriority)
                 .orElseThrow(RoleNotFoundException::new);
 
-        int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
+        int userRolePriority = memberService.getMemberRolePriority(chatId, fromId);
 
         roleService.checkRoleInteractionAbility(rolePriority,userRolePriority);
 
@@ -124,7 +124,7 @@ public class RolePermissionService {
         String mainCommandName = commandRegistry.getMainNameOfCommand(userCommand)
                 .orElseThrow(()->new UserCommandNotFoundException(userCommand));
 
-        int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
+        int userRolePriority = memberService.getMemberRolePriority(chatId, fromId);
 
         if(!commandService.checkCommandAuthorization(chatId, mainCommandName, userRolePriority, fromId)){
             throw new CommandAccessDeniedException(fromId, mainCommandName);

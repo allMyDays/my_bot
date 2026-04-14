@@ -10,7 +10,6 @@ import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.limit.RateLimitPeriodOutOfBoundsException;
 import com.example.my_bot.exception.limit.RateLimitUsageOutOfBoundsException;
 import com.example.my_bot.exception.limit.RateLimitWithThatCommandAndRoleAlreadyExistsException;
-import com.example.my_bot.exception.role.RoleAccessDeniedException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.RateLimitMapper;
 import com.example.my_bot.repository.RoleRateLimitRepository;
@@ -74,7 +73,7 @@ public class RoleRateLimitService {
         RoleDto foundRole = roleService.getRoleByPriority(chatId, rolePriority)
                 .orElseThrow(RoleNotFoundException::new);
 
-        int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
+        int userRolePriority = memberService.getMemberRolePriority(chatId, fromId);
         roleService.checkRoleInteractionAbility(rolePriority, userRolePriority);
 
         String mainCommandName =  commandRegistry.getMainNameOfCommand(userCommand.trim())
@@ -107,7 +106,7 @@ public class RoleRateLimitService {
     @Transactional
     public void deleteLimit(RoleRateLimitDto limitDto, long chatId, long fromId){
 
-        int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
+        int userRolePriority = memberService.getMemberRolePriority(chatId, fromId);
 
         roleService.checkRoleInteractionAbility(limitDto.getRolePriority(), userRolePriority);
 

@@ -79,7 +79,7 @@ public class MemberRoleShowCommand implements ChatCommand {
             memberToCheck = messageDto.getFromId();
         }
 
-        int userRolePriority =  memberService.getCachedMemberRolePriority(chatId, memberToCheck);
+        int userRolePriority =  memberService.getMemberRolePriority(chatId, memberToCheck);
         String roleName = memberToCheck==-groupId
                 ? "Чат-менеджер"
                 : roleService.getRoleName(chatId, userRolePriority).orElse("Unknown role");

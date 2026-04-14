@@ -7,6 +7,8 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
+import com.example.my_bot.exception.command.CannotApplyThisCommandToChatAdminException;
+import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.exception.member.MemberAccessDeniedException;
 import com.example.my_bot.resolver.MemberInputResolver;
 import com.example.my_bot.service.MemberService;
@@ -62,7 +64,7 @@ public class KickCommand implements ChatCommand {
         }
 
         if(memberToRemove==messageDto.getFromId()){
-            vkChatClient.sendText(CANNOT_APPLY_THIS_COMMAND_TO_YOURSELF, peerId,true);
+            vkChatClient.sendText(new CannotApplyThisCommandToYourselfException().getMessage(), peerId,true);
             return;
         }
 
@@ -75,7 +77,7 @@ public class KickCommand implements ChatCommand {
 
 
        try{
-           vkChatClient.kickOneChatMember((int)chatId, memberToRemove);
+           vkChatClient.kickOneChatMember(chatId, memberToRemove);
        }catch (ApiException e){
            vkChatClient.sendText("Не удалось исключить пользователя. "+e.getMessage(),peerId, true);
        }

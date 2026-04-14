@@ -17,8 +17,6 @@ public class MessageConstant {
 
     public static final String MEMBER_LINK_IS_NOT_CORRECT = "Не удалось получить участника по указанному вами строчному аргументу.";
 
-    public static final String CANNOT_APPLY_THIS_COMMAND_TO_YOURSELF = "Эту команду нельзя применить к самому себе.";
-
     public static final String INVALID_TIME_PERIOD_MESSAGE = "Указанный вами аргумент не является корректным временным периодом. Пример: 2 минуты/ 3 часа/ 1 день";
 
     public static final String NOT_VALID_TIME = "Введён некорректный аргумент времени. Пример: 07:30";

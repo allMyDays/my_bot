@@ -44,7 +44,6 @@ public class CommandAccessService {
     private final static int MILLISECONDS_BETWEEN_SENDING_COOLDOWN_MESSAGE_TO_USER = 30_000;
 
     private final Cache<String, CooldownData> cooldownCache = Caffeine.newBuilder()
-            .maximumSize(50_000)
             .expireAfter(new Expiry<String, CooldownData>() {
                 @Override
                 public long expireAfterCreate(String key, CooldownData data, long currentTime) {

@@ -63,7 +63,7 @@ public class PromoteMemberCommand implements ChatCommand {
         }
         AssignMemberResult assignResult;
         try{
-            int targetUserRole = memberService.getCachedMemberRolePriority(chatId, userToAssign);
+            int targetUserRole = memberService.getMemberRolePriority(chatId, userToAssign);
             RoleDto newRoleToAssign = roleService.findTheNearestHighestRole(chatId, targetUserRole);
             assignResult = memberService.assignNewRoleToMember(chatId,userToAssign,newRoleToAssign.getRolePriority(),messageDto.getFromId());
 

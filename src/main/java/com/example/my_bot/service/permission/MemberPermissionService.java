@@ -55,7 +55,7 @@ public class MemberPermissionService {
             throw new CannotApplyThisCommandToYourselfException();
         }
 
-        int callerRole = memberService.getCachedMemberRolePriority(chatId,fromId);
+        int callerRole = memberService.getMemberRolePriority(chatId,fromId);
 
         memberService.checkMemberInteractionAbility(chatId, fromId, targetUserId);
 
@@ -118,7 +118,7 @@ public class MemberPermissionService {
 
         String mainCommandName = commandRegistry.getMainNameOfCommand(userCommand)
                 .orElseThrow(()->new UserCommandNotFoundException(userCommand));
-        int callerRole = memberService.getCachedMemberRolePriority(chatId, fromId);
+        int callerRole = memberService.getMemberRolePriority(chatId, fromId);
 
         if(!commandService.checkCommandAuthorization(chatId, mainCommandName, callerRole, fromId)){
             throw new CommandAccessDeniedException(fromId, mainCommandName);

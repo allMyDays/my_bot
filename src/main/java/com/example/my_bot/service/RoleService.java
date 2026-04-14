@@ -1,7 +1,6 @@
 package com.example.my_bot.service;
 
 import com.example.my_bot.config.CaffeineCacheManager;
-import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.exception.role.RoleAccessDeniedException;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.entity.RoleEntity;
@@ -18,8 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
 import static com.example.my_bot.enumeration.DefaultRole.isDefaultRole;
@@ -57,7 +54,7 @@ public class RoleService {
         if(EmojiManager.containsEmoji(roleName)){
             throw new RoleNameCannotContainEmojiException();
         }
-        checkRoleInteractionAbility(rolePriority, memberService.getCachedMemberRolePriority(chatId, fromId));
+        checkRoleInteractionAbility(rolePriority, memberService.getMemberRolePriority(chatId, fromId));
 
         if(isDefaultRole(rolePriority)){
             throw new DuplicateRolePriorityException(rolePriority);
@@ -96,7 +93,7 @@ public class RoleService {
         if(EmojiManager.containsEmoji(newRoleName)){
             throw new RoleNameCannotContainEmojiException();
         }
-        checkRoleInteractionAbility(existingRolePriority, memberService.getCachedMemberRolePriority(chatId, fromId));
+        checkRoleInteractionAbility(existingRolePriority, memberService.getMemberRolePriority(chatId, fromId));
 
         Map<Integer, String> allRoles = getAllRolesWithNoSorting(chatId);
 
@@ -155,7 +152,7 @@ public class RoleService {
             throw new RoleNotFoundException();
         }
 
-        checkRoleInteractionAbility(rolePriority, memberService.getCachedMemberRolePriority(chatId, fromId));
+        checkRoleInteractionAbility(rolePriority, memberService.getMemberRolePriority(chatId, fromId));
 
         RoleDto roleToReAssign = findTheNearestLowestRole(chatId, rolePriority, true);
 

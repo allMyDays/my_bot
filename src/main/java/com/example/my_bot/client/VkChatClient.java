@@ -106,14 +106,14 @@ public class VkChatClient{
     }
 
 
-    public void kickOneChatMember(int chatId, long memberId) throws ClientException, ApiException {
+    public void kickOneChatMember(long chatId, long memberId) throws ClientException, ApiException {
 
         if (memberId==-groupId){
             return;
         }
 
         vkApiClient.messages().removeChatUser(groupActor)
-                .chatId(chatId)
+                .chatId((int)chatId)
                 .memberId(memberId)
                 .execute();
 

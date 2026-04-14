@@ -214,7 +214,7 @@ public class TimerService {
         if(!annotation.eventable()){
             throw new CannotUseThisCommandForTimerException(annotation.mainCommandName());
         }
-        int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
+        int userRolePriority = memberService.getMemberRolePriority(chatId, fromId);
         boolean executable = commandAccessService.checkCommandAuthorization(chatId, userCommand, userRolePriority, fromId);
         if(!executable){
             throw new CommandAccessDeniedException(fromId,userCommand);

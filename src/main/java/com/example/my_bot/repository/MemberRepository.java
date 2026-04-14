@@ -21,8 +21,8 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
     @Query("SELECT c FROM MemberEntity c WHERE c.chatId = :chatId")
     List<MemberEntity> findByChatId(@Param("chatId") Long chatId);
 
-    @Query("SELECT c FROM MemberEntity c WHERE c.chatId = :chatId AND c.rolePriority!=0")
-    List<MemberEntity> findMembersWithNotZeroRole(@Param("chatId") Long chatId);
+    @Query("SELECT c FROM MemberEntity c WHERE c.chatId = :chatId AND c.rolePriority>0")
+    List<MemberEntity> findMembersWithPositiveRole(@Param("chatId") Long chatId);
 
     @Query("SELECT c FROM MemberEntity c WHERE c.chatId = :chatId AND c.rolePriority=:rolePriority")
     List<MemberEntity> findMembersWithRequiredRole(@Param("chatId") Long chatId,@Param("rolePriority") Long rolePriority);
@@ -33,9 +33,19 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
         @Transactional
         @Query("UPDATE MemberEntity m SET m.rolePriority = :newPriority " +
                 "WHERE m.chatId = :chatId AND m.rolePriority = :oldPriority")
-        int updateRolePriorityForMembers(@Param("chatId") long chatId,
-                                         @Param("oldPriority") int oldPriority,
-                                         @Param("newPriority") int newPriority);
+        int updateMembersRole(@Param("chatId") long chatId,
+                              @Param("oldPriority") int oldPriority,
+                              @Param("newPriority") int newPriority);
+
+    @Modifying
+    @Transactional
+    @Query(value = """
+    UPDATE chat_member
+    SET role_priority = :newPriority
+    WHERE chat_id = :chatId AND role_priority = :oldPriority
+    RETURNING user_id;
+    """, nativeQuery = true)
+    List<Long> updateMembersRoleAndReturnIds(long chatId, int oldPriority, int newPriority);
 
 
     @Modifying
@@ -60,6 +70,19 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
             "AND m.rolePriority < :thresholdRolePriority")
     int removePositiveRoleFromExitedMembers(@Param("chatId") long chatId,
                                             @Param("thresholdRolePriority") int thresholdRolePriority);
+
+    @Modifying
+    @Transactional
+    @Query(value = """
+    UPDATE chat_member
+    SET role_priority = 0
+    WHERE chat_id = :chatId
+      AND presence_type <> 'IN_CHAT'
+      AND role_priority > 0
+      AND role_priority < :thresholdRolePriority
+    RETURNING user_id;
+""", nativeQuery = true)
+    List<Long> removePositiveRoleFromExitedMembersAndReturnIds(long chatId, int thresholdRolePriority);
 
 
     @Query("SELECT m FROM MemberEntity m WHERE m.chatId = :chatId AND m.rolePriority < :rolePriority AND (m.presenceType = 'SELF_LEAVE' OR m.presenceType = 'UNKNOWN_LEAVE')")

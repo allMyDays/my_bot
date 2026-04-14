@@ -1,8 +1,14 @@
 package com.example.my_bot.service.chat;
 
+import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.dto.ChatDetailsDto;
+import com.example.my_bot.dto.ban.MemberBanStatus;
+import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.member.MemberPresenceType;
+import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.utils.ChatUtils;
+import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ActionOneOf;
@@ -16,6 +22,7 @@ import java.time.Instant;
 import java.util.*;
 
 import static com.example.my_bot.enumeration.member.MemberPresenceType.*;
+import static com.example.my_bot.utils.ChatUtils.createMention;
 
 @Slf4j
 @Service
@@ -26,7 +33,11 @@ public class ChatActionService {
 
     private final ChatService chatService;
 
-    private static final long AUTO_SYNC_INTERVAL_MINUTES = 15;
+    private final BanService banService;
+
+    private final VkChatClient vkChatClient;
+
+    private static final long AUTO_SYNC_INTERVAL_MINUTES = 20;
 
 
 
@@ -37,14 +48,20 @@ public class ChatActionService {
         }
         MessageActionStatus type = action.getType();
         Long memberId = action.getMemberId();
+        boolean hasBeenKicked;
         switch (type){
             case CHAT_INVITE_USER_BY_LINK:
-                memberService.createNewMemberOrMarkAsPresent(chatId, fromId,null);
+                hasBeenKicked = removeBannedMember(chatId, fromId);
+                if(!hasBeenKicked){
+                    memberService.createNewMemberOrMarkAsPresent(chatId, fromId,null);
+                }
                 break;
             case CHAT_INVITE_USER:
-                Long invitedBy = fromId==memberId?null:fromId;  // самостоятельный возврат или приглашение
-                memberService.createNewMemberOrMarkAsPresent(chatId, memberId,invitedBy);
-                break;
+                hasBeenKicked =removeBannedMember(chatId, memberId);
+                if(!hasBeenKicked){
+                    Long invitedBy = fromId==memberId?null:fromId;  // самостоятельный возврат или приглашение
+                    memberService.createNewMemberOrMarkAsPresent(chatId, memberId,invitedBy);
+                }
             case CHAT_KICK_USER:
                 MemberPresenceType presenceType = (fromId==memberId?SELF_LEAVE:KICKED);   // самостоятельный выход или исключение
                 memberService.setPresenceTypeToMember(chatId, memberId, presenceType, true);
@@ -53,7 +70,6 @@ public class ChatActionService {
            }
 
         }
-
 
     public void checkLastChatSynchronizationAndExecute(long chatId) throws ClientException, ApiException {
 
@@ -69,15 +85,33 @@ public class ChatActionService {
 
     }
 
+    private boolean removeBannedMember(long chatId, long memberId){
 
-
-
-
-
-
-
-
+        boolean successfulKick = false;
+        MemberBanStatus banStatus = banService.isMemberBanned(chatId, memberId);
+        if(banStatus.isBanned()){
+            TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
+            Optional<Instant> bannedUntil = banStatus.getBannedUntil();
+            String message = "%s(Этот пользователь) в бане до %s.".formatted(
+                    createMention(memberId),
+                    bannedUntil.map(instant -> TimeUtils.getStringDateTimeWithTimeZone(instant, chatTimeZone)).orElse("∞")
+            );
+            try {
+                vkChatClient.kickOneChatMember(chatId, memberId);
+                successfulKick = true;
+            } catch (ClientException | ApiException e) {
+                log.warn("chat {} error: cannot remove banned member {} that just has been linked. ",chatId, memberId, e);
+                message +=" Однако возникла ошибка при попытке исключить этого пользователя: "+e.getMessage();
+            }
+            try {
+                vkChatClient.sendText(message, ChatUtils.convertToPeerId(chatId), true);
+            } catch (ClientException | ApiException e) {
+                log.warn("chat {} error: cannot send info about banned member {} that just has been linked. ",chatId, memberId, e);
+            }
+        }
+        return successfulKick;
     }
+}
 
 
 

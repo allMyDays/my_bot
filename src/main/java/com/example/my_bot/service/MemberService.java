@@ -15,12 +15,12 @@ import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.repository.MemberRepository;
 import com.example.my_bot.service.chat.ChatService;
-import com.google.common.collect.ImmutableMap;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ConversationMember;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
@@ -29,8 +29,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.swing.text.html.parser.Entity;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -75,11 +77,6 @@ public class MemberService {
     @Lazy
     public void setRoleService(RoleService roleService) {
         this.roleService = roleService;
-    }
-
-
-    public List<MemberEntity> findByChatId(long chatId){
-        return memberRepository.findByChatId(chatId);
     }
 
 
@@ -137,58 +134,53 @@ public class MemberService {
         }
 
         chatService.setLastSyncToNow(chatId);
-        invalidateMemberRoleCache(chatId);
+        invalidateMemberCache(chatId);
 
     }
 
-    public int getCachedMemberRolePriority(long chatId, long userId){
-        ImmutableMap<Long, MemberDto> members =  getCachedMembersWithRole(chatId);
-        MemberDto memberDto = members.get(userId);
-        if(memberDto!=null){
-            return memberDto.getRolePriority();
-        }return MEMBER.getRolePriority();
+    public int getMemberRolePriority(long chatId, long userId){
+        Optional<MemberDto> member = getCachedMemberInfo(chatId, userId);
+        return member.map(MemberDto::getRolePriority).orElse(MEMBER.getRolePriority());
 
     }
 
     @Transactional
-    public boolean reAssignRequiredMembersMassively(long chatId, int oldRolePriority, int newRolePriority){
+    public void reAssignRequiredMembersMassively(long chatId, int oldRolePriority, int newRolePriority){
 
         if(roleService.getRoleByPriority(chatId,newRolePriority).isEmpty()){
             throw new RoleNotFoundException();
         }
 
-        int changedRows = memberRepository.updateRolePriorityForMembers(chatId, oldRolePriority, newRolePriority);
+        List<Long> memberIds = memberRepository.updateMembersRoleAndReturnIds(chatId, oldRolePriority, newRolePriority);
 
-        invalidateMemberRoleCache(chatId);
-
-        return changedRows>0;
+        changeCachedMembersRole(chatId, memberIds, newRolePriority);
 
     }
 
     @Transactional
     public void createNewMemberOrMarkAsPresent(long chatId, long userId, Long invitedById) {
-        Optional<MemberEntity> existing = memberRepository.findByChatIdAndUserId(chatId, userId);
-        if (existing.isPresent()) {
-            MemberEntity member = existing.get();
+        MemberEntity member = memberRepository.findByChatIdAndUserId(chatId, userId).orElse(null);
+        if (member!=null) {
             member.setPresenceType(IN_CHAT);
             member.setChatAdmin(false);
-            invalidateMemberRoleCache(chatId);
         } else {
-            memberRepository.save(new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, IN_CHAT, invitedById, Instant.now()));
-        }
+           member = memberRepository.save(new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, IN_CHAT, invitedById, Instant.now()));
+        } putMemberToCache(chatId, member);
     }
+
     @Transactional
     public void setPresenceTypeToMember(long chatId, long userId, @NonNull MemberPresenceType presenceType, boolean createIfAbsent){
-        Optional<MemberEntity> member = memberRepository.findByChatIdAndUserId(chatId, userId);
-        if(member.isEmpty()){
+        MemberEntity member = memberRepository.findByChatIdAndUserId(chatId, userId).orElse(null);
+        if(member==null){
             if(createIfAbsent){
-                memberRepository.save(new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, presenceType, null, Instant.now()));
+                member =memberRepository.save(new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, presenceType, null, Instant.now()));
+                putMemberToCache(chatId, member);
                 return;
             }throw new UserNeverBeenInChatException(userId);
         }
-        if(member.get().getPresenceType()!=presenceType){
-            member.get().setPresenceType(presenceType);
-            invalidateMemberRoleCache(chatId);
+        if(member.getPresenceType()!=presenceType){
+            member.setPresenceType(presenceType);
+            putMemberToCache(chatId, member);
         }
 
     }
@@ -204,6 +196,7 @@ public class MemberService {
                 .collect(Collectors.toMap(MemberEntity::getUserId, Function.identity()));
 
         List<MemberEntity> toSave = new ArrayList<>();
+        List<MemberEntity> toPutInCache = new ArrayList<>();
         List<Long> missingUserIds = new ArrayList<>();
 
         for (Long userId : userIds) {
@@ -211,10 +204,12 @@ public class MemberService {
             if (member != null) {
                 if (member.getPresenceType() != presenceType) {
                     member.setPresenceType(presenceType);
+                    toPutInCache.add(member);
                 }
             } else if (createIfAbsent) {
-                MemberEntity newMember = new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, presenceType, null, Instant.now());
-                toSave.add(newMember);
+                member = new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, presenceType, null, Instant.now());
+                toSave.add(member);
+                toPutInCache.add(member);
             } else {
                 missingUserIds.add(userId);
             }
@@ -225,8 +220,10 @@ public class MemberService {
         } if (!toSave.isEmpty()) {
             memberRepository.saveAll(toSave);
         }
-        if (!existingMap.isEmpty()) {
-            invalidateMemberRoleCache(chatId);
+
+        if (!toPutInCache.isEmpty()) {
+            memberRepository.flush();
+            putMembersToCache(chatId, toPutInCache);
         }
     }
 
@@ -250,15 +247,15 @@ public class MemberService {
 
 
     @Transactional
-    public RoleDto removePositiveRoleFromExitedMembers(long chatId, long fromId){         // возвращает роль человека, который вызвал метод
+    public RoleDto removePositiveRoleFromExitedMembers(long chatId, long fromId){    // возвращает роль человека, который вызвал метод
 
-        RoleDto callerRole = roleService.getRoleByPriority(chatId, getCachedMemberRolePriority(chatId, fromId))
+        RoleDto callerRole = roleService.getRoleByPriority(chatId, getMemberRolePriority(chatId, fromId))
                 .orElseThrow(RoleNotFoundException::new);
 
-        if(callerRole.getRolePriority()<=0) return callerRole; // у человека роль участника или ниже, значит он никого не снимет
+        if(callerRole.getRolePriority()<= MEMBER.getRolePriority()) return callerRole; // у человека роль участника или ниже, значит он никого не снимет
 
-        memberRepository.removePositiveRoleFromExitedMembers(chatId, callerRole.getRolePriority());
-        invalidateMemberRoleCache(chatId);
+        List<Long> memberIds = memberRepository.removePositiveRoleFromExitedMembersAndReturnIds(chatId, callerRole.getRolePriority());
+        changeCachedMembersRole(chatId, memberIds,MEMBER.getRolePriority());
         return callerRole;
     }
 
@@ -281,7 +278,7 @@ public class MemberService {
 
         checkMemberInteractionAbility(chatId, fromId, userToAssign);
 
-        roleService.checkRoleInteractionAbility(newRolePriority,getCachedMemberRolePriority(chatId, fromId));
+        roleService.checkRoleInteractionAbility(newRolePriority, getMemberRolePriority(chatId, fromId));
 
 
         RoleDto roleToChange = roleService.getRoleByPriority(chatId, memberToAssign.getRolePriority())
@@ -289,9 +286,7 @@ public class MemberService {
 
         memberToAssign.setRolePriority(newRolePriority);
 
-        memberRepository.save(memberToAssign);
-
-        invalidateMemberRoleCache(chatId);
+        putMemberToCache(chatId,memberRepository.save(memberToAssign));
 
         return new AssignMemberResult(roleToChange, roleToAssign);
 
@@ -309,33 +304,78 @@ public class MemberService {
 
     public void checkMemberInteractionAbility(long chatId, long fromId, long userToInteract){
 
-        int callerRole = getCachedMemberRolePriority(chatId, fromId);
-        int targetUserRole = getCachedMemberRolePriority(chatId, userToInteract);
+        int callerRole = getMemberRolePriority(chatId, fromId);
+        int targetUserRole = getMemberRolePriority(chatId, userToInteract);
 
         if(callerRole<=targetUserRole){
             // никому нельзя наказывать участников с ролью выше или равной своей
             throw new MemberAccessDeniedException(userToInteract,fromId);
         }
     }
+    public boolean isChatAdmin(long chatId, long memberId){
+        Optional<MemberDto> member = getCachedMemberInfo(chatId, memberId);
+        return member.map(MemberDto::isChatAdmin).orElse(false);
+    }
 
-        private void invalidateMemberRoleCache(long chatId){
-        cacheManager.getMemberRoleCache().invalidate(chatId);
+    private Optional<MemberDto> getCachedMemberInfo(long chatId, long memberId){
+
+        ConcurrentHashMap<Long, Optional<MemberDto>> members = cacheManager.getActiveMembersCache().get(chatId,k->new ConcurrentHashMap<>());
+        return members.computeIfAbsent(memberId, key-> {
+           Optional<MemberEntity> member = memberRepository.findByChatIdAndUserId(chatId, memberId);
+           return member.map(memberMapper::toMemberDto);
+
+        });
+    }
+
+       private void invalidateMemberCache(long chatId){
+        cacheManager.getActiveMembersCache().invalidate(chatId);
 
         }
 
-        public ImmutableMap<Long, MemberDto> getCachedMembersWithRole(long chatId){
+        public List<MemberEntity> getMembersWithPositiveRole(long chatId){
+           return memberRepository.findMembersWithPositiveRole(chatId);
+        }
 
-        return cacheManager.getMemberRoleCache().get(chatId,
-                k ->{
-                    ImmutableMap.Builder<Long, MemberDto> resultMap = new ImmutableMap.Builder<>();
-                    List<MemberEntity> members = memberRepository.findMembersWithNotZeroRole(chatId);
-                    for(MemberEntity member:members){
-                        resultMap.put(member.getUserId(), memberMapper.toMemberDto(member));
-                    } return resultMap.build();
-                });
-             }
+
+    private MemberDto putMemberToCache(long chatId, @NonNull MemberEntity member){
+
+        MemberDto memberDto = memberMapper.toMemberDto(member);
+
+        ConcurrentHashMap<Long, Optional<MemberDto>> members = cacheManager.getActiveMembersCache()
+                .get(chatId,k-> new ConcurrentHashMap<>());
+        members.put(memberDto.getUserId(), Optional.of(memberDto));
+
+        return memberDto;
 
     }
+    private void putMembersToCache(long chatId, @NonNull List<MemberEntity> membersToPut){
+
+        ConcurrentHashMap<Long, Optional<MemberDto>> memberCache = cacheManager.getActiveMembersCache()
+                .get(chatId,k-> new ConcurrentHashMap<>());
+
+        for(MemberEntity currentMember: membersToPut){
+            if(currentMember!=null){
+               memberCache.put(currentMember.getUserId(), Optional.of(memberMapper.toMemberDto(currentMember)));
+            }
+        }
+    }
+
+
+    private void changeCachedMembersRole(long chatId, @NonNull List<Long> memberIds, int newRolePriority){
+
+        ConcurrentHashMap<Long, Optional<MemberDto>> memberCache = cacheManager.getActiveMembersCache()
+                .get(chatId,k-> new ConcurrentHashMap<>());
+
+        for(Long currentMemberId: memberIds){
+            if(currentMemberId!=null){
+                memberCache.computeIfPresent(currentMemberId, (id, memberOptional) -> {
+                    memberOptional.ifPresent(memberDto -> memberDto.setRolePriority(newRolePriority));
+                    return memberOptional;
+                });
+            }
+        }
+    }
+}
 
 
 

@@ -86,7 +86,7 @@ public class CommandDispatcher {
                 throw new ForbiddenCommandForCurrentModeException(finalCommandName);
             }
 
-            int userRolePriority = memberService.getCachedMemberRolePriority(chatId, fromId);
+            int userRolePriority = memberService.getMemberRolePriority(chatId, fromId);
 
             boolean canExecute = commandAccessService.checkCommandAuthorization(
                     chatId, cmdAnnotation.mainCommandName(),userRolePriority,fromId);

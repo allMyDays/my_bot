@@ -133,7 +133,7 @@ public class TimerExecutionService {
     }
 
     @Scheduled(fixedRate = MAX_SECONDS_BETWEEN_NOW_AND_EXECUTION*1_000)
-    private void putAllNearTimersToScheduledExecutor(){
+    protected void putAllNearTimersToScheduledExecutor(){
         log.info("method putAllNearTimersToScheduledExecutor started");
         Instant requiredDateTime = Instant.now().plusSeconds(MAX_SECONDS_BETWEEN_NOW_AND_EXECUTION);
 

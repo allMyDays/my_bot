@@ -62,7 +62,7 @@ public class DemoteMemberCommand implements ChatCommand {
         }
         AssignMemberResult assignResult;
         try{
-            int targetUserRole = memberService.getCachedMemberRolePriority(chatId, userToAssign);
+            int targetUserRole = memberService.getMemberRolePriority(chatId, userToAssign);
             RoleDto newRoleToAssign = roleService.findTheNearestLowestRole(chatId, targetUserRole, false);
             assignResult = memberService.assignNewRoleToMember(chatId,userToAssign,newRoleToAssign.getRolePriority(),messageDto.getFromId());
 
