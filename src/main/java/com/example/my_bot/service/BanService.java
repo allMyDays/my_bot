@@ -28,7 +28,8 @@ public class BanService {
     private final BanRepository banRepository;
     private final MemberService memberService;
     private final CaffeineCacheManager cacheManager;
-    private static final int MIN_BAN_PERIOD_IN_SECONDS = 5*60;
+    private static final long MIN_BAN_PERIOD_IN_SECONDS = 60;
+    private static final long MAX_BAN_PERIOD_IN_SECONDS = 777_600_000;
 
 
     @Transactional
@@ -41,8 +42,11 @@ public class BanService {
         Instant unbanAt=null;
         if(periodInSeconds!=null){
             if(periodInSeconds<MIN_BAN_PERIOD_IN_SECONDS){
-            throw new BanPeriodOutOfBoundsException(MIN_BAN_PERIOD_IN_SECONDS);
-         } unbanAt = now.plusSeconds(periodInSeconds);
+                periodInSeconds = MIN_BAN_PERIOD_IN_SECONDS;
+         }if(periodInSeconds>MAX_BAN_PERIOD_IN_SECONDS){
+                periodInSeconds = MAX_BAN_PERIOD_IN_SECONDS;
+            }
+            unbanAt = now.plusSeconds(periodInSeconds);
         }
         if(reason!=null){
             reason = reason.trim();
