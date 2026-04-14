@@ -19,7 +19,13 @@ public interface BanRepository extends JpaRepository<BanEntity, Long> {
 
     @Modifying
     @Transactional
-    @Query("DELETE FROM BanEntity b WHERE b.unbanAt IS NOT NULL AND b.unbanAt <= :now")
+    @Query("DELETE FROM BanEntity b WHERE b.bannedUntil IS NOT NULL AND b.bannedUntil <= :now")
     void deleteExpiredBans(@Param("now") Instant now);
+
+    @Modifying
+    @Transactional
+    void deleteByChatIdAndMemberId(Long chatId, Long memberId);
+
+
 
 }

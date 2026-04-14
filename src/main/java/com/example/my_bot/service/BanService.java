@@ -3,14 +3,11 @@ package com.example.my_bot.service;
 import com.example.my_bot.cache.keys.ChatMemberKey;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.ban.MemberBanStatus;
-import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.entity.BanEntity;
-import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.exception.ban.BanPeriodOutOfBoundsException;
-import com.example.my_bot.exception.command.CannotApplyThisCommandToChatAdminException;
+import com.example.my_bot.exception.ban.UserHasNotBannedException;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.repository.BanRepository;
-import com.github.benmanes.caffeine.cache.Cache;
 import jakarta.annotation.Nullable;
 import jakarta.transaction.Transactional;
 import lombok.NonNull;
@@ -21,7 +18,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static com.example.my_bot.enumeration.DefaultRole.isDefaultRole;
 
@@ -56,7 +52,7 @@ public class BanService {
                 .orElse(new BanEntity());
 
         newBan.setBannedBy(fromId);
-        newBan.setUnbanAt(unbanAt);
+        newBan.setBannedUntil(unbanAt);
         newBan.setReason(reason);
         newBan.setBannedAt(now);
         if(newBan.getId()==null){     // сущность новая
@@ -67,33 +63,39 @@ public class BanService {
         return Optional.ofNullable(unbanAt);
 
     }
+    @Transactional
+    public void deleteMemberBan(long chatId, long memberId){
+        if(!getMemberBanStatus(chatId,memberId).isBanned()){
+            throw new UserHasNotBannedException(memberId);
+        }
+        cacheManager.getBanCache().invalidate(new ChatMemberKey(chatId, memberId));
+        banRepository.deleteByChatIdAndMemberId(chatId, memberId);
 
-    public MemberBanStatus isMemberBanned(long chatId, long memberId){
+    }
+
+    public MemberBanStatus getMemberBanStatus(long chatId, long memberId){
         ChatMemberKey key = new ChatMemberKey(chatId, memberId);
-        MemberBanStatus memberBanStatus = cacheManager.getBanCache().asMap().computeIfAbsent(key,k->{
-            Optional<BanEntity> memberBan = banRepository.findByChatIdAndMemberId(chatId, memberId);
-            return memberBan.map(ban -> new MemberBanStatus(memberId, true, ban.getUnbanAt()))
-                    .orElseGet(() -> new MemberBanStatus(memberId, false, null));
-        });
-        Instant now = Instant.now();
-        if(memberBanStatus.isBanned()){
-            Optional<Instant> bannedUntil = memberBanStatus.getBannedUntil();
-            if(bannedUntil.isPresent()&&!bannedUntil.get().isAfter(now)){  // проверка срока временного бана, так как в бд могут быть старые записи
+        return cacheManager.getBanCache().asMap().computeIfAbsent(key,k->{
+            BanEntity memberBan = banRepository.findByChatIdAndMemberId(chatId, memberId).orElse(null);
+            if(memberBan==null||(memberBan.getBannedUntil()!=null&&!memberBan.getBannedUntil().isAfter(Instant.now()))){
+                // либо бана никакого нет, либо есть истёкший временный бан
                 return new MemberBanStatus(memberId, false, null);
-            }
-        } return memberBanStatus;
+            } return new MemberBanStatus(memberId, true, memberBan.getBannedUntil());
+
+        });
     }
 
     @Scheduled(fixedRate = 1_800_000)
-    protected void deleteExpiredBans(){
+    protected void deleteExpiredDbBans(){
         banRepository.deleteExpiredBans(Instant.now());
     }
 
    private void putBanToCache(@NonNull BanEntity banEntity){
-       MemberBanStatus banStatus = new MemberBanStatus(banEntity.getMemberId(), true, banEntity.getUnbanAt());
+       MemberBanStatus banStatus = new MemberBanStatus(banEntity.getMemberId(), true, banEntity.getBannedUntil());
        ChatMemberKey key = new ChatMemberKey(banEntity.getChatId(), banEntity.getMemberId());
        cacheManager.getBanCache().put(key, banStatus);
    }
+
 
 
 }

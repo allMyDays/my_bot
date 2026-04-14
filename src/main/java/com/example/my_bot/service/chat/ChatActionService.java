@@ -50,22 +50,23 @@ public class ChatActionService {
         Long memberId = action.getMemberId();
         boolean hasBeenKicked;
         switch (type){
-            case CHAT_INVITE_USER_BY_LINK:
+            case CHAT_INVITE_USER_BY_LINK->{
                 hasBeenKicked = removeBannedMember(chatId, fromId);
                 if(!hasBeenKicked){
                     memberService.createNewMemberOrMarkAsPresent(chatId, fromId,null);
                 }
-                break;
-            case CHAT_INVITE_USER:
+            }
+            case CHAT_INVITE_USER->{
                 hasBeenKicked =removeBannedMember(chatId, memberId);
                 if(!hasBeenKicked){
                     Long invitedBy = fromId==memberId?null:fromId;  // самостоятельный возврат или приглашение
                     memberService.createNewMemberOrMarkAsPresent(chatId, memberId,invitedBy);
                 }
-            case CHAT_KICK_USER:
+            }
+            case CHAT_KICK_USER->{
                 MemberPresenceType presenceType = (fromId==memberId?SELF_LEAVE:KICKED);   // самостоятельный выход или исключение
                 memberService.setPresenceTypeToMember(chatId, memberId, presenceType, true);
-                break;
+            }
 
            }
 
@@ -88,7 +89,7 @@ public class ChatActionService {
     private boolean removeBannedMember(long chatId, long memberId){
 
         boolean successfulKick = false;
-        MemberBanStatus banStatus = banService.isMemberBanned(chatId, memberId);
+        MemberBanStatus banStatus = banService.getMemberBanStatus(chatId, memberId);
         if(banStatus.isBanned()){
             TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
             Optional<Instant> bannedUntil = banStatus.getBannedUntil();

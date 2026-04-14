@@ -27,7 +27,7 @@ public class BanEntity {
     private Instant bannedAt;
 
     @Column(nullable = true)
-    private Instant unbanAt;
+    private Instant bannedUntil;
 
     @Column(nullable = true, columnDefinition = "TEXT")
     private String reason;
