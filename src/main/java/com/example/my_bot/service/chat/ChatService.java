@@ -158,6 +158,27 @@ public class ChatService {
 
     }
 
+    public boolean isAutoUnban(long chatId){
+        return getCachedChatDetails(chatId, false).isAutoUnban();
+    }
+    @Transactional
+    public SwitchChatSettingResult switchAutoUnban(long chatId){
+
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+
+        SwitchChatSettingResult resultToReturn;
+        if(chat.isAutoUnban()){
+            chat.setAutoUnban(false);
+            resultToReturn = SwitchChatSettingResult.OFF;
+        }else{
+            chat.setAutoUnban(true);
+            resultToReturn = SwitchChatSettingResult.ON;
+        }
+        putChatToCache( chatRepository.save(chat));
+        return resultToReturn;
+
+    }
+
     @Transactional
     public void setLastSyncToNow(long chatId){
 

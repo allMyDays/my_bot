@@ -24,6 +24,8 @@ public class ChatDetailsDto {
 
     private Long banPeriodSeconds;
 
+    private boolean autoUnban;
+
     @JsonIgnore
     public Optional<Character> getOptionalPrefix() {
         return Optional.ofNullable(prefix);

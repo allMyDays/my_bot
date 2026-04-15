@@ -1,11 +1,14 @@
 package com.example.my_bot.service.chat;
 
+import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
+import com.example.my_bot.command.commands.ban.UnbanCommand;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.ban.MemberBanStatus;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.member.MemberPresenceType;
 import com.example.my_bot.service.BanService;
+import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.TimeUtils;
@@ -37,6 +40,8 @@ public class ChatActionService {
 
     private final VkChatClient vkChatClient;
 
+    private final CommandAccessService commandAccessService;
+
     private static final long AUTO_SYNC_INTERVAL_MINUTES = 20;
 
 
@@ -49,15 +54,16 @@ public class ChatActionService {
         MessageActionStatus type = action.getType();
         Long memberId = action.getMemberId();
         boolean hasBeenKicked;
+
         switch (type){
             case CHAT_INVITE_USER_BY_LINK->{
-                hasBeenKicked = removeBannedMember(chatId, fromId);
+                hasBeenKicked = handleBannedMemberOnJoin(chatId, fromId, fromId);
                 if(!hasBeenKicked){
                     memberService.createNewMemberOrMarkAsPresent(chatId, fromId,null);
                 }
             }
             case CHAT_INVITE_USER->{
-                hasBeenKicked =removeBannedMember(chatId, memberId);
+                hasBeenKicked = handleBannedMemberOnJoin(chatId, fromId, memberId);
                 if(!hasBeenKicked){
                     Long invitedBy = fromId==memberId?null:fromId;  // самостоятельный возврат или приглашение
                     memberService.createNewMemberOrMarkAsPresent(chatId, memberId,invitedBy);
@@ -86,31 +92,52 @@ public class ChatActionService {
 
     }
 
-    private boolean removeBannedMember(long chatId, long memberId){
+    /**
+     @return true, если пользователь был исключён по бизнес-логике
+     */
+    private boolean handleBannedMemberOnJoin(long chatId, long fromId, long memberId){
 
-        boolean successfulKick = false;
+        boolean hasBeenKicked = false;
+        boolean isKickRequired = true;
+
         MemberBanStatus banStatus = banService.getMemberBanStatus(chatId, memberId);
-        if(banStatus.isBanned()){
+        if(!banStatus.isBanned()){
+            return false;
+        }
             TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
             Optional<Instant> bannedUntil = banStatus.getBannedUntil();
             String message = "%s(Этот пользователь) в бане до %s.".formatted(
                     createMention(memberId),
                     bannedUntil.map(instant -> TimeUtils.getStringDateTimeWithTimeZone(instant, chatTimeZone)).orElse("∞")
             );
-            try {
-                vkChatClient.kickOneChatMember(chatId, memberId);
-                successfulKick = true;
-            } catch (ClientException | ApiException e) {
-                log.warn("chat {} error: cannot remove banned member {} that just has been linked. ",chatId, memberId, e);
-                message +=" Однако возникла ошибка при попытке исключить этого пользователя: "+e.getMessage();
+
+            if(chatService.isAutoUnban(chatId)&&fromId!=memberId){
+                String unbanCommandName = UnbanCommand.class.getAnnotation(Command.class).mainCommandName();
+                int callerRole = memberService.getMemberRolePriority(chatId, fromId);
+                boolean canUnban = commandAccessService.checkCommandAuthorization(chatId, unbanCommandName,callerRole, fromId);
+                if(canUnban){
+                    banService.deleteMemberBan(chatId, memberId);
+                    message+="\nНо бан был автоматически снят потому, что пользователя пригласил участник с правом на использование команды «%s»."
+                            .formatted(unbanCommandName);
+                    isKickRequired = false;
+
+                }
+            }
+            if(isKickRequired){
+                try {
+                    vkChatClient.kickOneChatMember(chatId, memberId);
+                    hasBeenKicked = true;
+                } catch (ClientException | ApiException e) {
+                    log.warn("chat {} error: cannot remove banned member {} that just has been linked. ",chatId, memberId, e);
+                    message +=" Однако возникла ошибка при попытке исключить этого пользователя: "+e.getMessage();
+                }
             }
             try {
                 vkChatClient.sendText(message, ChatUtils.convertToPeerId(chatId), true);
             } catch (ClientException | ApiException e) {
                 log.warn("chat {} error: cannot send info about banned member {} that just has been linked. ",chatId, memberId, e);
             }
-        }
-        return successfulKick;
+        return hasBeenKicked;
     }
 }
 

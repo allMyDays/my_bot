@@ -34,5 +34,8 @@ public class ChatEntity {
     @Column(nullable = true)
     private Long banPeriodSeconds;
 
+    @Column(nullable = false)
+    private boolean autoUnban;
+
 
 }
