@@ -31,5 +31,8 @@ public class ChatEntity {
     @Enumerated(EnumType.STRING)
     private TimeZoneType timeZoneType;
 
+    @Column(nullable = true)
+    private Long banPeriodSeconds;
+
 
 }

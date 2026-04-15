@@ -10,7 +10,7 @@ import com.example.my_bot.exception.chat.ChatEntityNotFoundException;
 import com.example.my_bot.exception.chat.ForbiddenPrefixException;
 import com.example.my_bot.mapper.ChatMapper;
 import com.example.my_bot.repository.ChatRepository;
-import jakarta.annotation.Nullable;
+import com.example.my_bot.service.BanService;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +36,8 @@ public class ChatService {
 
     private final ChatMapper chatMapper;
 
+    private BanService banService;
+
     private final static Set<Character> FORBIDDEN_PREFIXES = Set.of('*','@');
 
     private ChatService selfLink;
@@ -44,6 +46,12 @@ public class ChatService {
     @Lazy
     public void setSelfLink(ChatService selfLink) {
         this.selfLink = selfLink;
+    }
+
+    @Autowired
+    @Lazy
+    public void setBanService(BanService banService) {
+        this.banService = banService;
     }
 
     private Optional<ChatEntity> getChatEntity(long chatId){
@@ -120,6 +128,34 @@ public class ChatService {
         ChatEntity chat = findByChatIdOrThrow(chatId);
         chat.setTimeZoneType(timeZone);
         putChatToCache(chatRepository.save(chat));
+    }
+
+    @Transactional
+    public long setDefaultBanPeriod(long chatId, long banPeriodSeconds){
+        if(banPeriodSeconds>banService.getMaxBanPeriodInSeconds()){
+            banPeriodSeconds = banService.getMaxBanPeriodInSeconds();
+        }if(banPeriodSeconds<banService.getMinBanPeriodInSeconds()){
+            banPeriodSeconds = banService.getMinBanPeriodInSeconds();
+        }
+
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+        chat.setBanPeriodSeconds(banPeriodSeconds);
+        putChatToCache(chatRepository.save(chat));
+
+        return banPeriodSeconds;
+    }
+    @Transactional
+    public void disableDefaultBanPeriod(long chatId){
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+        if(chat.getBanPeriodSeconds()!=null){
+            chat.setBanPeriodSeconds(null);
+            putChatToCache(chatRepository.save(chat));
+        }
+    }
+
+    public Optional<Long> getDefaultBanPeriod(long chatId){
+        return getCachedChatDetails(chatId, false).getOptionalBanPeriod();
+
     }
 
     @Transactional

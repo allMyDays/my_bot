@@ -100,6 +100,16 @@ public class BanService {
        cacheManager.getBanCache().put(key, banStatus);
    }
 
+   public long getMinBanPeriodInSeconds(){
+        return MIN_BAN_PERIOD_IN_SECONDS;
+   }
+
+   public long getMaxBanPeriodInSeconds(){
+        return MAX_BAN_PERIOD_IN_SECONDS;
+   }
+
+
+
 
 
 }

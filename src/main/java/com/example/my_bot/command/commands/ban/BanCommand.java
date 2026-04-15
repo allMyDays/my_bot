@@ -94,6 +94,8 @@ public class BanCommand implements ChatCommand {
                     vkChatClient.sendText(INVALID_TIME_PERIOD_MESSAGE,peerId, true);
                     return;
                 }
+            }else{   // вечный бан
+                banPeriodInSeconds = chatService.getDefaultBanPeriod(chatId).orElse(null);
             }
         }else{
             vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS, peerId,true);

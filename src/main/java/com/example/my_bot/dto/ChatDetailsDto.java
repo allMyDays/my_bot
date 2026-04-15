@@ -22,6 +22,8 @@ public class ChatDetailsDto {
 
     private TimeZoneType timeZoneType;
 
+    private Long banPeriodSeconds;
+
     @JsonIgnore
     public Optional<Character> getOptionalPrefix() {
         return Optional.ofNullable(prefix);
@@ -32,4 +34,7 @@ public class ChatDetailsDto {
         return Optional.ofNullable(lastSyncTime);
     }
 
+    public Optional<Long> getOptionalBanPeriod() {
+        return Optional.ofNullable(banPeriodSeconds);
+    }
 }
