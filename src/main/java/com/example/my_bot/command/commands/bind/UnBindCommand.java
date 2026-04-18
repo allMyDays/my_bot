@@ -10,7 +10,7 @@ import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.user.GlobalUserException;
-import com.example.my_bot.resolver.MemberInputResolver;
+import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.GlobalUserService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -19,8 +19,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
-
-import java.util.Optional;
 
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.utils.ChatUtils.createMention;
@@ -37,7 +35,7 @@ public class UnBindCommand implements ChatCommand {
 
     private final GlobalUserService userService;
 
-    private final MemberInputResolver memberInputResolver;
+    private final UserInputResolver userInputResolver;
 
     @Autowired
     @Lazy
@@ -56,7 +54,7 @@ public class UnBindCommand implements ChatCommand {
 
         long userToUnbind;
 
-        ParseMemberInputResult parseResult = memberInputResolver.getMemberIdByAnyInput(messageDto, 0);
+        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(messageDto, 0);
 
         if(parseResult.getMemberId().isPresent()){
             userToUnbind = parseResult.getMemberId().get();

@@ -10,15 +10,11 @@ import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.ban.BanException;
-import com.example.my_bot.exception.command.CannotApplyThisCommandToChatAdminException;
-import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.exception.command.CommandException;
-import com.example.my_bot.exception.member.MemberAccessDeniedException;
 import com.example.my_bot.exception.member.MemberException;
-import com.example.my_bot.resolver.MemberInputResolver;
+import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.GlobalUserService;
-import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -50,7 +46,7 @@ public class BanCommand implements ChatCommand {
 
     private final BanService banService;
 
-    private final MemberInputResolver memberInputResolver;
+    private final UserInputResolver userInputResolver;
 
     private final GlobalUserService globalUserService;
 
@@ -80,7 +76,7 @@ public class BanCommand implements ChatCommand {
         // !бан @durov 2 часа
         // !бан 2 часа (пересланное смс)
 
-        ParseMemberInputResult inputResult = memberInputResolver.getMemberIdByAnyInput(messageDto, 0);
+        ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(messageDto, 0);
         if(inputResult.getMemberId().isPresent()){
             memberToBan = inputResult.getMemberId().get();
             if(args.length>=2){ // временный бан

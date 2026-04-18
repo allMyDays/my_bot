@@ -1,6 +1,7 @@
 package com.example.my_bot.mapper;
 
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.utils.ChatUtils;
 import com.vk.api.sdk.objects.messages.ForeignMessage;
 import jakarta.annotation.Nullable;
@@ -12,6 +13,8 @@ import static com.example.my_bot.utils.ChatUtils.extractConversationId;
 
 @Mapper(componentModel = "spring")
 public abstract class CommandMapper {
+
+
 
     public CommandMessageDto toCommandMessageDto(long chatId, @NonNull Message message){
 
@@ -40,7 +43,7 @@ public abstract class CommandMapper {
         if(fullMessage!=null){
             fullMessage = fullMessage.trim();
             String[] rows = fullMessage.split("\\n+");
-            String[] commandAndArgs = rows[0].split(" +", 2);
+            String[] commandAndArgs = UserInputResolver.splitFullCommand(rows[0]);
             commandMessageDto.setCommand(commandAndArgs[0].toLowerCase().trim());
             if(commandAndArgs.length==2){
                commandMessageDto.setFirstRowArguments(commandAndArgs[1].split(" +"));

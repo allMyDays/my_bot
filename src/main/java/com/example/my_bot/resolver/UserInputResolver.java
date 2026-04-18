@@ -8,7 +8,6 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -19,7 +18,7 @@ import static com.example.my_bot.utils.ChatUtils.isValidLong;
 @Component
 @Slf4j
 @RequiredArgsConstructor
-public class MemberInputResolver {
+public class UserInputResolver {
 
     private final CaffeineCacheManager cacheManager;
 
@@ -87,6 +86,22 @@ public class MemberInputResolver {
         result.setMemberId(targetMember);
         return result;
     }
+
+    /**
+     *
+     * возвращает String[] с двумя ячейками: команду + все остальные аргументы
+     */
+    public static String[] splitFullCommand(@NonNull String fullCommand){
+        return fullCommand.trim().split(" +", 2);
+    }
+
+
+
+
+
+
+
+
 
 }
 

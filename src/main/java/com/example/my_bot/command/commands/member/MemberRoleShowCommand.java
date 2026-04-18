@@ -7,7 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.enumeration.user.NameCase;
-import com.example.my_bot.resolver.MemberInputResolver;
+import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.service.GlobalUserService;
@@ -34,7 +34,7 @@ public class MemberRoleShowCommand implements ChatCommand {
 
     private final MemberService memberService;
 
-    private final MemberInputResolver memberInputResolver;
+    private final UserInputResolver userInputResolver;
 
     private final RoleService roleService;
 
@@ -44,13 +44,13 @@ public class MemberRoleShowCommand implements ChatCommand {
 
 
     public MemberRoleShowCommand(MemberService memberService,
-                                 MemberInputResolver memberInputResolver,
+                                 UserInputResolver userInputResolver,
                                  RoleService roleService,
                                  GlobalUserService userService,
                                  @Value("${vk.group.id}") long groupId
     ) {
         this.memberService = memberService;
-        this.memberInputResolver = memberInputResolver;
+        this.userInputResolver = userInputResolver;
         this.roleService = roleService;
         this.userService = userService;
         this.groupId = groupId;
@@ -71,7 +71,7 @@ public class MemberRoleShowCommand implements ChatCommand {
 
         long memberToCheck;
 
-        ParseMemberInputResult parseResult = memberInputResolver.getMemberIdByAnyInput(messageDto, 0);
+        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(messageDto, 0);
 
         if(parseResult.getMemberId().isPresent()){
             memberToCheck = parseResult.getMemberId().get();

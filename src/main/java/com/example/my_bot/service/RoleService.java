@@ -243,9 +243,7 @@ public class RoleService {
 
     public boolean roleExistsByPriority(long chatId, int rolePriority){
 
-        if(rolePriority<MIN_CREATABLE_ROLE_PRIORITY||rolePriority>MAX_CREATABLE_ROLE_PRIORITY){
-            return false;
-        }if(isDefaultRole(rolePriority)){
+        if(isDefaultRole(rolePriority)){
             return true;
         }
         return getRoleByPriority(chatId,rolePriority).isPresent();

@@ -11,7 +11,7 @@ import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.permission.PermissionException;
 import com.example.my_bot.exception.role.RoleException;
-import com.example.my_bot.resolver.MemberInputResolver;
+import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.permission.MemberPermissionService;
 import com.example.my_bot.service.GlobalUserService;
@@ -44,7 +44,7 @@ public class MemberPermissionCreateCommand implements ChatCommand {
 
     private final ChatService chatService;
 
-    private final MemberInputResolver memberInputResolver;
+    private final UserInputResolver userInputResolver;
 
     private final MemberPermissionService memberPermissionService;
 
@@ -62,7 +62,7 @@ public class MemberPermissionCreateCommand implements ChatCommand {
             vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
             return;
         }
-        Optional<Long> targetUserId = memberInputResolver.getMemberIdByStringInput(args[0].trim());
+        Optional<Long> targetUserId = userInputResolver.getMemberIdByStringInput(args[0].trim());
         if(targetUserId.isEmpty()){
             vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT, peerId,true);
             return;

@@ -8,6 +8,7 @@ import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.timer.*;
 import com.example.my_bot.repository.TimerRepository;
+import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.chat.ChatService;
@@ -208,7 +209,7 @@ public class TimerService {
     private void checkTimersLimitAndCommandUsageAbility(long chatId, long fromId, @NonNull String fullCommandWithArgs){
         if(timerRepository.countByChatId(chatId)>=MAX_TIMERS){
             throw new TooManyTimersException();
-        }String userCommand = fullCommandWithArgs.trim().split("\\s+")[0];
+        }String userCommand = UserInputResolver.splitFullCommand(fullCommandWithArgs)[0];
         Command annotation = commandRegistry.getCommandAnnotation(userCommand).orElseThrow(()->
                 new UserCommandNotFoundException(userCommand));
         if(!annotation.eventable()){

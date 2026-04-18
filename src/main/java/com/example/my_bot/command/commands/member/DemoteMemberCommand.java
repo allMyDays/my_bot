@@ -12,7 +12,7 @@ import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.role.RoleException;
-import com.example.my_bot.resolver.MemberInputResolver;
+import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
@@ -41,7 +41,7 @@ public class DemoteMemberCommand implements ChatCommand {
 
     private final RoleService roleService;
 
-    private final MemberInputResolver memberInputResolver;
+    private final UserInputResolver userInputResolver;
 
     private final GlobalUserService userService;
 
@@ -53,7 +53,7 @@ public class DemoteMemberCommand implements ChatCommand {
         long peerId = messageDto.getPeerId();
 
         long userToAssign;
-        ParseMemberInputResult parseResult = memberInputResolver.getMemberIdByAnyInput(messageDto,0);
+        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(messageDto,0);
         if(parseResult.getMemberId().isPresent()){
             userToAssign = parseResult.getMemberId().get();
         }else{

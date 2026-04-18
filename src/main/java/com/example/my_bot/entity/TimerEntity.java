@@ -15,7 +15,7 @@ import java.util.Optional;
 @Setter
 @NoArgsConstructor
 @Table(indexes = {
-        @Index(name = "idx_chat_id", columnList = "chatId"),
+        @Index(name = "timer_idx_chat_id", columnList = "chatId"),
         @Index(name = "idx_next_execution", columnList = "nextExecution")
 })
 @Check(constraints = "(type != 'EACH') OR (type = 'EACH' AND interval_seconds IS NOT NULL)")

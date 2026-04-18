@@ -9,7 +9,7 @@ import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.permission.PermissionException;
-import com.example.my_bot.resolver.MemberInputResolver;
+import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.permission.MemberPermissionService;
 import com.example.my_bot.service.permission.RolePermissionService;
 import com.example.my_bot.service.GlobalUserService;
@@ -39,7 +39,7 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
 
     private final MemberPermissionService memberPermissionService;
 
-    private final MemberInputResolver memberInputResolver;
+    private final UserInputResolver userInputResolver;
 
     private final GlobalUserService userService;
 
@@ -59,7 +59,7 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
             vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
             return;
         }if(args.length==2){
-            userId = memberInputResolver.getMemberIdByStringInput(args[1]);
+            userId = userInputResolver.getMemberIdByStringInput(args[1]);
             if(userId.isEmpty()){
                 vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS,peerId, true);
                 return;
