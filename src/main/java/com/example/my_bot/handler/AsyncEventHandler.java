@@ -5,6 +5,7 @@ import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.mapper.CommandMapper;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.chat.ChatActionService;
+import com.example.my_bot.service.event.EventExecutionService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.callback.MessageNew;
@@ -14,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
@@ -36,6 +36,8 @@ public class AsyncEventHandler {
     private final GlobalUserService userService;
 
     private final ChatActionService chatActionService;
+
+    private final EventExecutionService eventExecutionService;
 
 
 
@@ -62,6 +64,7 @@ public class AsyncEventHandler {
 
             if(!isPersonalChat(peerId)){
                 chatActionService.handleChatAction(chatId,fromId,message.getAction());
+                eventExecutionService.executeRequiredChatEvents(message);
             } chatActionService.checkLastChatSynchronizationAndExecute(chatId);
 
         }catch (Exception e) {

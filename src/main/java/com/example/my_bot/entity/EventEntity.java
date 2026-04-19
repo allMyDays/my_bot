@@ -1,5 +1,6 @@
 package com.example.my_bot.entity;
 
+import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.MyEventType;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -10,7 +11,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(indexes = @Index(name = "event_idx_chat_id", columnList = "chatId"))
+@Table(name = "event", indexes = @Index(name = "events_idx_chat_id", columnList = "chatId"))
 public class EventEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,12 +36,17 @@ public class EventEntity {
     @Column(nullable = false)
     private String fullCommand;
 
-    public EventEntity(Long chatId, MyEventType type, int rolePriority, String argument, long creatorId, String fullCommand) {
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private ChatEventType chatEventType;
+
+    public EventEntity(Long chatId, MyEventType type, int rolePriority, String argument, long creatorId, String fullCommand, ChatEventType chatEventType) {
         this.chatId = chatId;
         this.type = type;
         this.rolePriority = rolePriority;
         this.argument = argument;
         this.creatorId = creatorId;
         this.fullCommand = fullCommand;
+        this.chatEventType = chatEventType;
     }
 }

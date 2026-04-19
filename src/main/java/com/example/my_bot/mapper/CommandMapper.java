@@ -9,8 +9,6 @@ import lombok.NonNull;
 import org.mapstruct.Mapper;
 import com.vk.api.sdk.objects.messages.Message;
 
-import static com.example.my_bot.utils.ChatUtils.extractConversationId;
-
 @Mapper(componentModel = "spring")
 public abstract class CommandMapper {
 
@@ -31,14 +29,14 @@ public abstract class CommandMapper {
         } return commandMessageDto;
 
     }
-    public CommandMessageDto toCommandMessageDto(long chatId, long fromId, @Nullable String fullMessage, boolean isTimerMode){
+    public CommandMessageDto toCommandMessageDto(long chatId, long fromId, @Nullable String fullMessage, boolean eventOrTimerMode){
 
         CommandMessageDto commandMessageDto = new CommandMessageDto();
         commandMessageDto.setUserMessage(fullMessage);
         commandMessageDto.setFromId(fromId);
         commandMessageDto.setChatId(chatId);
         commandMessageDto.setPeerId(ChatUtils.convertToPeerId(chatId));
-        commandMessageDto.setTimerMode(isTimerMode);
+        commandMessageDto.setEventOrTimerMode(eventOrTimerMode);
 
         if(fullMessage!=null){
             fullMessage = fullMessage.trim();

@@ -3,14 +3,18 @@ import static com.example.my_bot.enumeration.event.EventArgumentType.*;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.command.CommandRegistry;
+import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.RoleDto;
+import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.entity.EventEntity;
+import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.event.*;
 import com.example.my_bot.exception.role.RoleNotFoundException;
+import com.example.my_bot.mapper.EventMapper;
 import com.example.my_bot.repository.EventRepository;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.CommandAccessService;
@@ -18,6 +22,9 @@ import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.ChatUtils;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.vk.api.sdk.objects.messages.MessageActionStatus;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +32,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+
+import java.util.*;
 
 
 @Slf4j
@@ -35,9 +44,10 @@ public class EventService {
     private final CommandAccessService commandAccessService;
     private final MemberService memberService;
     private final RoleService roleService;
-    private final ChatService chatService;
     private CommandRegistry commandRegistry;
     private static final int MAX_EVENTS = 50;
+    private final CaffeineCacheManager cacheManager;
+    private final EventMapper eventMapper;
 
     @Autowired
     @Lazy
@@ -74,9 +84,13 @@ public class EventService {
         if(!executable){
             throw new CommandAccessDeniedException(fromId,userCommand);
         }
-        return eventRepository.save(
-                new EventEntity(chatId, eventType, rolePriority, userArgument, fromId, fullCommand)
+        EventEntity savedEvent = eventRepository.save(
+                new EventEntity(chatId, eventType, rolePriority, userArgument, fromId, fullCommand, eventType.getChatEventType())
         );
+        if(eventType.getChatEventType()==ChatEventType.ACTION){
+            invalidateActionEventsCache(chatId);
+        }
+        return savedEvent;
     }
 
     public EventEntity createNewEvent(long chatId,
@@ -122,6 +136,43 @@ public class EventService {
         } return userArgument;
 
     }
+
+    public List<EventEntity> findByChatIdAndChatEventType(long chatId, @NonNull ChatEventType chatEventType){
+        return eventRepository.findByChatIdAndChatEventType(chatId, chatEventType);
+    }
+
+    public ImmutableMap<MessageActionStatus, ImmutableSet<EventDto>> getActionEventsCache(long chatId){
+        return cacheManager.getActionEventsCache().get(chatId, k->{
+
+            List<EventEntity> entities = findByChatIdAndChatEventType(chatId, ChatEventType.ACTION);
+            Map<MessageActionStatus, ImmutableSet.Builder<EventDto>> builders = new HashMap<>(); // временная карта
+
+            for (EventEntity entity : entities) {
+                Optional<Set<MessageActionStatus>> actionsSet = entity.getType().getChatActionList();
+                if(actionsSet.isEmpty()){
+                    log.warn("action event {} returned empty Optional<Set<MessageActionStatus>>.",entity.getType());
+                    continue;
+                }
+                for(MessageActionStatus actionStatus: actionsSet.get()){
+                    ImmutableSet.Builder<EventDto> builder = builders.computeIfAbsent(actionStatus, as -> ImmutableSet.builder());
+                    builder.add(eventMapper.toEventDto(entity));
+
+                }
+            }
+            // итоговая карта
+            ImmutableMap.Builder<MessageActionStatus, ImmutableSet<EventDto>> result = new ImmutableMap.Builder<>();
+            builders.forEach((key, value) -> result.put(key, value.build()));
+            return result.build();
+        });
+
+    }
+
+    private void invalidateActionEventsCache(long chatId){
+        cacheManager.getActionEventsCache().invalidate(chatId);
+
+    }
+
+
 
 
 

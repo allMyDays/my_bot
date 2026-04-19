@@ -34,6 +34,13 @@ public class ChatUtils {
         } return "@id"+memberId;
     }
 
+    public static String createMemberLink(long memberId){
+
+        if(memberId<0) {
+            return "vk.com/club"+(memberId*-1);
+        } return "vk.com/id"+memberId;
+    }
+
 
     public static boolean isValidInteger(String str) {
         if (str == null || !(str=str.trim()).matches("-?\\d+")) {

@@ -57,7 +57,7 @@ public class CommandDispatcher {
 
              Optional<Character> chatPrefix = chatDetails.getOptionalPrefix();
 
-             if(!messageDto.isTimerMode()){   // в таймерах все команды обязаны быть без префикса
+             if(!messageDto.isEventOrTimerMode()){   // в событиях/таймерах все команды обязаны быть без префикса
                  boolean mustCutPrefix=true;
                  if(chatPrefix.isPresent()){
                    if(commandName.charAt(0)!=chatPrefix.get()) return;
@@ -74,7 +74,7 @@ public class CommandDispatcher {
         final String finalCommandName = commandName;
         Optional<ChatCommand> cmdOptional = commandRegistry.getCommand(finalCommandName);
         if(cmdOptional.isEmpty()){
-            if(messageDto.isTimerMode()){
+            if(messageDto.isEventOrTimerMode()){
                 throw new UnknownCommandException(finalCommandName);
             }
         }
@@ -82,7 +82,7 @@ public class CommandDispatcher {
             ChatCommand mainCommand = cmdOptional.get();
             Command cmdAnnotation = commandRegistry.getCommandAnnotation(finalCommandName)
                     .orElseThrow(()->new RuntimeException("Cannot find required init-annotation @Command for "+ finalCommandName));
-            if(messageDto.isTimerMode()&&!cmdAnnotation.eventable()){
+            if(messageDto.isEventOrTimerMode()&&!cmdAnnotation.eventable()){
                 throw new ForbiddenCommandForCurrentModeException(finalCommandName);
             }
 
