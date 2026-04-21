@@ -36,17 +36,12 @@ public class EventEntity {
     @Column(nullable = false)
     private String fullCommand;
 
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private ChatEventType chatEventType;
-
-    public EventEntity(Long chatId, MyEventType type, int rolePriority, String argument, long creatorId, String fullCommand, ChatEventType chatEventType) {
+    public EventEntity(Long chatId, MyEventType type, int rolePriority, String argument, long creatorId, String fullCommand) {
         this.chatId = chatId;
         this.type = type;
         this.rolePriority = rolePriority;
         this.argument = argument;
         this.creatorId = creatorId;
         this.fullCommand = fullCommand;
-        this.chatEventType = chatEventType;
     }
 }

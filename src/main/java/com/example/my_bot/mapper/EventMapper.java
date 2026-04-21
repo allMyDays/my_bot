@@ -6,9 +6,13 @@ import com.example.my_bot.entity.ChatEntity;
 import com.example.my_bot.entity.EventEntity;
 import org.mapstruct.Mapper;
 
+import java.util.List;
+
 @Mapper(componentModel = "spring")
 public abstract class EventMapper {
 
     public abstract EventDto toEventDto(EventEntity entity);
+
+    public abstract List<EventDto> toEventDto(List<EventEntity> entities);
 
 }

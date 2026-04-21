@@ -18,5 +18,5 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
 
     long countByChatId(Long chatId);
 
-    List<EventEntity> findByChatIdAndChatEventType(Long chatId, ChatEventType chatEventType);
+    List<EventEntity> findByChatId(long chatId);
 }

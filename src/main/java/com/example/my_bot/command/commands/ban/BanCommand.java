@@ -119,10 +119,12 @@ public class BanCommand implements ChatCommand {
        String message = createMention(memberToBan)+"(✅Пользователь) был забанен в чате "+
                bannedUntil.map(instant -> "до "+TimeUtils.getStringDateTimeWithTimeZone(instant, chatTimeZone)).orElse("навечно.");
 
-       message+="\nМодератор: %s(%s)".formatted(
+       if(!messageDto.isEventOrTimerMode()){
+           message+="\nМодератор: %s(%s)".formatted(
                createMention(fromId),
                globalUserService.getUserNameInRequiredCase(fromId, NameCase.NOMINATIVE).orElse("этот участник")
-       );
+           );
+       }
 
        if(reason!=null){
            message+="\nПричина: "+reason;
