@@ -12,6 +12,7 @@ import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.repository.MemberPermissionRepository;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.utils.ChatUtils;
 import com.google.common.collect.ImmutableMap;
 import jakarta.transaction.Transactional;
 import lombok.NonNull;
@@ -22,6 +23,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -60,6 +62,11 @@ public class MemberPermissionService {
         memberService.checkMemberInteractionAbility(chatId, fromId, targetUserId);
 
         MemberPermissionSettingResult result = new MemberPermissionSettingResult();
+
+        userCommands = userCommands.stream()
+                .map(ChatUtils::cutDefaultPrefix)
+                .collect(Collectors.toSet());
+
         UserCommandValidationResult commandNormalizationResult = commandRegistry.getMainNamesOfRequiredCommands(userCommands);
         result.setNotFound(commandNormalizationResult.getNotFoundCommands());
         if(userCommands.size()==result.getNotFound().size()){

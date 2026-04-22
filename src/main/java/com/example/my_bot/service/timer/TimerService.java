@@ -12,6 +12,7 @@ import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.chat.ChatService;
+import com.example.my_bot.utils.ChatUtils;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ import java.util.Set;
 
 import static com.example.my_bot.enumeration.DefaultRole.isDefaultRole;
 import static com.example.my_bot.enumeration.timer.TimerType.*;
+import static com.example.my_bot.utils.ChatUtils.cutDefaultPrefix;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 import static java.lang.String.format;
 
@@ -64,21 +66,22 @@ public class TimerService {
 
 
     @Transactional
-    public TimerEntity createOnceTimer(long chatId, @NonNull LocalDateTime executionDate, @NonNull String fullCommandWithArgs, long fromId){
+    public TimerEntity createOnceTimer(long chatId, @NonNull LocalDateTime executionDate, @NonNull String fullCommand, long fromId){
 
         ZoneOffset chatTimeZoneOffset = chatService.getChatTimeZone(chatId).getZoneOffset();
         Instant executionInstantDate = executionDate.atZone(chatTimeZoneOffset).toInstant();
         checkNextExecutionDateCondition(executionInstantDate);
-        checkTimersLimitAndCommandUsageAbility(chatId, fromId, fullCommandWithArgs);
+        fullCommand = cutDefaultPrefix(fullCommand);
+        checkTimersLimitAndCommandUsageAbility(chatId, fromId, fullCommand);
         TimerEntity savedTimer = timerRepository.save(
-                new TimerEntity(chatId, fromId, ONCE, fullCommandWithArgs.trim(), executionInstantDate)
+                new TimerEntity(chatId, fromId, ONCE, fullCommand.trim(), executionInstantDate)
         );
         timerExecutionService.putTimerToSchedulerIfExecutionIsNear(savedTimer);
         return savedTimer;
 
     }
     @Transactional
-    public TimerEntity createEachTimer(long chatId, long intervalInSeconds, @NonNull String fullCommandWithArgs, long fromId){
+    public TimerEntity createEachTimer(long chatId, long intervalInSeconds, @NonNull String fullCommand, long fromId){
 
         Instant now = Instant.now();
 
@@ -89,20 +92,23 @@ public class TimerService {
             throw new TimerIntervalOutOfBoundsException("Максимальный интервал для данного типа таймера — %s"
                     .formatted(FORMATTED_MAX_INTERVAL));
         }
-        checkTimersLimitAndCommandUsageAbility(chatId, fromId, fullCommandWithArgs);
+        fullCommand = cutDefaultPrefix(fullCommand);
+        checkTimersLimitAndCommandUsageAbility(chatId, fromId, fullCommand);
 
         Instant nextExecution = now.plusSeconds(intervalInSeconds);
 
         TimerEntity savedTimer = timerRepository.save(
-                new TimerEntity(chatId, fromId, TimerType.EACH, fullCommandWithArgs.trim(), intervalInSeconds, nextExecution)
+                new TimerEntity(chatId, fromId, TimerType.EACH, fullCommand.trim(), intervalInSeconds, nextExecution)
         );
         timerExecutionService.putTimerToSchedulerIfExecutionIsNear(savedTimer);
         return savedTimer;
 
     }
     @Transactional
-    public TimerEntity createDailyTimer(long chatId, @NonNull LocalTime dailyTime, @NonNull String fullCommandWithArgs, long fromId){
-        checkTimersLimitAndCommandUsageAbility(chatId, fromId, fullCommandWithArgs);
+    public TimerEntity createDailyTimer(long chatId, @NonNull LocalTime dailyTime, @NonNull String fullCommand, long fromId){
+
+        fullCommand = cutDefaultPrefix(fullCommand);
+        checkTimersLimitAndCommandUsageAbility(chatId, fromId, fullCommand);
 
         ZoneOffset chatTimeZoneOffset = chatService.getChatTimeZone(chatId).getZoneOffset();
         ZonedDateTime now = ZonedDateTime.now(chatTimeZoneOffset);   // время чата сейчас
@@ -112,7 +118,7 @@ public class TimerService {
         }
         Instant nextExecution = next.toInstant();
         TimerEntity savedTimer = timerRepository.save(
-                new TimerEntity(chatId, fromId, TimerType.DAILY, fullCommandWithArgs.trim(), nextExecution)
+                new TimerEntity(chatId, fromId, TimerType.DAILY, fullCommand.trim(), nextExecution)
         );
         timerExecutionService.putTimerToSchedulerIfExecutionIsNear(savedTimer);
         return savedTimer;
@@ -206,10 +212,12 @@ public class TimerService {
 
     }
 
-    private void checkTimersLimitAndCommandUsageAbility(long chatId, long fromId, @NonNull String fullCommandWithArgs){
+    private void checkTimersLimitAndCommandUsageAbility(long chatId, long fromId, @NonNull String fullCommand){
         if(timerRepository.countByChatId(chatId)>=MAX_TIMERS){
             throw new TooManyTimersException();
-        }String userCommand = UserInputResolver.splitFullCommand(fullCommandWithArgs)[0];
+        }
+        String userCommand = UserInputResolver.splitFullCommand(fullCommand)[0];
+
         Command annotation = commandRegistry.getCommandAnnotation(userCommand).orElseThrow(()->
                 new UserCommandNotFoundException(userCommand));
         if(!annotation.eventable()){

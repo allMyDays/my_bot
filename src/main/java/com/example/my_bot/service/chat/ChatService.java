@@ -23,7 +23,8 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
+import static com.example.my_bot.utils.ChatUtils.DEFAULT_CHAT_PREFIX;
+
 
 @Slf4j
 @Service

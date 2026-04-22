@@ -14,6 +14,7 @@ import com.example.my_bot.repository.RolePermissionRepository;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
+import com.example.my_bot.utils.ChatUtils;
 import com.google.common.collect.ImmutableMap;
 import jakarta.transaction.Transactional;
 import lombok.NonNull;
@@ -24,6 +25,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -64,6 +66,10 @@ public class RolePermissionService {
 
         RolePermissionSettingResult result = new RolePermissionSettingResult();
         result.setRoleDto(foundRole);
+
+        userCommands = userCommands.stream()
+                .map(ChatUtils::cutDefaultPrefix)
+                .collect(Collectors.toSet());
 
         UserCommandValidationResult commandNormalizationResult = commandRegistry.getMainNamesOfRequiredCommands(userCommands);
         result.setNotFound(commandNormalizationResult.getNotFoundCommands());
@@ -121,7 +127,7 @@ public class RolePermissionService {
     @Transactional
     public void deleteCustomRolePermission(long chatId, @NonNull String userCommand, long fromId){
 
-        String mainCommandName = commandRegistry.getMainNameOfCommand(userCommand)
+        String mainCommandName = commandRegistry.getMainNameOfCommand(ChatUtils.cutDefaultPrefix(userCommand))
                 .orElseThrow(()->new UserCommandNotFoundException(userCommand));
 
         int userRolePriority = memberService.getMemberRolePriority(chatId, fromId);

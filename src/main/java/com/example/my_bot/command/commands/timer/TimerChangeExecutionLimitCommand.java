@@ -36,8 +36,6 @@ public class TimerChangeExecutionLimitCommand implements ChatCommand {
 
     private final TimerService timerService;
 
-    private final ChatService chatService;
-
 
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {

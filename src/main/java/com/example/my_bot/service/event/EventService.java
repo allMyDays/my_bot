@@ -73,6 +73,7 @@ public class EventService {
         int callerRole = memberService.getMemberRolePriority(chatId, fromId);
         roleService.checkRoleInteractionAbility(rolePriority, callerRole);
 
+        fullCommand = ChatUtils.cutDefaultPrefix(fullCommand);
         String userCommand = UserInputResolver.splitFullCommand(fullCommand)[0];
         Command annotation = commandRegistry.getCommandAnnotation(userCommand).orElseThrow(()->
                 new UserCommandNotFoundException(userCommand));

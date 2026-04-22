@@ -13,6 +13,7 @@ import com.example.my_bot.exception.limit.RateLimitWithThatCommandAndRoleAlready
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.RateLimitMapper;
 import com.example.my_bot.repository.RoleRateLimitRepository;
+import com.example.my_bot.utils.ChatUtils;
 import com.google.common.collect.ImmutableMap;
 import jakarta.transaction.Transactional;
 import lombok.NonNull;
@@ -76,7 +77,7 @@ public class RoleRateLimitService {
         int userRolePriority = memberService.getMemberRolePriority(chatId, fromId);
         roleService.checkRoleInteractionAbility(rolePriority, userRolePriority);
 
-        String mainCommandName =  commandRegistry.getMainNameOfCommand(userCommand.trim())
+        String mainCommandName =  commandRegistry.getMainNameOfCommand(ChatUtils.cutDefaultPrefix(userCommand))
                 .orElseThrow(()->new UserCommandNotFoundException(userCommand));
         boolean abilityCommandInteraction = commandService.checkCommandAuthorization(
                 chatId,mainCommandName, userRolePriority,fromId);

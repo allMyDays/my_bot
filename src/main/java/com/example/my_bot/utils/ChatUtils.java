@@ -6,7 +6,9 @@ import java.util.Arrays;
 
 public class ChatUtils {
 
-    public static final long PEER_ID_CHAT_OFFSET = 2_000_000_000L;
+    public final static long PEER_ID_CHAT_OFFSET = 2_000_000_000L;
+
+    public final static char DEFAULT_CHAT_PREFIX = '!';
 
 
     public static long extractConversationId(long peerId){
@@ -81,6 +83,18 @@ public class ChatUtils {
            } return String.join(" ", Arrays.copyOfRange(args, index, args.length));
 
     }
+
+    public static String cutDefaultPrefix(@NonNull String command){
+        command = command.trim();
+        if(!command.isEmpty()){
+            if(command.charAt(0)==DEFAULT_CHAT_PREFIX){
+                return command.substring(1);
+            }
+        }
+        return command;
+    }
+
+
 
 
 }

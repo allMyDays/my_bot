@@ -17,9 +17,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
-import static com.example.my_bot.utils.ChatUtils.createMention;
-import static com.example.my_bot.utils.ChatUtils.isGroupId;
+
+import static com.example.my_bot.utils.ChatUtils.*;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
 

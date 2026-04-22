@@ -18,7 +18,6 @@ import org.springframework.context.annotation.Lazy;
 import java.time.Instant;
 import java.util.Optional;
 
-import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
 
 @Command(mainCommandName = "таймзона",alternativeCommandNames = {"timezone"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = true)

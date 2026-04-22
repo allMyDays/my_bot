@@ -22,10 +22,8 @@ import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_VALID_INTEGER_MESSAGE;
-import static com.example.my_bot.constant.SettingConstant.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
-import static com.example.my_bot.utils.ChatUtils.isNumber;
-import static com.example.my_bot.utils.ChatUtils.isValidInteger;
+import static com.example.my_bot.utils.ChatUtils.*;
 
 @Slf4j
 @Command(mainCommandName = "правороли", alternativeCommandNames = {"roleallow"}, defaultRole = ADMINISTRATOR, eventable = false)
