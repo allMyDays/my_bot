@@ -7,6 +7,7 @@ import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.entity.EventEntity;
+import com.example.my_bot.entity.TimerEntity;
 import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
@@ -16,14 +17,17 @@ import com.example.my_bot.exception.event.*;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.EventMapper;
 import com.example.my_bot.repository.EventRepository;
+import com.example.my_bot.repository.TimerRepository;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.utils.ChatUtils;
+import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import jakarta.annotation.Nullable;
+import jakarta.transaction.Transactional;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +36,9 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 @Slf4j
@@ -53,8 +60,12 @@ public class EventService {
         this.commandRegistry = commandRegistry;
     }
 
+    public int getMaxEvents(){
+        return MAX_EVENTS;
+    }
 
 
+    @Transactional
     public EventEntity createNewEvent(long chatId,
                                @NonNull MyEventType eventType,
                                int rolePriority,
@@ -64,7 +75,7 @@ public class EventService {
 
         userArgument = checkEventArgumentCorrectness(eventType,userArgument);
 
-        if (eventRepository.countByChatId(chatId)>=MAX_EVENTS){
+        if (countChatEvents(chatId)>=getMaxEvents()){
             throw new TooManyEventsException();
         }
         if(!roleService.roleExistsByPriority(chatId, rolePriority)){
@@ -90,6 +101,7 @@ public class EventService {
         return savedEvent;
     }
 
+    @Transactional
     public EventEntity createNewEvent(long chatId,
                                       @NonNull MyEventType eventType,
                                       @NonNull String roleName,
@@ -100,6 +112,19 @@ public class EventService {
                 .orElseThrow(RoleNotFoundException::new);
 
         return createNewEvent(chatId, eventType, foundRole.getRolePriority(), userArgument, fullCommand, fromId);
+    }
+
+    public List<EventDto> getEventsSortedByIdInIncreasingOrder(long chatId){
+        ImmutableCollection<ImmutableSet<EventDto>> collection = getEventsCache(chatId).values();
+        return collection.stream()
+                .flatMap(Set::stream)
+                .sorted(Comparator.comparing(EventDto::getId))
+                .toList();
+    }
+
+    public int countChatEvents(long chatId){
+       return Math.toIntExact(getEventsCache(chatId).values().stream().mapToLong(Set::size).sum());
+
     }
 
 
@@ -134,6 +159,18 @@ public class EventService {
 
     }
 
+    @Transactional
+    public void deleteEventById(long entityId, long fromId){
+        Optional<EventEntity> event = eventRepository.findById(entityId);
+        event.ifPresent(e->{
+                int callerRole = memberService.getMemberRolePriority(e.getChatId(), fromId);
+                roleService.checkRoleInteractionAbility(e.getRolePriority(), callerRole);
+                eventRepository.deleteById(e.getId());
+                invalidateEventsCache(e.getChatId());
+          }
+        );
+    }
+
     public ImmutableMap<ChatEventType, ImmutableSet<EventDto>> getEventsCache(long chatId){
         return cacheManager.getEventsCache().get(chatId, k->{
             List<EventEntity> entities = eventRepository.findByChatId(chatId);
@@ -153,14 +190,5 @@ public class EventService {
    private void invalidateEventsCache(long chatId){
        cacheManager.getEventsCache().invalidate(chatId);
    }
-
-
-
-
-
-
-
-
-
 
 }

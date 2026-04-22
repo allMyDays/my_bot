@@ -109,7 +109,13 @@ public class TimerCreateCommand implements ChatCommand {
         String dateToShow = TimeUtils.getStringDateTimeWithTimeZone(
                 createdTimer.getNextExecution(), chatService.getChatTimeZone(chatId));
 
-        vkChatClient.sendText("✅Вы успешно создали новый таймер. Дата следующего срабатывания — %s".formatted(dateToShow),peerId, true);
+        String message = ("✅ Вы успешно создали новый таймер.\n" +
+                "&#128218; Тип: %s (%s).\n".formatted(createdTimer.getType().getCyrillicType(),createdTimer.getType().getDescription() )+
+                "&#128339; Дата следующего срабатывания — %s\n").formatted(dateToShow)+
+                "&#8618; Команда: %s".formatted(createdTimer.getFullCommand());
+
+
+        vkChatClient.sendText(message,peerId, true);
 
     }
 }

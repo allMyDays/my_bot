@@ -19,4 +19,6 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
     long countByChatId(Long chatId);
 
     List<EventEntity> findByChatId(long chatId);
+
+    int deleteById(long id);
 }
