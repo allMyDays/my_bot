@@ -57,7 +57,7 @@ public class EventDeleteCommand implements ChatCommand {
         int outerEventId = Integer.parseInt(args[0]);
 
         if(outerEventId<1||outerEventId>events.size()){
-            vkChatClient.sendText("Не найдено таймера с таким ID.",peerId,true);
+            vkChatClient.sendText("Не найдено события с таким ID.",peerId,true);
             return;
         }
         try{

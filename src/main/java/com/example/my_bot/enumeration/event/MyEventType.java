@@ -2,8 +2,11 @@ package com.example.my_bot.enumeration.event;
 import static com.example.my_bot.enumeration.event.ChatEventType.*;
 import static com.example.my_bot.enumeration.event.EventArgumentType.*;
 import static com.vk.api.sdk.objects.messages.MessageActionStatus.*;
+import static com.vk.api.sdk.objects.messages.MessageAttachmentType.AUDIO;
+import static com.vk.api.sdk.objects.messages.MessageAttachmentType.PHOTO;
 
 import com.vk.api.sdk.objects.messages.MessageActionStatus;
+import com.vk.api.sdk.objects.messages.MessageAttachmentType;
 import lombok.Getter;
 import lombok.NonNull;
 
@@ -28,11 +31,19 @@ public enum MyEventType {
     CHANGE_CHAT_PHOTO("фоточата","Смена фотографии чата", ACTION, Set.of(CHAT_PHOTO_UPDATE, CHAT_PHOTO_REMOVE)),
 
 
-    MARKET("товар","Отправка товара в чат", ATTACHMENT),
-    STICKER("стикер","Отправка любого стикера", ATTACHMENT),
-    VOICE_MESSAGE("голосовое", "Отправка голосового сообщения", ATTACHMENT),
-    POLL("опрос", "Опрос в сообщении", ATTACHMENT),
-    CALL("звонок", "Создание звонка в чате", ATTACHMENT),
+    ATTACHMENT_QUANTITY("вложения","Количество вложений",ATTACHMENT, INTEGER, 1, 10),
+    ATTACH_PHOTO("фото","Фото в сообщении",ATTACHMENT, INTEGER, 1, 10, MessageAttachmentType.PHOTO),
+    MUSIC("музыка","Музыка в сообщении",ATTACHMENT, INTEGER, 1, 10, MessageAttachmentType.AUDIO),
+    VIDEO("видео","Видео в сообщении",ATTACHMENT, INTEGER, 1, 10, MessageAttachmentType.VIDEO),
+    DOCUMENT("документ","Документ в сообщении",ATTACHMENT, INTEGER, 1, 10, MessageAttachmentType.DOC),
+    MARKET("товар","Товар в сообщении", ATTACHMENT, MessageAttachmentType.MARKET),
+    STICKER("стикер","Отправка любого стикера", ATTACHMENT, MessageAttachmentType.STICKER),
+    POST("пост","Пост в сообщении", ATTACHMENT, MessageAttachmentType.WALL),
+    POST_COMMENT("коммент", "Комментарий к посту", ATTACHMENT, MessageAttachmentType.WALL_REPLY),
+    POLL("опрос", "Опрос в сообщении", ATTACHMENT, MessageAttachmentType.POLL),
+    CALL("звонок", "Создание звонка в чате", ATTACHMENT, MessageAttachmentType.CALL),
+    GRAFFITI("граффити", "Граффити в сообщении", ATTACHMENT, MessageAttachmentType.GRAFFITI),
+    VOICE_MESSAGE("голосовое", "Отправка голосового сообщения", ATTACHMENT, MessageAttachmentType.AUDIO_MESSAGE),
 
 
     WORD_FILTER("фильтр","Фильтр слов", TEXT, STRING,1,500),
@@ -50,11 +61,6 @@ public enum MyEventType {
     SAME_MESSAGES("одинаковые","Одинаковые сообщения в минуту", TEXT);
 
 
-
-
-
-
-
     @Getter
     private final String cyrillicType;
     @Getter
@@ -68,7 +74,9 @@ public enum MyEventType {
     @Getter
     private final int argMax;
 
-    private final Set<MessageActionStatus> chatActionTypeList;
+    private final Set<MessageActionStatus> vkActionTypeSet;
+
+    private final MessageAttachmentType vkAttachmentType;
 
     private static final Map<String, MyEventType> cyrillicTypeMAP =
             Arrays.stream(values())
@@ -77,38 +85,47 @@ public enum MyEventType {
                             Function.identity()
                     ));
 
-    public Optional<Set<MessageActionStatus>> getChatActionTypeList(){
-        return Optional.ofNullable(chatActionTypeList);
+    public Optional<Set<MessageActionStatus>> getVkActionTypeSet(){
+        return Optional.ofNullable(vkActionTypeSet);
     }
 
-    MyEventType(String cyrillicType, String description, ChatEventType chatEventType, Set<MessageActionStatus> chatActionType) {
+    public Optional<MessageAttachmentType> getVkAttachmentType() {
+        return Optional.ofNullable(vkAttachmentType);
+    }
+
+    MyEventType(String cyrillicType, String description, ChatEventType chatEventType, Set<MessageActionStatus> vkActionTypeSet) {
         this.cyrillicType = cyrillicType;
         this.description = description;
         this.chatEventType = chatEventType;
         this.argumentType = EventArgumentType.NONE;
         this.argMin = -1;
         this.argMax = -1;
-        chatActionTypeList = Collections.unmodifiableSet(chatActionType);
+        this.vkActionTypeSet = vkActionTypeSet==null?null:Collections.unmodifiableSet(vkActionTypeSet);
+        vkAttachmentType = null;
     }
 
     MyEventType(String cyrillicType, String description, ChatEventType chatEventType) {
-        this.cyrillicType = cyrillicType;
-        this.description = description;
-        this.chatEventType = chatEventType;
-        this.argumentType = EventArgumentType.NONE;
-        this.argMin = -1;
-        this.argMax = -1;
-        this.chatActionTypeList = null;
+        this(cyrillicType, description, chatEventType, (Set<MessageActionStatus>) null);
     }
 
-    MyEventType(String cyrillicType, String description, ChatEventType chatEventType, EventArgumentType argumentType, int argMin, int argMax) {
+    MyEventType(String cyrillicType, String description, ChatEventType chatEventType, MessageAttachmentType vkAttachmentType) {
+        this(cyrillicType, description, chatEventType, NONE, -1, -1, vkAttachmentType);
+
+    }
+
+    MyEventType(String cyrillicType, String description, ChatEventType chatEventType, EventArgumentType argumentType, int argMin, int argMax, MessageAttachmentType vkAttachmentType) {
         this.cyrillicType = cyrillicType;
         this.description = description;
         this.argumentType = argumentType;
         this.chatEventType = chatEventType;
         this.argMin = argMin;
         this.argMax = argMax;
-        this.chatActionTypeList = null;
+        this.vkActionTypeSet = null;
+        this.vkAttachmentType = vkAttachmentType;
+    }
+
+    MyEventType(String cyrillicType, String description, ChatEventType chatEventType, EventArgumentType argumentType, int argMin, int argMax) {
+        this(cyrillicType, description, chatEventType, argumentType, argMin, argMax, null);
     }
 
 

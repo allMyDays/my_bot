@@ -4,6 +4,8 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.enumeration.event.ChatEventType;
+import com.example.my_bot.enumeration.event.EventArgumentType;
+import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.mapper.CommandMapper;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.MemberService;
@@ -20,12 +22,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+import static com.example.my_bot.enumeration.event.EventArgumentType.INTEGER;
 import static com.example.my_bot.utils.ChatUtils.*;
 
 
@@ -72,151 +73,163 @@ public class EventExecutionService {
     }
 
 
-   public void executeRequiredChatEvents(Message message){
-       long chatId = ChatUtils.extractConversationId(message.getPeerId());
-       long fromId = message.getFromId();
-       ActionOneOf currentAction = message.getAction();
-       int callerRole = memberService.getMemberRolePriority(chatId, fromId);
 
-       ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventsCache = eventService.getEventsCache(chatId);
-       ImmutableSet<EventDto> requiredEvents=null;
+    public void executeRequiredChatEvents(Message message){
+        long chatId = ChatUtils.extractConversationId(message.getPeerId());
+        long fromId = message.getFromId();
+        int callerRole = memberService.getMemberRolePriority(chatId, fromId);
+        ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventsCache = eventService.getEventsCache(chatId);
 
-       if(currentAction!=null){
-           MessageActionStatus actionType = currentAction.getType();
-           Long memberId = currentAction.getMemberId();
-           requiredEvents = eventsCache.get(ChatEventType.ACTION);
+        ActionOneOf action = message.getAction();
+        List<MessageAttachment> attachments = message.getAttachments();
+        String userText = Optional.ofNullable(message.getText()).orElse("").trim();
+        Map<MessageAttachmentType, List<MessageAttachment>> attachmentMap=Collections.emptyMap();
 
-           if(requiredEvents!=null){
+        ImmutableSet<EventDto> requiredEvents;
+
+        for(ChatEventType chatEventType: ChatEventType.values()){
+            switch (chatEventType){
+                case ACTION -> {
+                    if(action==null) continue;
+                }case TEXT -> {
+                    if(userText.isEmpty()) continue;
+                }case ATTACHMENT -> {
+                    if(attachments.isEmpty()) continue;
+                    attachmentMap = attachments
+                            .stream()
+                            .collect(Collectors.groupingBy(MessageAttachment::getType));
+                }
+            }
+            requiredEvents = eventsCache.get(chatEventType);
+            if(requiredEvents!=null){
                 for(EventDto currentEvent: requiredEvents){
-                   Optional<Set<MessageActionStatus>> actionsToExecuteEvent = currentEvent.getType().getChatActionTypeList();
-                    if(actionsToExecuteEvent.isEmpty()){
-                        log.warn("action event {} returned empty Optional<Set<MessageActionStatus>>.",currentEvent.getType());
+                    if(callerRole>currentEvent.getRolePriority()){
                         continue;
                     }
-                    if(!actionsToExecuteEvent.get().contains(actionType)||!isRequiredRole(callerRole,currentEvent.getRolePriority())){
-                       continue;
+                    if(currentEvent.getType()==MyEventType.ANY_MESSAGE){
+                        if(action==null){
+                           executeEvent(chatId, fromId, null, currentEvent);
+                        }
+                        continue;
                     }
-                   boolean selfAction = Objects.equals(fromId, memberId);
-                   switch (currentEvent.getType()){
-                       case INVITE_ANOTHER, KICK_ANOTHER -> {
-                           if(selfAction) continue;
-                       }
-                       case INVITE_BANNED -> {
-                           if(selfAction||!banService.getMemberBanStatus(chatId, memberId).isBanned()) continue;
-                       }
-                       case INVITE_GROUP -> {
-                           if(selfAction||!ChatUtils.isGroupId(memberId)) continue;
-                       }
-                       case SELF_LEAVE, SELF_RETURN -> {
-                           if(!selfAction) continue;
-                       }
-                   } executeEvent(chatId, fromId, memberId, currentEvent);
-               }
-           }
-           return;
-       }
+                    switch (chatEventType){
+                        case ACTION -> {
+                            handleActionEvent(currentEvent, action, fromId, chatId);
+                        }case TEXT -> {
+                            handleTextEvent(currentEvent, userText, attachments.size(), fromId, chatId);
+                        }case ATTACHMENT -> {
+                            handleAttachmentEvent(currentEvent, attachments.size(), attachmentMap, fromId, chatId);
+                        }
+                    }
+                }
+            }
+            if(chatEventType==ChatEventType.ACTION){
+                return; // если текущее событие - action, то не может быть text, attachment
 
-       List<MessageAttachment> attachments = message.getAttachments();
-       String userText = message.getText().trim();
-       if(!userText.isEmpty()){
-           requiredEvents =  eventsCache.get(ChatEventType.TEXT);
-           if(requiredEvents!=null){
-               for(EventDto currentEvent: requiredEvents){
-                   if(!isRequiredRole(callerRole,currentEvent.getRolePriority())){
-                       continue;
-                   }
-                   String lowerCaseArgument = currentEvent.getArgument();
-                   switch (currentEvent.getType()){
+              }
+        }
+    }
 
-                       case WORD_FILTER -> {
-                           if(!userText.toLowerCase().contains(lowerCaseArgument)) continue;
+     private void handleActionEvent(@NonNull EventDto eventDto,@NonNull ActionOneOf action, long fromId, long chatId){
+        MyEventType eventType = eventDto.getType();
+        MessageActionStatus actionType = action.getType();
+         Optional<Set<MessageActionStatus>> actionsToExecuteEvent = eventType.getVkActionTypeSet();
+         if(actionsToExecuteEvent.isEmpty()){
+             log.warn("action event {} returned empty Optional<Set<MessageActionStatus>>.",eventType);
+             return;
+         }
+         if(!actionsToExecuteEvent.get().contains(actionType)){
+             return;
+         }
+         Long memberId = action.getMemberId();
+         boolean selfAction = Objects.equals(fromId, memberId);
+         switch (eventType){
+             case INVITE_ANOTHER, KICK_ANOTHER -> {
+                 if(selfAction) return;
+             }
+             case INVITE_BANNED -> {
+                 if(selfAction||!banService.getMemberBanStatus(chatId, memberId).isBanned()) return;
+             }
+             case INVITE_GROUP -> {
+                 if(selfAction||!ChatUtils.isGroupId(memberId)) return;
+             }
+             case SELF_LEAVE, SELF_RETURN -> {
+                 if(!selfAction) return;
+             }
+         } executeEvent(chatId, fromId, memberId, eventDto);
 
-                       }case STRICT_WORD_FILTER -> {
-                           Pattern p = Pattern.compile("(?<!\\p{L}|\\p{N})" + Pattern.quote(lowerCaseArgument) + "(?!\\p{L}|\\p{N})", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
-                           if(!p.matcher(userText).find()) continue;
+     }
 
-                       }case MINIMUM_SYMBOLS -> {
-                           if(!attachments.isEmpty()||userText.length()>Integer.parseInt(lowerCaseArgument)) continue;
+    private void handleTextEvent(@NonNull EventDto eventDto, @NonNull String userText, int attachmentsSize, long fromId, long chatId){
+        MyEventType eventType = eventDto.getType();
+        String argument = eventDto.getArgument();
 
-                       }case MAXIMUM_SYMBOLS -> {
-                           if(userText.length()<Integer.parseInt(lowerCaseArgument)) continue;
+        switch (eventType){
 
-                       }case EMOJI_QUANTITY -> {
-                           if(EmojiParser.extractEmojis(userText).size()<Integer.parseInt(lowerCaseArgument)) continue;
+            case WORD_FILTER -> {
+                if(!userText.toLowerCase().contains(argument.toLowerCase())) return;
 
-                       }case ROW_QUANTITY -> {
-                           if(userText.split("\n").length<Integer.parseInt(lowerCaseArgument)) continue;
-                       }
-                       case ALL_MENTION -> {
-                           if(!PUSH_ALL_PATTERN.matcher(userText).find()) continue;
-                       }
-                       case ONLINE_MENTION -> {
-                           if(!PUSH_ONLINE_PATTERN.matcher(userText).find()) continue;
-                       }
-                       case ANY_LINK -> {
-                           if (!URL_PATTERN.matcher(userText).find()) continue;
-                       }
-                       case ZALGO -> {
-                           if (!isZalgo(userText)) continue;
-                       }
-                       case CHAT_INVITE_LINK -> {
-                           if (!VK_CHAT_INVITE_LINK_PATTERN.matcher(userText).find()) continue;
-                       }
+            }case STRICT_WORD_FILTER -> {
+                Pattern p = Pattern.compile("(?<!\\p{L}|\\p{N})" + Pattern.quote(argument) + "(?!\\p{L}|\\p{N})", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
+                if(!p.matcher(userText).find()) return;
 
+            }case MINIMUM_SYMBOLS -> {
+                if(attachmentsSize>0||userText.length()>Integer.parseInt(argument)) return;
 
+            }case MAXIMUM_SYMBOLS -> {
+                if(userText.length()<Integer.parseInt(argument)) return;
 
+            }case EMOJI_QUANTITY -> {
+                if(EmojiParser.extractEmojis(userText).size()<Integer.parseInt(argument)) return;
 
+            }case ROW_QUANTITY -> {
+                if(userText.split("\n").length<Integer.parseInt(argument)) return;
+            }
+            case ALL_MENTION -> {
+                if(!PUSH_ALL_PATTERN.matcher(userText).find()) return;
+            }
+            case ONLINE_MENTION -> {
+                if(!PUSH_ONLINE_PATTERN.matcher(userText).find()) return;
+            }
+            case ANY_LINK -> {
+                if (!URL_PATTERN.matcher(userText).find()) return;
+            }
+            case ZALGO -> {
+                if (!isZalgo(userText)) return;
+            }
+            case CHAT_INVITE_LINK -> {
+                if (!VK_CHAT_INVITE_LINK_PATTERN.matcher(userText).find()) return;
+            }
 
-
-
-                   } executeEvent(chatId, fromId, null, currentEvent);
-
-
-
-
-
-
-
-
-
-
-
-
-               }
-
-           }
-
-
-
+        } executeEvent(chatId, fromId, null, eventDto);
 
 
+    }
+    private void handleAttachmentEvent(@NonNull EventDto eventDto, int attachmentsSize, @NonNull Map<MessageAttachmentType, List<MessageAttachment>> attachmentMap, long fromId, long chatId){
+        MyEventType eventType = eventDto.getType();
+        String argument = eventDto.getArgument();
+        if(eventType == MyEventType.ATTACHMENT_QUANTITY) {
+            if(attachmentsSize<Integer.parseInt(argument)){
+                return;
+            }
+        }
+        MessageAttachmentType vkAttachmentType = eventType.getVkAttachmentType().orElse(null);
+        if(vkAttachmentType==null){
+            log.warn("attachment event {} returned empty Optional<MessageAttachmentType>", eventType);
+            return;
+        }
+        List<MessageAttachment> currentTypeAttachments = attachmentMap.get(vkAttachmentType);
+        if(currentTypeAttachments==null){
+            return;  // в сообщении вообще нет вложений искомого типа
+        }
+        if(eventType.getArgumentType()==INTEGER){
+            if(currentTypeAttachments.size()<Integer.parseInt(argument)) {
+                return;   // вложения искомого типа есть, но их недостаточно
+            }
+        }
+        executeEvent(chatId, fromId, null, eventDto);
+    }
 
-
-
-
-       }
-
-
-
-
-
-
-       for(MessageAttachment attachment: attachments){
-           MessageAttachmentType type = attachment.getType();
-
-
-       }
-
-
-
-
-
-
-   }
-
-   private boolean isRequiredRole(int eventRole, int userRole){
-        return userRole<=eventRole;
-   }
 
    private void executeEvent(long chatId, long fromId, @Nullable Long memberId, @NonNull EventDto eventDto){
 
