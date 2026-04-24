@@ -4,12 +4,13 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.enumeration.event.ChatEventType;
-import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.mapper.CommandMapper;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.ChatUtils;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.vdurmont.emoji.*;
@@ -23,6 +24,8 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -60,9 +63,12 @@ public class EventExecutionService {
    private static final Pattern URL_PATTERN = Pattern.compile(
            "(?i)(?<!\\S)((?:https?://|www\\.|(?:[a-z0-9-]+\\.)+(?:com|net|org|io|ru|de|uk|xyz|info|biz|app|dev))(?:[^\\s]*)?)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
 
-    Pattern VK_CHAT_INVITE_LINK_PATTERN = Pattern.compile(
+   private static final Pattern VK_CHAT_INVITE_LINK_PATTERN = Pattern.compile(
             "(?i)(?:https?://)?vk\\.me/join/[A-Za-z0-9_/=-]+"
     );
+   private static final Cache<String, Pattern> STRICT_WORD_FILTER_PATTERN_CACHE = Caffeine.newBuilder()
+           .expireAfterAccess(15, TimeUnit.MINUTES)
+           .build();
 
 
 
@@ -165,12 +171,13 @@ public class EventExecutionService {
         String argument = eventDto.getArgument();
 
         switch (eventType){
-
             case WORD_FILTER -> {
                 if(!userText.toLowerCase().contains(argument.toLowerCase())) return;
 
             }case STRICT_WORD_FILTER -> {
-                Pattern p = Pattern.compile("(?<!\\p{L}|\\p{N})" + Pattern.quote(argument) + "(?!\\p{L}|\\p{N})", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
+                Pattern p = STRICT_WORD_FILTER_PATTERN_CACHE.get(argument,
+                        arg-> Pattern.compile("(?<!\\p{L}|\\p{N})" + Pattern.quote(arg) + "(?!\\p{L}|\\p{N})", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS)
+                );
                 if(!p.matcher(userText).find()) return;
 
             }case MINIMUM_SYMBOLS -> {
@@ -183,7 +190,11 @@ public class EventExecutionService {
                 if(EmojiParser.extractEmojis(userText).size()<Integer.parseInt(argument)) return;
 
             }case ROW_QUANTITY -> {
-                if(userText.split("\n").length<Integer.parseInt(argument)) return;
+                int rows = 1;
+                for (int i = 0; i < userText.length(); i++) {
+                    if(userText.charAt(i) == '\n') rows++;
+                }
+                if(rows<Integer.parseInt(argument)) return;
             }
             case ALL_MENTION -> {
                 if(!PUSH_ALL_PATTERN.matcher(userText).find()) return;
@@ -199,6 +210,9 @@ public class EventExecutionService {
             }
             case CHAT_INVITE_LINK -> {
                 if (!VK_CHAT_INVITE_LINK_PATTERN.matcher(userText).find()) return;
+            }
+            case CAPS -> {
+                if (!isMostlyCaps(userText)) return;
             }
 
         } executeEvent(chatId, fromId, null, eventDto);
@@ -260,7 +274,7 @@ public class EventExecutionService {
    }
 
 
-    public static boolean isZalgo(@NonNull String text) {
+    private static boolean isZalgo(@NonNull String text) {
         if (text.isEmpty()) return false;
 
         int total = 0;
@@ -294,6 +308,28 @@ public class EventExecutionService {
         if (density > 0.15) return true;
 
         return false;
+    }
+    private static boolean isMostlyCaps(@NonNull String text) {
+        text = text.trim();
+        if (text.isBlank()) return false;
+
+        int letters = 0;
+        int upper = 0;
+
+        for (int i = 0; i < text.length(); ) {
+            int cp = text.codePointAt(i);
+
+            if (Character.isLetter(cp)) {
+                letters++;
+                if (Character.isUpperCase(cp)) upper++;
+            }
+
+            i += Character.charCount(cp);
+        }
+
+        if (letters < 4) return false;
+
+        return (double) upper / letters >= 0.8;
     }
 
 }

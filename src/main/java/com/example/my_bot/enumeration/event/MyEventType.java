@@ -58,7 +58,8 @@ public enum MyEventType {
     ZALGO("зальго","Зальго-текст в сообщении", TEXT),
     CHAT_INVITE_LINK("чатссылка","Ссылка на чат", TEXT),
     PUSH_QUANTITY("числопушей","Количество пушей участников в сообщении",TEXT, INTEGER,1,300),
-    SAME_MESSAGES("одинаковые","Одинаковые сообщения в минуту", TEXT);
+    SAME_MESSAGES("одинаковые","Одинаковые сообщения в минуту", TEXT),
+    CAPS("капс", "сообщение КАПСом", TEXT);
 
 
     @Getter
