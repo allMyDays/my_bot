@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 public enum MyEventType {
     ANY_MESSAGE("сообщение","Отправка любого сообщения", TEXT_OR_ATTACHMENT),
 
+
     INVITE_ANOTHER("приглашение", "Приглашение в чат", ACTION, Set.of(CHAT_INVITE_USER)),
     KICK_ANOTHER("исключение","Исключение участника", ACTION, Set.of(CHAT_KICK_USER)),
     ENTRANCE_BY_LINK("вход","Вход по ссылке", ACTION, Set.of(CHAT_INVITE_USER_BY_LINK)),
@@ -29,6 +30,7 @@ public enum MyEventType {
     INVITE_GROUP("сообщество", "Приглашение сообщества в чат", ACTION, Set.of(CHAT_INVITE_USER)),
     SCREENSHOT("скриншот", "Создание скриншота чата", ACTION, Set.of(CHAT_SCREENSHOT)),
     CHANGE_CHAT_PHOTO("фоточата","Смена фотографии чата", ACTION, Set.of(CHAT_PHOTO_UPDATE, CHAT_PHOTO_REMOVE)),
+
 
 
     ATTACHMENT_QUANTITY("вложения","Количество вложений",ATTACHMENT, INTEGER, 1, 10),
@@ -44,6 +46,9 @@ public enum MyEventType {
     CALL("звонок", "Создание звонка в чате", ATTACHMENT, MessageAttachmentType.CALL),
     GRAFFITI("граффити", "Граффити в сообщении", ATTACHMENT, MessageAttachmentType.GRAFFITI),
     VOICE_MESSAGE("голосовое", "Отправка голосового сообщения", ATTACHMENT, MessageAttachmentType.AUDIO_MESSAGE),
+    LONG_VOICE_MESSAGE("длинноегс", "Длинное голосовое сообщение", ATTACHMENT, INTEGER, 3, 1_500, MessageAttachmentType.AUDIO_MESSAGE),
+    SHORT_VOICE_MESSAGE("короткоегс", "Короткое голосовое сообщение", ATTACHMENT, INTEGER, 2, 1_000, MessageAttachmentType.AUDIO_MESSAGE),
+
 
 
     WORD_FILTER("фильтр","Фильтр слов", TEXT, STRING,1,500),

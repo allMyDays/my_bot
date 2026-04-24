@@ -124,7 +124,7 @@ public class EventExecutionService {
                         }case TEXT -> {
                             handleTextEvent(currentEvent, userText, attachments.size(), fromId, chatId);
                         }case ATTACHMENT -> {
-                            handleAttachmentEvent(currentEvent, attachments.size(), attachmentMap, fromId, chatId);
+                            handleAttachmentEvent(currentEvent, attachments, attachmentMap, fromId, chatId);
                         }
                     }
                 }
@@ -219,25 +219,49 @@ public class EventExecutionService {
 
 
     }
-    private void handleAttachmentEvent(@NonNull EventDto eventDto, int attachmentsSize, @NonNull Map<MessageAttachmentType, List<MessageAttachment>> attachmentMap, long fromId, long chatId){
+    private void handleAttachmentEvent(@NonNull EventDto eventDto, @NonNull List <MessageAttachment> attachmentList, @NonNull Map<MessageAttachmentType, List<MessageAttachment>> attachmentMap, long fromId, long chatId){
+
         MyEventType eventType = eventDto.getType();
+
         String argument = eventDto.getArgument();
-        if(eventType == MyEventType.ATTACHMENT_QUANTITY) {
-            if(attachmentsSize<Integer.parseInt(argument)){
+        Integer intArg = eventType.getArgumentType() == INTEGER?Integer.parseInt(argument):null;
+
+        MessageAttachmentType vkAttachmentType = eventType.getVkAttachmentType().orElse(null);
+
+        List<MessageAttachment> currentTypeAttachments;
+        if (eventType==MyEventType.ATTACHMENT_QUANTITY){
+            currentTypeAttachments = attachmentList;
+        } else{
+            if(vkAttachmentType==null){
+                log.warn("attachment event {} returned empty Optional<MessageAttachmentType>", eventType);
+                return;
+            }
+            currentTypeAttachments = attachmentMap.get(vkAttachmentType);
+        }
+
+
+        if(currentTypeAttachments==null||currentTypeAttachments.isEmpty()){
+            return;  // в сообщении вообще нет вложений искомого типа
+        }
+
+
+        switch (eventType){
+            case LONG_VOICE_MESSAGE, SHORT_VOICE_MESSAGE -> {
+                AudioMessage voiceMessage = currentTypeAttachments.get(0).getAudioMessage(); // голосовое всегда одно, других вложений быть не может
+                if (voiceMessage == null) return;
+                int duration = voiceMessage.getDuration();
+                if(eventType==MyEventType.SHORT_VOICE_MESSAGE) {
+                    if(duration>=intArg) return;
+                }else{
+                    if(duration<=intArg) return;
+                }
+                executeEvent(chatId, fromId, null, eventDto);
                 return;
             }
         }
-        MessageAttachmentType vkAttachmentType = eventType.getVkAttachmentType().orElse(null);
-        if(vkAttachmentType==null){
-            log.warn("attachment event {} returned empty Optional<MessageAttachmentType>", eventType);
-            return;
-        }
-        List<MessageAttachment> currentTypeAttachments = attachmentMap.get(vkAttachmentType);
-        if(currentTypeAttachments==null){
-            return;  // в сообщении вообще нет вложений искомого типа
-        }
-        if(eventType.getArgumentType()==INTEGER){
-            if(currentTypeAttachments.size()<Integer.parseInt(argument)) {
+
+        if(intArg!=null){
+            if(currentTypeAttachments.size()<intArg) {
                 return;   // вложения искомого типа есть, но их недостаточно
             }
         }
