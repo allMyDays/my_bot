@@ -69,6 +69,10 @@ public class EventExecutionService {
            .expireAfterAccess(15, TimeUnit.MINUTES)
            .build();
 
+    private static final Cache<String, Pattern> REGEX_PATTERN_CACHE = Caffeine.newBuilder()
+            .expireAfterAccess(15, TimeUnit.MINUTES)
+            .build();
+
 
 
     @Autowired
@@ -223,6 +227,11 @@ public class EventExecutionService {
             case CAPS -> {
                 if (!isMostlyCaps(userText)) return;
             }
+            case REGEX_FILTER -> {
+                Pattern p = REGEX_PATTERN_CACHE.get(argument, arg ->
+                        Pattern.compile(arg, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS));
+                if(!p.matcher(userText).find()) return;
+            }
 
         } executeEvent(chatId, fromId, null, eventDto);
 
@@ -257,7 +266,7 @@ public class EventExecutionService {
         switch (eventType){
             case LONG_VOICE_MESSAGE, SHORT_VOICE_MESSAGE -> {
                 AudioMessage voiceMessage = currentTypeAttachments.get(0).getAudioMessage(); // голосовое всегда одно, других вложений быть не может
-                if (voiceMessage == null) return;
+                if (voiceMessage==null||intArg==null) return;
                 int duration = voiceMessage.getDuration();
                 if(eventType==MyEventType.SHORT_VOICE_MESSAGE) {
                     if(duration>=intArg) return;

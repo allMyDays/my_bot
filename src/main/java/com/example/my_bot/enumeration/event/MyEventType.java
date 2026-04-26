@@ -51,8 +51,8 @@ public enum MyEventType {
 
 
 
-    WORD_FILTER("фильтр","Фильтр слов", TEXT, STRING,1,500),
-    STRICT_WORD_FILTER("строгийфильтр","Строгий фильтр слов", TEXT, STRING,1,500),
+    WORD_FILTER("фильтр","Фильтр слов", TEXT, STRING,1,150),
+    STRICT_WORD_FILTER("строгийфильтр","Строгий фильтр слов", TEXT, STRING,1,150),
     MINIMUM_SYMBOLS("минсимволов","Минимальное количество символов", TEXT, INTEGER, 1, 300),
     MAXIMUM_SYMBOLS("макссимволов","Максимальное количество символов", TEXT, INTEGER, 5, 600),
     EMOJI_QUANTITY("эмоджи","Количество эмоджи в сообщении",TEXT, INTEGER,1,3000),
@@ -62,7 +62,8 @@ public enum MyEventType {
     ANY_LINK("ссылка","Любая ссылка", TEXT),
     ZALGO("зальго","Зальго-текст в сообщении", TEXT),
     CHAT_INVITE_LINK("чатссылка","Ссылка на чат", TEXT),
-    CAPS("капс", "сообщение КАПСом", TEXT);
+    CAPS("капс", "сообщение КАПСом", TEXT),
+    REGEX_FILTER("регулярка","Регулярное выражение", TEXT, STRING,1,35);
 
 
     @Getter

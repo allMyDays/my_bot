@@ -39,6 +39,8 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 
 @Slf4j
@@ -153,6 +155,14 @@ public class EventService {
                     throw new IncorrectEventArgumentException("Аргумент должен иметь длину символов от %d до %d для данного типа события."
                             .formatted(argMin, argMax));
                 }
+                switch (eventType){
+                    case REGEX_FILTER -> {
+                        if(!isValidUserRegex(userArgument)){
+                            throw new IncorrectEventArgumentException("Вы ввели некорректное регулярное выражение.");
+
+                        }
+                    }
+                }
             }
 
         } return userArgument;
@@ -190,5 +200,19 @@ public class EventService {
    private void invalidateEventsCache(long chatId){
        cacheManager.getEventsCache().invalidate(chatId);
    }
+
+   private boolean isValidUserRegex(@NonNull String pattern){
+
+        pattern = pattern.trim();
+        if (pattern.isEmpty()) return false;
+
+        try {
+            Pattern.compile(pattern);
+        } catch (PatternSyntaxException e) {
+            return false;
+        }
+        if (pattern.contains(")+") || pattern.contains("++")) return false;
+        return true;
+    }
 
 }
