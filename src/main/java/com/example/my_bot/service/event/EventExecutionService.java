@@ -25,7 +25,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -89,6 +88,8 @@ public class EventExecutionService {
         ActionOneOf action = message.getAction();
         List<MessageAttachment> attachments = message.getAttachments();
         String userText = Optional.ofNullable(message.getText()).orElse("").trim();
+        List<ForeignMessage> fwMessages = message.getFwdMessages();
+
         Map<MessageAttachmentType, List<MessageAttachment>> attachmentMap=Collections.emptyMap();
 
         ImmutableSet<EventDto> requiredEvents;
@@ -99,11 +100,13 @@ public class EventExecutionService {
                     if(action==null) continue;
                 }case TEXT -> {
                     if(userText.isEmpty()) continue;
-                }case ATTACHMENT -> {
+                }case ATTACHMENTS -> {
                     if(attachments.isEmpty()) continue;
                     attachmentMap = attachments
                             .stream()
                             .collect(Collectors.groupingBy(MessageAttachment::getType));
+                }case FWD_MESSAGES -> {
+                    if(fwMessages.isEmpty()) continue;
                 }
             }
             requiredEvents = eventsCache.get(chatEventType);
@@ -112,18 +115,24 @@ public class EventExecutionService {
                     if(callerRole>currentEvent.getRolePriority()){
                         continue;
                     }
-                    if(currentEvent.getType()==MyEventType.ANY_MESSAGE){
-                        if(action==null){
-                           executeEvent(chatId, fromId, null, currentEvent);
+                    switch (currentEvent.getType()){
+                        case ANY_MESSAGE -> {
+                            if(action==null){
+                                executeEvent(chatId, fromId, null, currentEvent);
+                            } continue;
+                        }case FWD_QUANTITY -> {
+                            int fwdQuantity = countForwardedMessages(message.getFwdMessages());
+                            if(fwdQuantity>=Integer.parseInt(currentEvent.getArgument())){
+                                executeEvent(chatId, fromId, null, currentEvent);
+                            } continue;
                         }
-                        continue;
                     }
                     switch (chatEventType){
                         case ACTION -> {
                             handleActionEvent(currentEvent, action, fromId, chatId);
                         }case TEXT -> {
                             handleTextEvent(currentEvent, userText, attachments.size(), fromId, chatId);
-                        }case ATTACHMENT -> {
+                        }case ATTACHMENTS -> {
                             handleAttachmentEvent(currentEvent, attachments, attachmentMap, fromId, chatId);
                         }
                     }
@@ -354,6 +363,20 @@ public class EventExecutionService {
         if (letters < 4) return false;
 
         return (double) upper / letters >= 0.8;
+    }
+    private int countForwardedMessages(List<ForeignMessage> fwMessages) {
+        if (fwMessages == null || fwMessages.isEmpty()) {
+            return 0;
+        }
+
+        int count = 0;
+
+        for (ForeignMessage msg : fwMessages) {
+            count++;
+            count += countForwardedMessages(msg.getFwdMessages());
+        }
+
+        return count;
     }
 
 }

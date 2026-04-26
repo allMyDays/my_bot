@@ -2,8 +2,6 @@ package com.example.my_bot.enumeration.event;
 import static com.example.my_bot.enumeration.event.ChatEventType.*;
 import static com.example.my_bot.enumeration.event.EventArgumentType.*;
 import static com.vk.api.sdk.objects.messages.MessageActionStatus.*;
-import static com.vk.api.sdk.objects.messages.MessageAttachmentType.AUDIO;
-import static com.vk.api.sdk.objects.messages.MessageAttachmentType.PHOTO;
 
 import com.vk.api.sdk.objects.messages.MessageActionStatus;
 import com.vk.api.sdk.objects.messages.MessageAttachmentType;
@@ -32,22 +30,24 @@ public enum MyEventType {
     CHANGE_CHAT_PHOTO("фоточата","Смена фотографии чата", ACTION, Set.of(CHAT_PHOTO_UPDATE, CHAT_PHOTO_REMOVE)),
 
 
+    FWD_QUANTITY("пересланные","Количество пересланных", FWD_MESSAGES, INTEGER, 1, 100),
 
-    ATTACHMENT_QUANTITY("вложения","Количество вложений",ATTACHMENT, INTEGER, 1, 10),
-    ATTACH_PHOTO("фото","Фото в сообщении",ATTACHMENT, INTEGER, 1, 10, MessageAttachmentType.PHOTO),
-    MUSIC("музыка","Музыка в сообщении",ATTACHMENT, INTEGER, 1, 10, MessageAttachmentType.AUDIO),
-    VIDEO("видео","Видео в сообщении",ATTACHMENT, INTEGER, 1, 10, MessageAttachmentType.VIDEO),
-    DOCUMENT("документ","Документ в сообщении",ATTACHMENT, INTEGER, 1, 10, MessageAttachmentType.DOC),
-    MARKET("товар","Товар в сообщении", ATTACHMENT, MessageAttachmentType.MARKET),
-    STICKER("стикер","Отправка любого стикера", ATTACHMENT, MessageAttachmentType.STICKER),
-    POST("пост","Пост в сообщении", ATTACHMENT, MessageAttachmentType.WALL),
-    POST_COMMENT("коммент", "Комментарий к посту", ATTACHMENT, MessageAttachmentType.WALL_REPLY),
-    POLL("опрос", "Опрос в сообщении", ATTACHMENT, MessageAttachmentType.POLL),
-    CALL("звонок", "Создание звонка в чате", ATTACHMENT, MessageAttachmentType.CALL),
-    GRAFFITI("граффити", "Граффити в сообщении", ATTACHMENT, MessageAttachmentType.GRAFFITI),
-    VOICE_MESSAGE("голосовое", "Отправка голосового сообщения", ATTACHMENT, MessageAttachmentType.AUDIO_MESSAGE),
-    LONG_VOICE_MESSAGE("длинноегс", "Длинное голосовое сообщение", ATTACHMENT, INTEGER, 3, 1_500, MessageAttachmentType.AUDIO_MESSAGE),
-    SHORT_VOICE_MESSAGE("короткоегс", "Короткое голосовое сообщение", ATTACHMENT, INTEGER, 2, 1_000, MessageAttachmentType.AUDIO_MESSAGE),
+
+    ATTACHMENT_QUANTITY("вложения","Количество вложений", ATTACHMENTS, INTEGER, 1, 10),
+    ATTACH_PHOTO("фото","Фото в сообщении", ATTACHMENTS, INTEGER, 1, 10, MessageAttachmentType.PHOTO),
+    SONG("аудио","Аудио(песня) в сообщении", ATTACHMENTS, INTEGER, 1, 10, MessageAttachmentType.AUDIO),
+    VIDEO("видео","Видео в сообщении", ATTACHMENTS, INTEGER, 1, 10, MessageAttachmentType.VIDEO),
+    DOCUMENT("документ","Документ в сообщении", ATTACHMENTS, INTEGER, 1, 10, MessageAttachmentType.DOC),
+    MARKET("товар","Товар в сообщении", ATTACHMENTS, MessageAttachmentType.MARKET),
+    STICKER("стикер","Отправка любого стикера", ATTACHMENTS, MessageAttachmentType.STICKER),
+    POST("пост","Пост в сообщении", ATTACHMENTS, MessageAttachmentType.WALL),
+    POST_COMMENT("коммент", "Комментарий к посту", ATTACHMENTS, MessageAttachmentType.WALL_REPLY),
+    POLL("опрос", "Опрос в сообщении", ATTACHMENTS, MessageAttachmentType.POLL),
+    CALL("звонок", "Создание звонка в чате", ATTACHMENTS, MessageAttachmentType.CALL),
+    GRAFFITI("граффити", "Граффити в сообщении", ATTACHMENTS, MessageAttachmentType.GRAFFITI),
+    VOICE_MESSAGE("голосовое", "Отправка голосового сообщения", ATTACHMENTS, MessageAttachmentType.AUDIO_MESSAGE),
+    LONG_VOICE_MESSAGE("длинноегс", "Длинное голосовое сообщение", ATTACHMENTS, INTEGER, 3, 1_500, MessageAttachmentType.AUDIO_MESSAGE),
+    SHORT_VOICE_MESSAGE("короткоегс", "Короткое голосовое сообщение", ATTACHMENTS, INTEGER, 2, 1_000, MessageAttachmentType.AUDIO_MESSAGE),
 
 
 
@@ -62,8 +62,6 @@ public enum MyEventType {
     ANY_LINK("ссылка","Любая ссылка", TEXT),
     ZALGO("зальго","Зальго-текст в сообщении", TEXT),
     CHAT_INVITE_LINK("чатссылка","Ссылка на чат", TEXT),
-    PUSH_QUANTITY("числопушей","Количество пушей участников в сообщении",TEXT, INTEGER,1,300),
-    SAME_MESSAGES("одинаковые","Одинаковые сообщения в минуту", TEXT),
     CAPS("капс", "сообщение КАПСом", TEXT);
 
 

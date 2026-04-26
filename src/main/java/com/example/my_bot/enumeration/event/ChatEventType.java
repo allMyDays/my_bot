@@ -5,7 +5,7 @@ import lombok.Getter;
 @Getter
 public enum ChatEventType {
 
-    ACTION, TEXT_OR_ATTACHMENT, TEXT, ATTACHMENT
+    ACTION, TEXT, ATTACHMENTS, TEXT_OR_ATTACHMENT, FWD_MESSAGES
 
 
 

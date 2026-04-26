@@ -55,11 +55,25 @@ public class AllEventsShowCommand implements ChatCommand {
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
+        String[] args = messageDto.getFirstRowArguments();
+        StringBuilder sb = new StringBuilder();
+
+        if(args.length>=1&&args[0].equalsIgnoreCase("доступные")){
+            sb.append("Вам доступно %d событий для создания:\n\n".formatted(MyEventType.values().length));
+            int counter = 1;
+            for(MyEventType myEventType: MyEventType.values()){
+                sb.append("%d. (%s) — %s. %s.\n".formatted(
+                        counter++, myEventType.getCyrillicType(), myEventType.getDescription(),myEventType.getArgumentType()==EventArgumentType.NONE?"Аргумент не требуется":"Требуется аргумент")
+                );
+            }
+            vkChatClient.sendText(sb.toString(), messageDto.getPeerId(), true);
+            return;
+        }
+
         long chatId = messageDto.getChatId();
 
         List<EventDto> events = eventService.getEventsSortedByIdInIncreasingOrder(chatId);
-
-        StringBuilder sb = new StringBuilder("В чате установлено (%d/%d) событий:\n\n"
+        sb.append("В чате установлено (%d/%d) событий:\n\n"
                 .formatted(events.size(), eventService.getMaxEvents())
         );
 
