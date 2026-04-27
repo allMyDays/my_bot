@@ -53,6 +53,11 @@ public class VkMessageAttachment {
     private Story story;
     @SerializedName("wall_reply")
     private WallComment wallReply;
+    @SerializedName("video")
+    private Video video;
+
+
+
 
 
 }

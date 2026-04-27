@@ -1,5 +1,6 @@
 package com.example.my_bot.vk;
 
+import com.example.my_bot.vk.attachment.VkMessageAttachment;
 import com.google.gson.annotations.SerializedName;
 import com.vk.api.sdk.objects.annotations.Required;
 import com.vk.api.sdk.objects.messages.ForeignMessage;
@@ -35,7 +36,7 @@ public class VkMessage {
     private VkAction action;
 
     @SerializedName("attachments")
-    private List<MessageAttachment> attachments;
+    private List<VkMessageAttachment> attachments;
 
     @SerializedName("fwd_messages")
     private List<ForeignMessage> fwdMessages;

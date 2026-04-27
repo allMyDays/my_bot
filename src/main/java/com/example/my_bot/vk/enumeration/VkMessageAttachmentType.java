@@ -36,7 +36,10 @@ public enum VkMessageAttachmentType {
     @SerializedName("graffiti")
     GRAFFITI("graffiti"),
     @SerializedName("audio_message")
-    AUDIO_MESSAGE("audio_message");
+    AUDIO_MESSAGE("audio_message"),
+    @SerializedName("story")
+    STORY("story");
+
 
     @Getter
     private final String value;

@@ -60,6 +60,7 @@ public class AsyncEventHandler {
         }
 
         try {
+            if(chatId==19) return;
             commandDispatcher.dispatch(commandMapper.toCommandMessageDto(chatId, message));
 
             if(!isPersonalChat(peerId)){

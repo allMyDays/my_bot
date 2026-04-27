@@ -11,7 +11,11 @@ import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.vk.VkAction;
 import com.example.my_bot.vk.VkMessage;
+import com.example.my_bot.vk.attachment.Video;
+import com.example.my_bot.vk.attachment.VkMessageAttachment;
+import com.example.my_bot.vk.enumeration.VideoType;
 import com.example.my_bot.vk.enumeration.VkActionType;
+import com.example.my_bot.vk.enumeration.VkMessageAttachmentType;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.collect.ImmutableMap;
@@ -93,11 +97,11 @@ public class EventExecutionService {
         ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventsCache = eventService.getEventsCache(chatId);
 
         VkAction action = message.getAction();
-        List<MessageAttachment> attachments = message.getAttachments();
+        List<VkMessageAttachment> attachments = message.getAttachments();
         String userText = Optional.ofNullable(message.getText()).orElse("").trim();
         List<ForeignMessage> fwMessages = message.getFwdMessages();
 
-        Map<MessageAttachmentType, List<MessageAttachment>> attachmentMap=Collections.emptyMap();
+        Map<VkMessageAttachmentType, List<VkMessageAttachment>> attachmentMap=Collections.emptyMap();
 
         ImmutableSet<EventDto> requiredEvents;
 
@@ -111,7 +115,7 @@ public class EventExecutionService {
                     if(attachments.isEmpty()) continue;
                     attachmentMap = attachments
                             .stream()
-                            .collect(Collectors.groupingBy(MessageAttachment::getType));
+                            .collect(Collectors.groupingBy(VkMessageAttachment::getType));
                 }case FWD_MESSAGES -> {
                     if(fwMessages.isEmpty()) continue;
                 }
@@ -243,19 +247,19 @@ public class EventExecutionService {
 
 
     }
-    private void handleAttachmentEvent(@NonNull EventDto eventDto, @NonNull List <MessageAttachment> attachmentList, @NonNull Map<MessageAttachmentType, List<MessageAttachment>> attachmentMap, long fromId, long chatId){
+    private void handleAttachmentEvent(@NonNull EventDto eventDto, @NonNull List <VkMessageAttachment> attachmentList, @NonNull Map<VkMessageAttachmentType, List<VkMessageAttachment>> attachmentMap, long fromId, long chatId){
 
         MyEventType eventType = eventDto.getType();
 
         String argument = eventDto.getArgument();
         Integer intArg = eventType.getArgumentType() == INTEGER?Integer.parseInt(argument):null;
 
-        MessageAttachmentType vkAttachmentType = eventType.getVkAttachmentType().orElse(null);
+        VkMessageAttachmentType vkAttachmentType = eventType.getVkAttachmentType().orElse(null);
 
-        List<MessageAttachment> currentTypeAttachments;
+        List<VkMessageAttachment> currentTypeAttachments;
         if (eventType==MyEventType.ATTACHMENT_QUANTITY){
             currentTypeAttachments = attachmentList;
-        } else{
+        }else{
             if(vkAttachmentType==null){
                 log.warn("attachment event {} returned empty Optional<MessageAttachmentType>", eventType);
                 return;
@@ -263,16 +267,13 @@ public class EventExecutionService {
             currentTypeAttachments = attachmentMap.get(vkAttachmentType);
         }
 
-
         if(currentTypeAttachments==null||currentTypeAttachments.isEmpty()){
             return;  // в сообщении вообще нет вложений искомого типа
         }
 
-
         switch (eventType){
             case LONG_VOICE_MESSAGE, SHORT_VOICE_MESSAGE -> {
-                AudioMessage voiceMessage = currentTypeAttachments.get(0).getAudioMessage(); // голосовое всегда одно, других вложений быть не может
-                if (voiceMessage==null||intArg==null) return;
+                AudioMessage voiceMessage = currentTypeAttachments.get(0).getAudioMessage(); // голосовое всегда одно как вложение
                 int duration = voiceMessage.getDuration();
                 if(eventType==MyEventType.SHORT_VOICE_MESSAGE) {
                     if(duration>=intArg) return;
@@ -282,6 +283,21 @@ public class EventExecutionService {
                 executeEvent(chatId, fromId, null, eventDto);
                 return;
             }
+            case VIDEO_MESSAGE, VK_CLIP-> {
+                Video video = currentTypeAttachments.get(0).getVideo();  // видеосообщение / клип всегда одни как вложение
+                VideoType videoType = video.getType();
+                if(eventType==MyEventType.VIDEO_MESSAGE) {
+                    if(videoType!=VideoType.VIDEO_MESSAGE) return;
+                }else{
+                    if(videoType!=VideoType.SHORT_VIDEO) return;
+                }
+                executeEvent(chatId, fromId, null, eventDto);
+                return;
+            }
+            case VIDEO -> {
+                if(currentTypeAttachments.get(0).getVideo().getType()!=VideoType.VIDEO) return;
+            }
+
         }
 
         if(intArg!=null){

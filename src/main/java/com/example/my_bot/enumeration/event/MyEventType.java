@@ -4,6 +4,7 @@ import static com.example.my_bot.enumeration.event.EventArgumentType.*;
 import static com.example.my_bot.vk.enumeration.VkActionType.*;
 
 import com.example.my_bot.vk.enumeration.VkActionType;
+import com.example.my_bot.vk.enumeration.VkMessageAttachmentType;
 import com.vk.api.sdk.objects.messages.MessageActionStatus;
 import com.vk.api.sdk.objects.messages.MessageAttachmentType;
 import lombok.Getter;
@@ -36,20 +37,23 @@ public enum MyEventType {
 
 
     ATTACHMENT_QUANTITY("вложения","Количество вложений", ATTACHMENTS, INTEGER, 1, 10),
-    ATTACH_PHOTO("фото","Фото в сообщении", ATTACHMENTS, INTEGER, 1, 10, MessageAttachmentType.PHOTO),
-    SONG("аудио","Аудио(песня) в сообщении", ATTACHMENTS, INTEGER, 1, 10, MessageAttachmentType.AUDIO),
-    VIDEO("видео","Видео в сообщении", ATTACHMENTS, INTEGER, 1, 10, MessageAttachmentType.VIDEO),
-    DOCUMENT("документ","Документ в сообщении", ATTACHMENTS, INTEGER, 1, 10, MessageAttachmentType.DOC),
-    MARKET("товар","Товар в сообщении", ATTACHMENTS, MessageAttachmentType.MARKET),
-    STICKER("стикер","Отправка любого стикера", ATTACHMENTS, MessageAttachmentType.STICKER),
-    POST("пост","Пост в сообщении", ATTACHMENTS, MessageAttachmentType.WALL),
-    POST_COMMENT("коммент", "Комментарий к посту", ATTACHMENTS, MessageAttachmentType.WALL_REPLY),
-    POLL("опрос", "Опрос в сообщении", ATTACHMENTS, MessageAttachmentType.POLL),
-    CALL("звонок", "Создание звонка в чате", ATTACHMENTS, MessageAttachmentType.CALL),
-    GRAFFITI("граффити", "Граффити в сообщении", ATTACHMENTS, MessageAttachmentType.GRAFFITI),
-    VOICE_MESSAGE("голосовое", "Отправка голосового сообщения", ATTACHMENTS, MessageAttachmentType.AUDIO_MESSAGE),
-    LONG_VOICE_MESSAGE("длинноегс", "Длинное голосовое сообщение", ATTACHMENTS, INTEGER, 3, 1_500, MessageAttachmentType.AUDIO_MESSAGE),
-    SHORT_VOICE_MESSAGE("короткоегс", "Короткое голосовое сообщение", ATTACHMENTS, INTEGER, 2, 1_000, MessageAttachmentType.AUDIO_MESSAGE),
+    ATTACH_PHOTO("фото","Фото в сообщении", ATTACHMENTS, INTEGER, 1, 10, VkMessageAttachmentType.PHOTO),
+    SONG("аудио","Аудио(песня) в сообщении", ATTACHMENTS, INTEGER, 1, 10, VkMessageAttachmentType.AUDIO),
+    DOCUMENT("документ","Документ в сообщении", ATTACHMENTS, INTEGER, 1, 10, VkMessageAttachmentType.DOC),
+    MARKET("товар","Товар в сообщении", ATTACHMENTS, VkMessageAttachmentType.MARKET),
+    STICKER("стикер","Отправка любого стикера", ATTACHMENTS, VkMessageAttachmentType.STICKER),
+    POST("пост","Пост в сообщении", ATTACHMENTS, VkMessageAttachmentType.WALL),
+    POST_COMMENT("коммент", "Комментарий к посту", ATTACHMENTS, VkMessageAttachmentType.WALL_REPLY),
+    POLL("опрос", "Опрос в сообщении", ATTACHMENTS, VkMessageAttachmentType.POLL),
+    CALL("звонок", "Создание звонка в чате", ATTACHMENTS, VkMessageAttachmentType.CALL),
+    GRAFFITI("граффити", "Граффити в сообщении", ATTACHMENTS, VkMessageAttachmentType.GRAFFITI),
+    VOICE_MESSAGE("голосовое", "Отправка голосового сообщения", ATTACHMENTS, VkMessageAttachmentType.AUDIO_MESSAGE),
+    LONG_VOICE_MESSAGE("длинноегс", "Длинное голосовое сообщение", ATTACHMENTS, INTEGER, 3, 1_500, VkMessageAttachmentType.AUDIO_MESSAGE),
+    SHORT_VOICE_MESSAGE("короткоегс", "Короткое голосовое сообщение", ATTACHMENTS, INTEGER, 2, 1_000, VkMessageAttachmentType.AUDIO_MESSAGE),
+    STORY("история","История в сообщении", ATTACHMENTS, VkMessageAttachmentType.STORY),
+    VIDEO("видео","Видео в сообщении", ATTACHMENTS, INTEGER, 1, 10, VkMessageAttachmentType.VIDEO),
+    VIDEO_MESSAGE("видеосообщение", "Отправка видеосообщения", ATTACHMENTS, VkMessageAttachmentType.VIDEO),
+    VK_CLIP("клип", "Отправка VK клипа", ATTACHMENTS, VkMessageAttachmentType.VIDEO),
 
 
 
@@ -84,7 +88,7 @@ public enum MyEventType {
 
     private final Set<VkActionType> vkActionTypeSet;
 
-    private final MessageAttachmentType vkAttachmentType;
+    private final VkMessageAttachmentType vkAttachmentType;
 
     private static final Map<String, MyEventType> cyrillicTypeMAP =
             Arrays.stream(values())
@@ -97,7 +101,7 @@ public enum MyEventType {
         return Optional.ofNullable(vkActionTypeSet);
     }
 
-    public Optional<MessageAttachmentType> getVkAttachmentType() {
+    public Optional<VkMessageAttachmentType> getVkAttachmentType() {
         return Optional.ofNullable(vkAttachmentType);
     }
 
@@ -116,12 +120,12 @@ public enum MyEventType {
         this(cyrillicType, description, chatEventType, (Set<VkActionType>) null);
     }
 
-    MyEventType(String cyrillicType, String description, ChatEventType chatEventType, MessageAttachmentType vkAttachmentType) {
+    MyEventType(String cyrillicType, String description, ChatEventType chatEventType, VkMessageAttachmentType vkAttachmentType) {
         this(cyrillicType, description, chatEventType, NONE, -1, -1, vkAttachmentType);
 
     }
 
-    MyEventType(String cyrillicType, String description, ChatEventType chatEventType, EventArgumentType argumentType, int argMin, int argMax, MessageAttachmentType vkAttachmentType) {
+    MyEventType(String cyrillicType, String description, ChatEventType chatEventType, EventArgumentType argumentType, int argMin, int argMax, VkMessageAttachmentType vkAttachmentType) {
         this.cyrillicType = cyrillicType;
         this.description = description;
         this.argumentType = argumentType;
