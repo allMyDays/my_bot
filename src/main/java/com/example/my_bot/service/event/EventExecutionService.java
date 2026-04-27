@@ -138,7 +138,7 @@ public class EventExecutionService {
                         case ACTION -> {
                             handleActionEvent(currentEvent, action, fromId, chatId);
                         }case TEXT -> {
-                            handleTextEvent(currentEvent, userText, attachments.size(), fromId, chatId);
+                            handleTextEvent(currentEvent, userText, attachments.size(), fromId, chatId, message.getExpireTTL()!=null);
                         }case ATTACHMENTS -> {
                             handleAttachmentEvent(currentEvent, attachments, attachmentMap, fromId, chatId);
                         }
@@ -182,7 +182,7 @@ public class EventExecutionService {
 
      }
 
-    private void handleTextEvent(@NonNull EventDto eventDto, @NonNull String userText, int attachmentsSize, long fromId, long chatId){
+    private void handleTextEvent(@NonNull EventDto eventDto, @NonNull String userText, int attachmentsSize, long fromId, long chatId, boolean isSelfDestructing){
         MyEventType eventType = eventDto.getType();
         String argument = eventDto.getArgument();
 
@@ -234,6 +234,9 @@ public class EventExecutionService {
                 Pattern p = REGEX_PATTERN_CACHE.get(argument, arg ->
                         Pattern.compile(arg, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS));
                 if(!p.matcher(userText).find()) return;
+            }
+            case SELF_DESTRUCTING_MESSAGE -> {
+                if (!isSelfDestructing) return;
             }
 
         } executeEvent(chatId, fromId, null, eventDto);

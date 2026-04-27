@@ -65,7 +65,8 @@ public enum MyEventType {
     ZALGO("зальго","Зальго-текст в сообщении", TEXT),
     CHAT_INVITE_LINK("чатссылка","Ссылка на чат", TEXT),
     CAPS("капс", "сообщение КАПСом", TEXT),
-    REGEX_FILTER("регулярка","Регулярное выражение", TEXT, STRING,1,35);
+    REGEX_FILTER("регулярка","Регулярное выражение", TEXT, STRING,1,35),
+    SELF_DESTRUCTING_MESSAGE("исчезающее", "Исчезающее сообщение", TEXT);
 
 
     @Getter
