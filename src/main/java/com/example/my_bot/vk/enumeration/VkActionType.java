@@ -1,0 +1,41 @@
+package com.example.my_bot.vk.enumeration;
+
+import com.google.gson.annotations.SerializedName;
+import lombok.Getter;
+
+public enum VkActionType {
+
+    @SerializedName("chat_photo_update")
+    CHAT_PHOTO_UPDATE("chat_photo_update"),
+    @SerializedName("chat_photo_remove")
+    CHAT_PHOTO_REMOVE("chat_photo_remove"),
+    @SerializedName("chat_create")
+    CHAT_CREATE("chat_create"),
+    @SerializedName("chat_title_update")
+    CHAT_TITLE_UPDATE("chat_title_update"),
+    @SerializedName("chat_invite_user")
+    CHAT_INVITE_USER("chat_invite_user"),
+    @SerializedName("chat_kick_user")
+    CHAT_KICK_USER("chat_kick_user"),
+    @SerializedName("chat_pin_message")
+    CHAT_PIN_MESSAGE("chat_pin_message"),
+    @SerializedName("chat_unpin_message")
+    CHAT_UNPIN_MESSAGE("chat_unpin_message"),
+    @SerializedName("chat_invite_user_by_link")
+    CHAT_INVITE_USER_BY_LINK("chat_invite_user_by_link"),
+    @SerializedName("chat_invite_user_by_message_request")
+    CHAT_INVITE_USER_BY_MESSAGE_REQUEST("chat_invite_user_by_message_request"),
+    @SerializedName("chat_screenshot")
+    CHAT_SCREENSHOT("chat_screenshot"),
+    @SerializedName("conversation_style_update")
+    CONVERSATION_STYLE_UPDATE("conversation_style_update");
+
+
+
+    @Getter
+    private final String value;
+
+    VkActionType(String value) {
+        this.value = value;
+    }
+}

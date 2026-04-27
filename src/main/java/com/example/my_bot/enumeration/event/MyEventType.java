@@ -1,8 +1,9 @@
 package com.example.my_bot.enumeration.event;
 import static com.example.my_bot.enumeration.event.ChatEventType.*;
 import static com.example.my_bot.enumeration.event.EventArgumentType.*;
-import static com.vk.api.sdk.objects.messages.MessageActionStatus.*;
+import static com.example.my_bot.vk.enumeration.VkActionType.*;
 
+import com.example.my_bot.vk.enumeration.VkActionType;
 import com.vk.api.sdk.objects.messages.MessageActionStatus;
 import com.vk.api.sdk.objects.messages.MessageAttachmentType;
 import lombok.Getter;
@@ -79,7 +80,7 @@ public enum MyEventType {
     @Getter
     private final int argMax;
 
-    private final Set<MessageActionStatus> vkActionTypeSet;
+    private final Set<VkActionType> vkActionTypeSet;
 
     private final MessageAttachmentType vkAttachmentType;
 
@@ -90,7 +91,7 @@ public enum MyEventType {
                             Function.identity()
                     ));
 
-    public Optional<Set<MessageActionStatus>> getVkActionTypeSet(){
+    public Optional<Set<VkActionType>> getVkActionTypeSet(){
         return Optional.ofNullable(vkActionTypeSet);
     }
 
@@ -98,7 +99,7 @@ public enum MyEventType {
         return Optional.ofNullable(vkAttachmentType);
     }
 
-    MyEventType(String cyrillicType, String description, ChatEventType chatEventType, Set<MessageActionStatus> vkActionTypeSet) {
+    MyEventType(String cyrillicType, String description, ChatEventType chatEventType, Set<VkActionType> vkActionTypeSet) {
         this.cyrillicType = cyrillicType;
         this.description = description;
         this.chatEventType = chatEventType;
@@ -110,7 +111,7 @@ public enum MyEventType {
     }
 
     MyEventType(String cyrillicType, String description, ChatEventType chatEventType) {
-        this(cyrillicType, description, chatEventType, (Set<MessageActionStatus>) null);
+        this(cyrillicType, description, chatEventType, (Set<VkActionType>) null);
     }
 
     MyEventType(String cyrillicType, String description, ChatEventType chatEventType, MessageAttachmentType vkAttachmentType) {

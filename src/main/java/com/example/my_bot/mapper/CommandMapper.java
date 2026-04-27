@@ -3,6 +3,7 @@ package com.example.my_bot.mapper;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.utils.ChatUtils;
+import com.example.my_bot.vk.VkMessage;
 import com.vk.api.sdk.objects.messages.ForeignMessage;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
@@ -14,7 +15,7 @@ public abstract class CommandMapper {
 
 
 
-    public CommandMessageDto toCommandMessageDto(long chatId, @NonNull Message message){
+    public CommandMessageDto toCommandMessageDto(long chatId, @NonNull VkMessage message){
 
         CommandMessageDto commandMessageDto = toCommandMessageDto(chatId, message.getFromId(), message.getText(),false);
         commandMessageDto.setPeerId(message.getPeerId());

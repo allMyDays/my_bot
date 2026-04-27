@@ -6,6 +6,8 @@ import com.example.my_bot.mapper.CommandMapper;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.chat.ChatActionService;
 import com.example.my_bot.service.event.EventExecutionService;
+import com.example.my_bot.vk.VkMessage;
+import com.example.my_bot.vk.VkMessageNew;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.callback.MessageNew;
@@ -42,19 +44,17 @@ public class AsyncEventHandler {
 
 
     @Async
-    public void handleMessageNew(@NonNull MessageNew messageNew) {
-        Message message = messageNew.getObject().getMessage();
+    public void handleMessageNew(@NonNull VkMessageNew messageNew) {
+        VkMessage message = messageNew.getMessageObject().getMessage();
         long peerId = message.getPeerId();
         long fromId = message.getFromId();
         long chatId;
 
         if(isPersonalChat(peerId)){
             Optional<Long> boundChat = userService.getOrCreateUser(fromId).getOptionalBoundChat();
-            if(boundChat.isEmpty()){
-                return;
-            }else{
-                chatId=boundChat.get();
-            }
+            if(boundChat.isEmpty()) return;
+            else chatId=boundChat.get();
+
         }else{
             chatId = extractConversationId(peerId);
         }

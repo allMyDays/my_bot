@@ -1,6 +1,8 @@
 package com.example.my_bot.controller;
 
 import com.example.my_bot.handler.AsyncEventHandler;
+import com.example.my_bot.vk.VkMessageNew;
+import com.example.my_bot.vk.enumeration.VkEventType;
 import com.google.gson.Gson;
 import com.vk.api.sdk.objects.callback.MessageNew;
 import com.vk.api.sdk.objects.callback.Type;
@@ -10,8 +12,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import static com.vk.api.sdk.objects.callback.Type.CONFIRMATION;
-import static com.vk.api.sdk.objects.callback.Type.MESSAGE_NEW;
+import static com.example.my_bot.vk.enumeration.VkEventType.CONFIRMATION;
+import static com.example.my_bot.vk.enumeration.VkEventType.MESSAGE_NEW;
+
 
 @RestController
 @Slf4j
@@ -33,9 +36,9 @@ public class VkCallbackController {
     @PostMapping("/callback")
     public String handle(@RequestBody String body) {
 
-        MessageNew event = new Gson().fromJson(body, MessageNew.class);
+        VkMessageNew event = new Gson().fromJson(body, VkMessageNew.class);
 
-        Type type = event.getType();
+        VkEventType type = event.getType();
         if (CONFIRMATION.equals(type)) {
             return confirmationCode;
         }

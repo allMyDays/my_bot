@@ -12,6 +12,8 @@ import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.TimeUtils;
+import com.example.my_bot.vk.VkAction;
+import com.example.my_bot.vk.enumeration.VkActionType;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ActionOneOf;
@@ -46,12 +48,12 @@ public class ChatActionService {
 
 
 
-    public void handleChatAction(long chatId, long fromId, ActionOneOf action){
+    public void handleChatAction(long chatId, long fromId, VkAction action){
 
         if(action==null){
             return;
         }
-        MessageActionStatus type = action.getType();
+        VkActionType type = action.getType();
         Long memberId = action.getMemberId();
         boolean hasBeenKicked;
 

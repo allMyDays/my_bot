@@ -9,6 +9,9 @@ import com.example.my_bot.mapper.CommandMapper;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.ChatUtils;
+import com.example.my_bot.vk.VkAction;
+import com.example.my_bot.vk.VkMessage;
+import com.example.my_bot.vk.enumeration.VkActionType;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.collect.ImmutableMap;
@@ -83,13 +86,13 @@ public class EventExecutionService {
 
 
 
-    public void executeRequiredChatEvents(Message message){
+    public void executeRequiredChatEvents(VkMessage message){
         long chatId = ChatUtils.extractConversationId(message.getPeerId());
         long fromId = message.getFromId();
         int callerRole = memberService.getMemberRolePriority(chatId, fromId);
         ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventsCache = eventService.getEventsCache(chatId);
 
-        ActionOneOf action = message.getAction();
+        VkAction action = message.getAction();
         List<MessageAttachment> attachments = message.getAttachments();
         String userText = Optional.ofNullable(message.getText()).orElse("").trim();
         List<ForeignMessage> fwMessages = message.getFwdMessages();
@@ -149,10 +152,10 @@ public class EventExecutionService {
         }
     }
 
-     private void handleActionEvent(@NonNull EventDto eventDto,@NonNull ActionOneOf action, long fromId, long chatId){
+     private void handleActionEvent(@NonNull EventDto eventDto,@NonNull VkAction action, long fromId, long chatId){
         MyEventType eventType = eventDto.getType();
-        MessageActionStatus actionType = action.getType();
-         Optional<Set<MessageActionStatus>> actionsToExecuteEvent = eventType.getVkActionTypeSet();
+        VkActionType actionType = action.getType();
+         Optional<Set<VkActionType>> actionsToExecuteEvent = eventType.getVkActionTypeSet();
          if(actionsToExecuteEvent.isEmpty()){
              log.warn("action event {} returned empty Optional<Set<MessageActionStatus>>.",eventType);
              return;
