@@ -29,6 +29,7 @@ public enum MyEventType {
     INVITE_GROUP("сообщество", "Приглашение сообщества в чат", ACTION, Set.of(CHAT_INVITE_USER)),
     SCREENSHOT("скриншот", "Создание скриншота чата", ACTION, Set.of(CHAT_SCREENSHOT)),
     CHANGE_CHAT_PHOTO("фоточата","Смена фотографии чата", ACTION, Set.of(CHAT_PHOTO_UPDATE, CHAT_PHOTO_REMOVE)),
+    CHAT_STYLE_UPDATE("оформление", "Смена оформления чата", ACTION, Set.of(CONVERSATION_STYLE_UPDATE)),
 
 
     FWD_QUANTITY("пересланные","Количество пересланных", FWD_MESSAGES, INTEGER, 1, 100),
