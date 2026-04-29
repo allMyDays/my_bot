@@ -50,7 +50,7 @@ public class BindCommand implements ChatCommand {
             return;
         }
         String message;
-        if(!vkChatClient.canGroupWriteToUser(fromId)){
+        if(!vkChatClient.canTheBotWriteToUser(fromId)){
             message = "Для выполнения этой команды, %s(Вы) должны разрешить мне (группе) отправлять вам личные сообщения. Для этого напишите любой текст в личные сообщения сообщества."
                     .formatted(createMention(fromId));
             vkChatClient.sendText(message, messageDto.getPeerId(), true);

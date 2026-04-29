@@ -5,8 +5,6 @@ import static com.example.my_bot.vk.enumeration.VkActionType.*;
 
 import com.example.my_bot.vk.enumeration.VkActionType;
 import com.example.my_bot.vk.enumeration.VkMessageAttachmentType;
-import com.vk.api.sdk.objects.messages.MessageActionStatus;
-import com.vk.api.sdk.objects.messages.MessageAttachmentType;
 import lombok.Getter;
 import lombok.NonNull;
 
@@ -31,6 +29,8 @@ public enum MyEventType {
     SCREENSHOT("скриншот", "Создание скриншота чата", ACTION, Set.of(CHAT_SCREENSHOT)),
     CHANGE_CHAT_PHOTO("фоточата","Смена фотографии чата", ACTION, Set.of(CHAT_PHOTO_UPDATE, CHAT_PHOTO_REMOVE)),
     CHAT_STYLE_UPDATE("оформление", "Смена оформления чата", ACTION, Set.of(CONVERSATION_STYLE_UPDATE)),
+    WITH_SUBSCRIPTION("естьподписка", "Наличие подписки на сообщество", ACTION, Set.of(CHAT_INVITE_USER, CHAT_INVITE_USER_BY_LINK), INTEGER, 1, 9),
+    WITHOUT_SUBSCRIPTION("нетподписки", "Отсутствие подписки на сообщество", ACTION, Set.of(CHAT_INVITE_USER, CHAT_INVITE_USER_BY_LINK),  INTEGER, 1, 9),
 
 
     FWD_QUANTITY("пересланные","Количество пересланных", FWD_MESSAGES, INTEGER, 1, 100),
@@ -106,12 +106,16 @@ public enum MyEventType {
     }
 
     MyEventType(String cyrillicType, String description, ChatEventType chatEventType, Set<VkActionType> vkActionTypeSet) {
+        this(cyrillicType, description, chatEventType, vkActionTypeSet,EventArgumentType.NONE, -1, -1);
+    }
+
+    MyEventType(String cyrillicType, String description, ChatEventType chatEventType, Set<VkActionType> vkActionTypeSet, EventArgumentType argumentType, int argMin, int argMax){
         this.cyrillicType = cyrillicType;
         this.description = description;
         this.chatEventType = chatEventType;
-        this.argumentType = EventArgumentType.NONE;
-        this.argMin = -1;
-        this.argMax = -1;
+        this.argumentType = argumentType;
+        this.argMin = argMin;
+        this.argMax = argMax;
         this.vkActionTypeSet = vkActionTypeSet==null?null:Collections.unmodifiableSet(vkActionTypeSet);
         vkAttachmentType = null;
     }

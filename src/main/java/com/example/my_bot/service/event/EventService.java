@@ -1,13 +1,15 @@
 package com.example.my_bot.service.event;
 import static com.example.my_bot.enumeration.event.EventArgumentType.*;
+import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
+import static com.example.my_bot.enumeration.event.MyEventType.WITH_SUBSCRIPTION;
 
 import com.example.my_bot.annotation.Command;
+import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandRegistry;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.entity.EventEntity;
-import com.example.my_bot.entity.TimerEntity;
 import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
@@ -17,7 +19,6 @@ import com.example.my_bot.exception.event.*;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.EventMapper;
 import com.example.my_bot.repository.EventRepository;
-import com.example.my_bot.repository.TimerRepository;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
@@ -36,9 +37,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -52,9 +50,13 @@ public class EventService {
     private final MemberService memberService;
     private final RoleService roleService;
     private CommandRegistry commandRegistry;
-    private static final int MAX_EVENTS = 50;
     private final CaffeineCacheManager cacheManager;
     private final EventMapper eventMapper;
+    private final VkChatClient vkChatClient;
+    private final UserInputResolver userInputResolver;
+
+    private static final int MAX_EVENTS = 100;
+    private static final int MAX_SUBSCRIPTION_EVENTS = 10;
 
     @Autowired
     @Lazy
@@ -75,10 +77,15 @@ public class EventService {
                                @NonNull String fullCommand,
                                long fromId){
 
-        userArgument = checkEventArgumentCorrectness(eventType,userArgument);
+        userArgument = validateEventArgument(eventType,userArgument);
 
         if (countChatEvents(chatId)>=getMaxEvents()){
             throw new TooManyEventsException();
+        }
+        if(eventType==WITH_SUBSCRIPTION||eventType==WITHOUT_SUBSCRIPTION){
+            if(getChatEventsWithRequiredTypes(chatId, Set.of(WITH_SUBSCRIPTION, WITHOUT_SUBSCRIPTION)).size()>=MAX_SUBSCRIPTION_EVENTS){
+                throw new TooManyEventsException("Превышен лимит на создание событий, связанных с подпиской на сообщества. ");
+            }
         }
         if(!roleService.roleExistsByPriority(chatId, rolePriority)){
             throw new RoleNotFoundException();
@@ -117,7 +124,7 @@ public class EventService {
     }
 
     public List<EventDto> getEventsSortedByIdInIncreasingOrder(long chatId){
-        ImmutableCollection<ImmutableSet<EventDto>> collection = getEventsCache(chatId).values();
+        ImmutableCollection<ImmutableSet<EventDto>> collection = getCachedChatEvents(chatId).values();
         return collection.stream()
                 .flatMap(Set::stream)
                 .sorted(Comparator.comparing(EventDto::getId))
@@ -125,12 +132,12 @@ public class EventService {
     }
 
     public int countChatEvents(long chatId){
-       return Math.toIntExact(getEventsCache(chatId).values().stream().mapToLong(Set::size).sum());
+       return Math.toIntExact(getCachedChatEvents(chatId).values().stream().mapToLong(Set::size).sum());
 
     }
 
 
-    private String checkEventArgumentCorrectness(@NonNull MyEventType eventType, @Nullable String userArgument){
+    private String validateEventArgument(@NonNull MyEventType eventType, @Nullable String userArgument){
         EventArgumentType eventArgType = eventType.getArgumentType();
         if(eventArgType== NONE){
             if(userArgument!=null){
@@ -144,7 +151,16 @@ public class EventService {
             int argMax = eventType.getArgMax();
             int argMin = eventType.getArgMin();
 
-            if(eventArgType== INTEGER){
+            if(eventArgType == INTEGER){
+                switch (eventType){
+                    case WITH_SUBSCRIPTION, WITHOUT_SUBSCRIPTION -> {
+                        Long groupId = userInputResolver.getMemberIdByStringInput(userArgument).orElse(null);
+                        if(groupId==null||!ChatUtils.isGroupId(groupId)){
+                            throw new IncorrectEventArgumentException("Для данного типа события, аргумент обязан быть ссылкой или упоминанием сообщества.");
+                        }
+                        return groupId.toString();
+                    }
+                }
                 int intArg;
                 if(!ChatUtils.isValidInteger(userArgument)||((intArg=Integer.parseInt(userArgument))<argMin||intArg>argMax)){
                     throw new IncorrectEventArgumentException("Для данного типа события, аргумент должен быть валидным числом от %d до %d."
@@ -159,7 +175,6 @@ public class EventService {
                     case REGEX_FILTER -> {
                         if(!isValidUserRegex(userArgument)){
                             throw new IncorrectEventArgumentException("Вы ввели некорректное регулярное выражение.");
-
                         }
                     }
                 }
@@ -181,7 +196,7 @@ public class EventService {
         );
     }
 
-    public ImmutableMap<ChatEventType, ImmutableSet<EventDto>> getEventsCache(long chatId){
+    public ImmutableMap<ChatEventType, ImmutableSet<EventDto>> getCachedChatEvents(long chatId){
         return cacheManager.getEventsCache().get(chatId, k->{
             List<EventEntity> entities = eventRepository.findByChatId(chatId);
             Map<ChatEventType, ImmutableSet.Builder<EventDto>> builders = new HashMap<>(); // временная карта
@@ -214,5 +229,25 @@ public class EventService {
         if (pattern.contains(")+") || pattern.contains("++")) return false;
         return true;
     }
+
+    public Set<EventDto> getChatEventsWithRequiredTypes(long chatId, @NonNull Set<MyEventType> typeSet){
+
+        HashSet<EventDto> eventsToReturn = new HashSet<>();
+        if(typeSet.isEmpty()) return eventsToReturn;
+
+        ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventMap = getCachedChatEvents(chatId);
+
+        eventMap.values().forEach(set->set.forEach(event->{
+            if(typeSet.contains(event.getType())){
+                eventsToReturn.add(event);
+            }
+          }
+        ));
+        return eventsToReturn;
+    }
+
+
+
+
 
 }

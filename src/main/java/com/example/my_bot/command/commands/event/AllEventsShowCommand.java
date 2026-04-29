@@ -28,6 +28,8 @@ import java.util.List;
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
+import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
+import static com.example.my_bot.enumeration.event.MyEventType.WITH_SUBSCRIPTION;
 import static com.example.my_bot.utils.ChatUtils.*;
 
 @Slf4j
@@ -79,17 +81,18 @@ public class AllEventsShowCommand implements ChatCommand {
 
         int counter=1;
         for(EventDto eventDto: events){
-
+            MyEventType type = eventDto.getType();
             sb.append("%s(%d). ".formatted(createMention(eventDto.getCreatorId()), counter++));
             String roleName = roleService.getRoleName(chatId, eventDto.getRolePriority())
                     .map("«%s»"::formatted)
                     .orElse("с приоритетом "+eventDto.getRolePriority());
 
             sb.append("Выполнение команды «%s» при событии «%s» для роли %s и ниже."
-                    .formatted(eventDto.getFullCommand(),eventDto.getType().getDescription(), roleName));
+                    .formatted(eventDto.getFullCommand(),type.getDescription(), roleName));
 
             if(eventDto.getArgument()!=null){
-                sb.append(" Аргумент: ").append(eventDto.getArgument());
+                String arg = eventDto.getArgument();
+                sb.append(" Аргумент: ").append((type==WITH_SUBSCRIPTION||type==WITHOUT_SUBSCRIPTION)?createMention(Long.parseLong(arg)):arg);
             } sb.append("\n");
 
         }

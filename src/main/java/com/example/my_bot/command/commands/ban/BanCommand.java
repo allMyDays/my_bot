@@ -38,7 +38,7 @@ import static com.example.my_bot.utils.ChatUtils.createMention;
 public class BanCommand implements ChatCommand {
 
     @Getter
-    private final CommandCooldown cooldown = new CommandCooldown(5,60);
+    private final CommandCooldown cooldown = new CommandCooldown(20,60);
 
     private VkChatClient vkChatClient;
 

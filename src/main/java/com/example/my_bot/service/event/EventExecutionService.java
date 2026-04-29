@@ -1,5 +1,6 @@
 package com.example.my_bot.service.event;
 
+import com.example.my_bot.cache.keys.CommunityMemberKey;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.dto.event.EventDto;
@@ -21,6 +22,8 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.vdurmont.emoji.*;
+import com.vk.api.sdk.exceptions.ApiException;
+import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.*;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
@@ -36,6 +39,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.event.EventArgumentType.INTEGER;
+import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
+import static com.example.my_bot.enumeration.event.MyEventType.WITH_SUBSCRIPTION;
 import static com.example.my_bot.utils.ChatUtils.*;
 
 
@@ -80,6 +85,10 @@ public class EventExecutionService {
             .expireAfterAccess(15, TimeUnit.MINUTES)
             .build();
 
+    private static final Cache<CommunityMemberKey, Boolean> COMMUNITY_SUBSCRIPTIONS_CACHE = Caffeine.newBuilder()
+            .expireAfterWrite(30, TimeUnit.SECONDS)
+            .build();
+
 
 
     @Autowired
@@ -94,7 +103,7 @@ public class EventExecutionService {
         long chatId = ChatUtils.extractConversationId(message.getPeerId());
         long fromId = message.getFromId();
         int callerRole = memberService.getMemberRolePriority(chatId, fromId);
-        ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventsCache = eventService.getEventsCache(chatId);
+        ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventsCache = eventService.getCachedChatEvents(chatId);
 
         VkAction action = message.getAction();
         List<VkMessageAttachment> attachments = message.getAttachments();
@@ -181,6 +190,21 @@ public class EventExecutionService {
              }
              case SELF_LEAVE, SELF_RETURN -> {
                  if(!selfAction) return;
+             }
+             case WITH_SUBSCRIPTION, WITHOUT_SUBSCRIPTION -> {
+                 if(memberId!=null) fromId = memberId;
+                 CommunityMemberKey key = new CommunityMemberKey(Long.parseLong(eventDto.getArgument()), fromId);
+                 boolean isMember = Boolean.TRUE.equals(COMMUNITY_SUBSCRIPTIONS_CACHE.get(key, k ->{
+                         try {
+                             return vkChatClient.isCommunityMember(k.groupId(), k.userId());
+                         } catch (Exception e){
+                             log.warn("error execute method isCommunityMember, group: {}; user {}", eventDto.getArgument(), k.userId());
+                             return false;
+                         }
+                     }));
+                 if((eventType==WITH_SUBSCRIPTION&&!isMember)||(eventType==WITHOUT_SUBSCRIPTION&&isMember)){
+                     return;
+                 }
              }
          } executeEvent(chatId, fromId, memberId, eventDto);
 

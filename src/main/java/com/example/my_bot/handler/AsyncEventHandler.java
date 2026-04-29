@@ -6,27 +6,29 @@ import com.example.my_bot.mapper.CommandMapper;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.chat.ChatActionService;
 import com.example.my_bot.service.event.EventExecutionService;
+import com.example.my_bot.utils.ChatUtils;
+import com.example.my_bot.vk.VkAction;
 import com.example.my_bot.vk.VkMessage;
 import com.example.my_bot.vk.VkMessageNew;
+import com.example.my_bot.vk.enumeration.VkActionType;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
-import com.vk.api.sdk.objects.callback.MessageNew;
-import com.vk.api.sdk.objects.messages.Message;
+import jakarta.annotation.Nullable;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.UNKNOWN_ERROR_MESSAGE;
+import static com.example.my_bot.constant.MessageConstant.WELCOME_MESSAGE;
 import static com.example.my_bot.utils.ChatUtils.extractConversationId;
 import static com.example.my_bot.utils.ChatUtils.isPersonalChat;
 
 @Component
 @Slf4j
-@RequiredArgsConstructor
 public class AsyncEventHandler {
 
     private final CommandDispatcher commandDispatcher;
@@ -41,10 +43,26 @@ public class AsyncEventHandler {
 
     private final EventExecutionService eventExecutionService;
 
+    private final long groupId;
 
+    public AsyncEventHandler(CommandDispatcher commandDispatcher,
+                             VkChatClient vkChatClient,
+                             CommandMapper commandMapper,
+                             GlobalUserService userService,
+                             ChatActionService chatActionService,
+                             EventExecutionService eventExecutionService,
+                             @Value("${vk.group.id}") long groupId) {
+        this.commandDispatcher = commandDispatcher;
+        this.vkChatClient = vkChatClient;
+        this.commandMapper = commandMapper;
+        this.userService = userService;
+        this.chatActionService = chatActionService;
+        this.eventExecutionService = eventExecutionService;
+        this.groupId = groupId;
+    }
 
     @Async
-    public void handleMessageNew(@NonNull VkMessageNew messageNew) {
+    public void handleMessageNew(@NonNull VkMessageNew messageNew){
         VkMessage message = messageNew.getMessageObject().getMessage();
         long peerId = message.getPeerId();
         long fromId = message.getFromId();
@@ -57,10 +75,16 @@ public class AsyncEventHandler {
 
         }else{
             chatId = extractConversationId(peerId);
+            if (hasTheBotJustBeenAdded(chatId, message.getAction())){
+                try {
+                    vkChatClient.sendText(WELCOME_MESSAGE, ChatUtils.convertToPeerId(chatId), true);
+                } catch (ClientException |ApiException e) {
+                    log.warn("chat {} error: couldn't send welcome message after the bot's just been added", chatId);
+                } return;
+            }
         }
 
         try {
-            if(chatId==19) return;
             commandDispatcher.dispatch(commandMapper.toCommandMessageDto(chatId, message));
 
             if(!isPersonalChat(peerId)){
@@ -78,4 +102,19 @@ public class AsyncEventHandler {
             }
         }
     }
+
+    /**
+     * @return true, если данный бот был добавлен в чат
+     */
+    private boolean hasTheBotJustBeenAdded(long chatId, @Nullable VkAction action) {
+        if(action==null) return false;
+        VkActionType type = action.getType();
+        if(type!=VkActionType.CHAT_INVITE_USER||action.getMemberId()==null) return false;
+        return action.getMemberId()==-groupId;
+    }
+
+
+
+
+
 }

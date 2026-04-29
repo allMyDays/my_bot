@@ -10,10 +10,13 @@ import com.vk.api.sdk.client.AbstractQueryBuilder;
 import com.vk.api.sdk.client.VkApiClient;
 import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
+import com.vk.api.sdk.exceptions.ApiExtendedException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.httpclient.HttpTransportClient;
 import com.vk.api.sdk.objects.base.BoolInt;
 import com.vk.api.sdk.objects.base.NameCase;
+import com.vk.api.sdk.objects.base.responses.BoolResponse;
+import com.vk.api.sdk.objects.groups.responses.GetMembersResponse;
 import com.vk.api.sdk.objects.messages.ConversationMember;
 import com.vk.api.sdk.objects.messages.responses.GetConversationMembersResponse;
 import com.vk.api.sdk.objects.messages.responses.IsMessagesFromGroupAllowedResponse;
@@ -32,6 +35,7 @@ import java.util.*;
 
 import static com.example.my_bot.enumeration.member.MemberPresenceType.KICKED;
 import static com.example.my_bot.utils.ChatUtils.convertToPeerId;
+import static com.example.my_bot.utils.ChatUtils.isGroupId;
 
 @Component
 @Slf4j
@@ -216,7 +220,7 @@ public class VkChatClient{
         }
         return result;
     }
-    public boolean canGroupWriteToUser(long userId) {
+    public boolean canTheBotWriteToUser(long userId) {
         try {
             IsMessagesFromGroupAllowedResponse response = vkApiClient.messages()
                     .isMessagesFromGroupAllowed(groupActor)
@@ -232,5 +236,29 @@ public class VkChatClient{
             return false;
         }
     }
+
+    public boolean isCommunityMember(long groupId, long userId) throws ClientException, ApiException {
+
+        if(isGroupId(userId)) return false;
+        try{
+            BoolResponse response = vkApiClient.groups()
+                    .isMember(groupActor)
+                    .groupId(String.valueOf(Math.abs(groupId)))
+                    .userId(userId)
+                    .execute();
+
+            return response!=null&&response.getValue()==1;
+
+        }catch(ApiExtendedException ex){
+            int errorCode = ex.getErrorRaw().getErrorCode();
+            if(errorCode==203||errorCode==15){ // доступ к списку участников закрыт или группа заблокирована
+                return false;
+            }
+            return false;
+        }
+    }
+
+
+
 
 }

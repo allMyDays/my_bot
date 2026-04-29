@@ -35,6 +35,8 @@ import java.util.Optional;
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
+import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
+import static com.example.my_bot.enumeration.event.MyEventType.WITH_SUBSCRIPTION;
 import static com.example.my_bot.enumeration.timer.TimerType.*;
 import static com.example.my_bot.utils.ChatUtils.*;
 
@@ -114,11 +116,13 @@ public class EventCreateCommand implements ChatCommand {
         }
 
         String roleName = roleService.getRoleName(chatId, createdEvent.getRolePriority()).orElse("unknown role");
+        MyEventType type = createdEvent.getType();
 
         String message = "✅ %s(Вы) успешно создали новое событие.\n".formatted(createMention(fromId)) +
-                "&#128218; Тип: %s (%s).\n".formatted(foundEventType.getCyrillicType(), foundEventType.getDescription());
+                "&#128218; Тип: %s (%s).\n".formatted(type.getCyrillicType(), type.getDescription());
                 if(createdEvent.getArgument()!=null){
-                    message+="&#128204; Аргумент: %s\n".formatted(createdEvent.getArgument());
+                    String arg = createdEvent.getArgument();
+                    message+="&#128204; Аргумент: %s\n".formatted((type==WITH_SUBSCRIPTION||type==WITHOUT_SUBSCRIPTION)?createMention(Long.parseLong(arg)):arg);
                 }
                 message+="&#128081; Воздействует на роль «%s» и ниже.\n".formatted(roleName)+
                         "&#8618; Применяется команда: %s".formatted(createdEvent.getFullCommand());
