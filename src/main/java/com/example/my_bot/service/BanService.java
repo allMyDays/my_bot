@@ -1,10 +1,9 @@
 package com.example.my_bot.service;
 
-import com.example.my_bot.cache.keys.ChatMemberKey;
+import com.example.my_bot.cache.key.ChatIdAndMemberIdKey;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.ban.MemberBanStatus;
 import com.example.my_bot.entity.BanEntity;
-import com.example.my_bot.exception.ban.BanPeriodOutOfBoundsException;
 import com.example.my_bot.exception.ban.UserHasNotBannedException;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.repository.BanRepository;
@@ -72,13 +71,13 @@ public class BanService {
         if(!getMemberBanStatus(chatId,memberId).isBanned()){
             throw new UserHasNotBannedException(memberId);
         }
-        cacheManager.getBanCache().invalidate(new ChatMemberKey(chatId, memberId));
+        cacheManager.getBanCache().invalidate(new ChatIdAndMemberIdKey(chatId, memberId));
         banRepository.deleteByChatIdAndMemberId(chatId, memberId);
 
     }
 
     public MemberBanStatus getMemberBanStatus(long chatId, long memberId){
-        ChatMemberKey key = new ChatMemberKey(chatId, memberId);
+        ChatIdAndMemberIdKey key = new ChatIdAndMemberIdKey(chatId, memberId);
         return cacheManager.getBanCache().asMap().computeIfAbsent(key,k->{
             BanEntity memberBan = banRepository.findByChatIdAndMemberId(chatId, memberId).orElse(null);
             if(memberBan==null||(memberBan.getBannedUntil()!=null&&!memberBan.getBannedUntil().isAfter(Instant.now()))){
@@ -96,7 +95,7 @@ public class BanService {
 
    private void putBanToCache(@NonNull BanEntity banEntity){
        MemberBanStatus banStatus = new MemberBanStatus(banEntity.getMemberId(), true, banEntity.getBannedUntil());
-       ChatMemberKey key = new ChatMemberKey(banEntity.getChatId(), banEntity.getMemberId());
+       ChatIdAndMemberIdKey key = new ChatIdAndMemberIdKey(banEntity.getChatId(), banEntity.getMemberId());
        cacheManager.getBanCache().put(key, banStatus);
    }
 

@@ -1,6 +1,9 @@
 package com.example.my_bot.service.event;
 
-import com.example.my_bot.cache.keys.CommunityMemberKey;
+import com.example.my_bot.cache.key.ChatIdAndMemberIdKey;
+import com.example.my_bot.cache.key.EventIdAndMemberIdKey;
+import com.example.my_bot.cache.key.GroupIdAndUserIdKey;
+import com.example.my_bot.cache.value.MessageCounter;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.dto.event.EventDto;
@@ -22,8 +25,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.vdurmont.emoji.*;
-import com.vk.api.sdk.exceptions.ApiException;
-import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.*;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
@@ -90,8 +91,13 @@ public class EventExecutionService {
             .expireAfterAccess(15, TimeUnit.MINUTES)
             .build();
 
-    private static final Cache<CommunityMemberKey, Boolean> COMMUNITY_SUBSCRIPTIONS_CACHE = Caffeine.newBuilder()
+    private static final Cache<GroupIdAndUserIdKey, Boolean> COMMUNITY_SUBSCRIPTIONS_CACHE = Caffeine.newBuilder()
             .expireAfterWrite(30, TimeUnit.SECONDS)
+            .build();
+
+    // кеш вызово события "одинаковые сообщения": key -> (user text -> quantity)
+    private static final Cache<EventIdAndMemberIdKey, MessageCounter> SAME_MESSAGES_CACHE = Caffeine.newBuilder()
+            .expireAfterWrite(1, TimeUnit.HOURS)
             .build();
 
 
@@ -200,7 +206,7 @@ public class EventExecutionService {
              }
              case WITH_SUBSCRIPTION, WITHOUT_SUBSCRIPTION -> {
                  if(memberId!=null) fromId = memberId;
-                 CommunityMemberKey key = new CommunityMemberKey(Long.parseLong(eventDto.getArgument()), fromId);
+                 GroupIdAndUserIdKey key = new GroupIdAndUserIdKey(Long.parseLong(eventDto.getArgument()), fromId);
                  boolean isMember = Boolean.TRUE.equals(COMMUNITY_SUBSCRIPTIONS_CACHE.get(key, k ->{
                          try {
                              return vkChatClient.isCommunityMember(k.groupId(), k.userId());
@@ -285,6 +291,20 @@ public class EventExecutionService {
                 }
                 if(counter<intArg) return;
 
+            }
+            case SAME_MESSAGES -> {
+                EventIdAndMemberIdKey key = new EventIdAndMemberIdKey(eventDto.getId(), fromId);
+                MessageCounter value = SAME_MESSAGES_CACHE.asMap().compute(key, (k, existing) -> {
+                    if(existing==null){
+                        return new MessageCounter(userText, 1);
+                    }
+                    if(existing.getText().equalsIgnoreCase(userText)){
+                        return new MessageCounter(existing.getText(), existing.getCount()+1);
+                    }
+                    return new MessageCounter(userText, 1);
+                });
+                if(value.getCount()<intArg) return;
+                SAME_MESSAGES_CACHE.invalidate(key);
             }
 
         } executeEvent(chatId, fromId, null, eventDto);

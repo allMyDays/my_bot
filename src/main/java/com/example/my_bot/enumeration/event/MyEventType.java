@@ -71,7 +71,8 @@ public enum MyEventType {
     CAPS("капс", "сообщение КАПСом", TEXT),
     REGEX_FILTER("регулярка","Регулярное выражение", TEXT, STRING,1,35),
     SELF_DESTRUCTING_MESSAGE("исчезающее", "Исчезающее сообщение", TEXT),
-    ANY_PUSH_QUANTITY("пуши","Количество пушей в сообщении", TEXT, INTEGER, 1, 300);
+    ANY_PUSH_QUANTITY("пуши","Количество пушей в сообщении", TEXT, INTEGER, 1, 300),
+    SAME_MESSAGES("одинаковые", "Одинаковые сообщения подряд", TEXT, INTEGER, 2, 100);
 
 
     @Getter
