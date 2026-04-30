@@ -52,7 +52,6 @@ public class EventService {
     private CommandRegistry commandRegistry;
     private final CaffeineCacheManager cacheManager;
     private final EventMapper eventMapper;
-    private final VkChatClient vkChatClient;
     private final UserInputResolver userInputResolver;
 
     private static final int MAX_EVENTS = 100;

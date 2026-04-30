@@ -35,12 +35,13 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.example.my_bot.enumeration.event.ChatEventType.*;
 import static com.example.my_bot.enumeration.event.EventArgumentType.INTEGER;
-import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
-import static com.example.my_bot.enumeration.event.MyEventType.WITH_SUBSCRIPTION;
+import static com.example.my_bot.enumeration.event.MyEventType.*;
 import static com.example.my_bot.utils.ChatUtils.*;
 
 
@@ -70,6 +71,10 @@ public class EventExecutionService {
 
    private static final Pattern PUSH_ONLINE_PATTERN =
            Pattern.compile("([*@])online\\b", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
+
+   private static final Pattern ANY_PUSH_PATTERN =
+            Pattern.compile("\\[[^\\]\\[]+\\|[^\\]\\[]+\\]", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
+
 
    private static final Pattern URL_PATTERN = Pattern.compile(
            "(?i)(?<!\\S)((?:https?://|www\\.|(?:[a-z0-9-]+\\.)+(?:com|net|org|io|ru|de|uk|xyz|info|biz|app|dev))(?:[^\\s]*)?)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
@@ -158,7 +163,7 @@ public class EventExecutionService {
                     }
                 }
             }
-            if(chatEventType==ChatEventType.ACTION){
+            if(chatEventType== ACTION){
                 return; // если текущее событие - action, то не может быть text, attachment
 
               }
@@ -167,6 +172,8 @@ public class EventExecutionService {
 
      private void handleActionEvent(@NonNull EventDto eventDto,@NonNull VkAction action, long fromId, long chatId){
         MyEventType eventType = eventDto.getType();
+        if(eventType.getChatEventType()!=ACTION) return;
+
         VkActionType actionType = action.getType();
          Optional<Set<VkActionType>> actionsToExecuteEvent = eventType.getVkActionTypeSet();
          if(actionsToExecuteEvent.isEmpty()){
@@ -212,7 +219,10 @@ public class EventExecutionService {
 
     private void handleTextEvent(@NonNull EventDto eventDto, @NonNull String userText, int attachmentsSize, long fromId, long chatId, boolean isSelfDestructing){
         MyEventType eventType = eventDto.getType();
+        if(eventType.getChatEventType()!=TEXT) return;
+
         String argument = eventDto.getArgument();
+        Integer intArg = eventType.getArgumentType()==INTEGER?Integer.parseInt(argument):null;
 
         switch (eventType){
             case WORD_FILTER -> {
@@ -225,20 +235,20 @@ public class EventExecutionService {
                 if(!p.matcher(userText).find()) return;
 
             }case MINIMUM_SYMBOLS -> {
-                if(attachmentsSize>0||userText.length()>Integer.parseInt(argument)) return;
+                if(attachmentsSize>0||userText.length()>intArg) return;
 
             }case MAXIMUM_SYMBOLS -> {
-                if(userText.length()<Integer.parseInt(argument)) return;
+                if(userText.length()<intArg) return;
 
             }case EMOJI_QUANTITY -> {
-                if(EmojiParser.extractEmojis(userText).size()<Integer.parseInt(argument)) return;
+                if(EmojiParser.extractEmojis(userText).size()<intArg) return;
 
             }case ROW_QUANTITY -> {
                 int rows = 1;
                 for (int i = 0; i < userText.length(); i++) {
                     if(userText.charAt(i) == '\n') rows++;
                 }
-                if(rows<Integer.parseInt(argument)) return;
+                if(rows<intArg) return;
             }
             case ALL_MENTION -> {
                 if(!PUSH_ALL_PATTERN.matcher(userText).find()) return;
@@ -266,6 +276,16 @@ public class EventExecutionService {
             case SELF_DESTRUCTING_MESSAGE -> {
                 if (!isSelfDestructing) return;
             }
+            case ANY_PUSH_QUANTITY -> {
+                Matcher matcher = ANY_PUSH_PATTERN.matcher(userText);
+                int counter = 0;
+                while(matcher.find()){
+                    counter++;
+                    if(counter>=intArg) break;
+                }
+                if(counter<intArg) return;
+
+            }
 
         } executeEvent(chatId, fromId, null, eventDto);
 
@@ -274,6 +294,7 @@ public class EventExecutionService {
     private void handleAttachmentEvent(@NonNull EventDto eventDto, @NonNull List <VkMessageAttachment> attachmentList, @NonNull Map<VkMessageAttachmentType, List<VkMessageAttachment>> attachmentMap, long fromId, long chatId){
 
         MyEventType eventType = eventDto.getType();
+        if(eventType.getChatEventType()!=ATTACHMENTS) return;
 
         String argument = eventDto.getArgument();
         Integer intArg = eventType.getArgumentType() == INTEGER?Integer.parseInt(argument):null;

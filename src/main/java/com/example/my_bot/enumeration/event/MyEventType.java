@@ -70,7 +70,8 @@ public enum MyEventType {
     CHAT_INVITE_LINK("чатссылка","Ссылка на чат", TEXT),
     CAPS("капс", "сообщение КАПСом", TEXT),
     REGEX_FILTER("регулярка","Регулярное выражение", TEXT, STRING,1,35),
-    SELF_DESTRUCTING_MESSAGE("исчезающее", "Исчезающее сообщение", TEXT);
+    SELF_DESTRUCTING_MESSAGE("исчезающее", "Исчезающее сообщение", TEXT),
+    ANY_PUSH_QUANTITY("пуши","Количество пушей в сообщении", TEXT, INTEGER, 1, 300);
 
 
     @Getter
