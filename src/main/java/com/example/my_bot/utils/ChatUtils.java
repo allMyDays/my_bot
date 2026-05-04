@@ -8,8 +8,6 @@ public class ChatUtils {
 
     public final static long PEER_ID_CHAT_OFFSET = 2_000_000_000L;
 
-    public final static char DEFAULT_CHAT_PREFIX = '!';
-
 
     public static long extractConversationId(long peerId){
         if (peerId >= PEER_ID_CHAT_OFFSET) {
@@ -29,70 +27,10 @@ public class ChatUtils {
 
      }
 
-     public static String createMention(long memberId){
-
-        if(memberId<0) {
-            return "@club"+(memberId*-1);
-        } return "@id"+memberId;
-    }
-
-    public static String createMemberLink(long memberId){
-
-        if(memberId<0) {
-            return "vk.com/club"+(memberId*-1);
-        } return "vk.com/id"+memberId;
-    }
-
-
-    public static boolean isValidInteger(String str) {
-        if (str == null || !(str=str.trim()).matches("-?\\d+")) {
-            return false;
-        }
-        try {
-            Integer.parseInt(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    public static boolean isValidLong(String str) {
-        if (str == null || !(str=str.trim()).matches("-?\\d+")) {
-            return false;
-        }
-        try {
-            Long.parseLong(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    public static boolean isNumber(@NonNull String str) {
-        return str.trim().matches("-?\\d+");
-    }
-
     public static boolean isGroupId(long memberId) {
         return memberId<0;
     }
 
-
-    public static String collectArgumentsSinceIndex(@NonNull String[] args, int index){
-           if(index<0||index>= args.length){
-               throw new ArrayIndexOutOfBoundsException();
-           } return String.join(" ", Arrays.copyOfRange(args, index, args.length));
-
-    }
-
-    public static String cutDefaultPrefix(@NonNull String command){
-        command = command.trim();
-        if(!command.isEmpty()){
-            if(command.charAt(0)==DEFAULT_CHAT_PREFIX){
-                return command.substring(1);
-            }
-        }
-        return command;
-    }
 
 
 

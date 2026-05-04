@@ -22,7 +22,7 @@ import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
-import static com.example.my_bot.utils.ChatUtils.*;
+import static com.example.my_bot.utils.TextUtils.*;
 
 @Slf4j
 @Command(mainCommandName = "лимит", alternativeCommandNames = {"rolelimit"}, defaultRole = ADMINISTRATOR, eventable = false)
@@ -47,16 +47,17 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
         long fromId = messageDto.getFromId();
         long peerId = messageDto.getPeerId();
 
-        if(args.length<5){
+
+        if(args.length<5){                       // !лимит !пинг 3 6 часов 80
             vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
             return;
         }
 
-        if((isNumber(args[4])&&!isValidInteger(args[4]))){
+        if(!isValidInteger(args[1])||(isNumber(args[4])&&!isValidInteger(args[4]))){
                 vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId, true);
                 return;
         }
-        Optional<Long> timePeriodInSeconds =  TimeUtils.toSecondsFromString(args[1],args[2]);
+        Optional<Long> timePeriodInSeconds =  TimeUtils.toSecondsFromString(args[2],args[3]);
         if(timePeriodInSeconds.isEmpty()){
             vkChatClient.sendText(INVALID_TIME_PERIOD_MESSAGE, peerId,true);
             return;
@@ -64,7 +65,7 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
 
         RoleRateLimitEntity createdLimit=null;
         try{
-            int maxUsage = Integer.parseInt(args[3]);
+            int maxUsage = Integer.parseInt(args[1]);
             boolean isPersonal = args.length==6&&args[5].equalsIgnoreCase("личный");
 
             if(isNumber(args[4])){

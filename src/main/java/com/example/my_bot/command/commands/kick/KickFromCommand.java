@@ -28,7 +28,7 @@ import java.util.Set;
 import static com.example.my_bot.constant.MessageConstant.MEMBER_ARGUMENT_ABSENTS;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
-import static com.example.my_bot.utils.ChatUtils.createMention;
+import static com.example.my_bot.utils.TextUtils.createMention;
 
 @Slf4j
 @RequiredArgsConstructor

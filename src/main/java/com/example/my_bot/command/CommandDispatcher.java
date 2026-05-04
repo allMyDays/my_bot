@@ -9,6 +9,7 @@ import com.example.my_bot.exception.command.ForbiddenCommandForCurrentModeExcept
 import com.example.my_bot.exception.command.UnknownCommandException;
 import com.example.my_bot.service.*;
 import com.example.my_bot.service.chat.ChatService;
+import com.example.my_bot.utils.ChatUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,7 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 
 
-import static com.example.my_bot.utils.ChatUtils.*;
+import static com.example.my_bot.utils.TextUtils.*;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
 
@@ -40,7 +41,7 @@ public class CommandDispatcher {
 
              long fromId = messageDto.getFromId();
 
-             if(isGroupId(fromId)||userService.getOrCreateUser(fromId).isBanned()){
+             if(ChatUtils.isGroupId(fromId)||userService.getOrCreateUser(fromId).isBanned()){
                  return;
              }
 

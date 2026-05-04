@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
-import static com.example.my_bot.utils.ChatUtils.*;
+import static com.example.my_bot.utils.TextUtils.*;
 
 @Slf4j
 @Command(mainCommandName = "назначить", alternativeCommandNames = {"выдатьроль", "датьроль"}, defaultRole = ADMINISTRATOR, eventable = true)

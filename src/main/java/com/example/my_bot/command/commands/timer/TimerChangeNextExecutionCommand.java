@@ -16,14 +16,13 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
-import static com.example.my_bot.utils.ChatUtils.isValidInteger;
+import static com.example.my_bot.utils.TextUtils.isValidInteger;
 
 @Slf4j
 @Command(mainCommandName = "запусктаймера", alternativeCommandNames = {"timerlaunch"}, defaultRole = ADMINISTRATOR, eventable = false)

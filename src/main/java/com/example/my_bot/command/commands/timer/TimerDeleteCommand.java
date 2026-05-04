@@ -5,13 +5,8 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.dto.limit.RoleRateLimitDto;
 import com.example.my_bot.entity.TimerEntity;
-import com.example.my_bot.exception.command.CommandException;
-import com.example.my_bot.exception.limit.RateLimitException;
-import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.exception.timer.TimerException;
-import com.example.my_bot.service.RoleRateLimitService;
 import com.example.my_bot.service.timer.TimerService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -24,7 +19,7 @@ import java.util.List;
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_VALID_INTEGER_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
-import static com.example.my_bot.utils.ChatUtils.isValidInteger;
+import static com.example.my_bot.utils.TextUtils.isValidInteger;
 
 @Slf4j
 @Command(mainCommandName = "удалитьтаймер", alternativeCommandNames = {"remtimer"}, defaultRole = ADMINISTRATOR, eventable = false)

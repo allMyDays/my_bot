@@ -18,7 +18,7 @@ import java.util.Arrays;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
-import static com.example.my_bot.utils.ChatUtils.isValidInteger;
+import static com.example.my_bot.utils.TextUtils.isValidInteger;
 
 @Slf4j
 @Command(mainCommandName = "создатьроль", alternativeCommandNames = {"новаяроль", "рольсоздать"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)

@@ -1,6 +1,6 @@
 package com.example.my_bot.exception.ban;
 
-import static com.example.my_bot.utils.ChatUtils.createMention;
+import static com.example.my_bot.utils.TextUtils.createMention;
 
 public class UserHasNotBannedException extends BanException {
 

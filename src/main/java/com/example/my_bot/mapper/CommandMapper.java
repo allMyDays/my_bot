@@ -3,12 +3,12 @@ package com.example.my_bot.mapper;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.utils.ChatUtils;
+import com.example.my_bot.utils.TextUtils;
 import com.example.my_bot.vk.VkMessage;
 import com.vk.api.sdk.objects.messages.ForeignMessage;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import org.mapstruct.Mapper;
-import com.vk.api.sdk.objects.messages.Message;
 
 @Mapper(componentModel = "spring")
 public abstract class CommandMapper {

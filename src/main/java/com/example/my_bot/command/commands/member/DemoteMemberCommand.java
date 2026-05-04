@@ -25,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import static com.example.my_bot.constant.MessageConstant.MEMBER_ARGUMENT_ABSENTS;
 import static com.example.my_bot.constant.MessageConstant.MEMBER_ROLE_HAS_BEEN_CHANGED;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
-import static com.example.my_bot.utils.ChatUtils.createMention;
+import static com.example.my_bot.utils.TextUtils.createMention;
 
 @Slf4j
 @Command(mainCommandName = "понизить", alternativeCommandNames = {"demote"}, defaultRole = ADMINISTRATOR, eventable = true)

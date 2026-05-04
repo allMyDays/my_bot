@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
-import static com.example.my_bot.utils.ChatUtils.*;
+import static com.example.my_bot.utils.TextUtils.*;
 
 @Slf4j
 @Command(mainCommandName = "правоюзера", alternativeCommandNames = {"правоюзеру","userallow"}, defaultRole = ADMINISTRATOR, eventable = false)

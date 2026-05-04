@@ -20,7 +20,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
-import static com.example.my_bot.utils.ChatUtils.createMention;
+import static com.example.my_bot.utils.TextUtils.createMention;
 
 
 @Slf4j

@@ -5,7 +5,7 @@ import lombok.NonNull;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.example.my_bot.utils.ChatUtils.createMention;
+import static com.example.my_bot.utils.TextUtils.createMention;
 
 public class UserNeverBeenInChatException extends MemberException {
     public UserNeverBeenInChatException(long userId) {

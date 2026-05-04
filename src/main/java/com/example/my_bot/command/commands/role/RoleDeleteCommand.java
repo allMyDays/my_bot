@@ -17,8 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_VALID_INTEGER_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
-import static com.example.my_bot.utils.ChatUtils.isNumber;
-import static com.example.my_bot.utils.ChatUtils.isValidInteger;
+import static com.example.my_bot.utils.TextUtils.isNumber;
+import static com.example.my_bot.utils.TextUtils.isValidInteger;
 
 @Slf4j
 @Command(mainCommandName = "удалитьроль", alternativeCommandNames = {"remrole"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)

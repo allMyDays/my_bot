@@ -2,10 +2,11 @@ package com.example.my_bot.service.event;
 import static com.example.my_bot.enumeration.event.EventArgumentType.*;
 import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
 import static com.example.my_bot.enumeration.event.MyEventType.WITH_SUBSCRIPTION;
+import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
 import com.example.my_bot.annotation.Command;
-import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandRegistry;
+import com.example.my_bot.config.AdvancedEventConfig;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.event.EventDto;
@@ -24,6 +25,7 @@ import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.utils.ChatUtils;
+import com.example.my_bot.utils.TextUtils;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -56,6 +58,9 @@ public class EventService {
 
     private static final int MAX_EVENTS = 100;
     private static final int MAX_SUBSCRIPTION_EVENTS = 10;
+    private static final int ADVANCED_EVENT_MAX_PERIOD_IN_SECONDS = 86_400;
+    private static final int ADVANCED_EVENT_MIN_PERIOD_IN_SECONDS = 10;
+    private static final int ADVANCED_EVENT_MIN_USAGE = 2;
 
     @Autowired
     @Lazy
@@ -65,6 +70,10 @@ public class EventService {
 
     public int getMaxEvents(){
         return MAX_EVENTS;
+    }
+
+    public static int getMaxPeriodForAdvancedEvents(){
+        return ADVANCED_EVENT_MAX_PERIOD_IN_SECONDS;
     }
 
 
@@ -92,7 +101,7 @@ public class EventService {
         int callerRole = memberService.getMemberRolePriority(chatId, fromId);
         roleService.checkRoleInteractionAbility(rolePriority, callerRole);
 
-        fullCommand = ChatUtils.cutDefaultPrefix(fullCommand);
+        fullCommand = TextUtils.cutDefaultPrefix(fullCommand);
         String userCommand = UserInputResolver.splitFullCommand(fullCommand)[0];
         Command annotation = commandRegistry.getCommandAnnotation(userCommand).orElseThrow(()->
                 new UserCommandNotFoundException(userCommand));
@@ -130,6 +139,41 @@ public class EventService {
                 .toList();
     }
 
+    @Transactional
+    public EventDto setTimePeriodAndMaxUsage(long eventId, long periodInSeconds, int maxUsage, long fromId){
+
+        EventEntity event = eventRepository.findById(eventId)
+                .orElseThrow(()->new EventNotFoundException(eventId));
+
+        if(event.getMaxUsage()!=null){
+            throw new CurrentEventAlreadyAdvancedException();
+        }
+        roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
+
+        AdvancedEventConfig advancedConfig = event.getType().getAdvancedEventConfig();
+        if(!advancedConfig.isCanBeAdvancedEvent()){
+            throw new CurrentEventCannotBeAdvancedException();
+        }
+        if(periodInSeconds<ADVANCED_EVENT_MIN_PERIOD_IN_SECONDS||periodInSeconds>ADVANCED_EVENT_MAX_PERIOD_IN_SECONDS){
+            throw new IncorrectEventArgumentException("Временной период для расширенного события обязан быть от %s до %s"
+                    .formatted(formatDurationFromSeconds(ADVANCED_EVENT_MIN_PERIOD_IN_SECONDS,true),formatDurationFromSeconds(ADVANCED_EVENT_MAX_PERIOD_IN_SECONDS, true)));
+        }
+        int eventMaxUsage = advancedConfig.getMaxUsage();
+        if(maxUsage<ADVANCED_EVENT_MIN_USAGE||maxUsage>eventMaxUsage){
+            throw new IncorrectEventArgumentException("Для данного типа события, лимит действия должен быть от %d до %d."
+                    .formatted(ADVANCED_EVENT_MIN_USAGE,eventMaxUsage));
+        }
+        event.setMaxUsage(maxUsage);
+        event.setPeriodInSeconds((int)periodInSeconds);
+        if(!advancedConfig.isEventArgumentRequired()){
+            event.setArgument(null);
+        }
+        invalidateEventsCache(event.getChatId());
+
+        return eventMapper.toEventDto(event);
+
+    }
+
     public int countChatEvents(long chatId){
        return Math.toIntExact(getCachedChatEvents(chatId).values().stream().mapToLong(Set::size).sum());
 
@@ -161,7 +205,7 @@ public class EventService {
                     }
                 }
                 int intArg;
-                if(!ChatUtils.isValidInteger(userArgument)||((intArg=Integer.parseInt(userArgument))<argMin||intArg>argMax)){
+                if(!TextUtils.isValidInteger(userArgument)||((intArg=Integer.parseInt(userArgument))<argMin||intArg>argMax)){
                     throw new IncorrectEventArgumentException("Для данного типа события, аргумент должен быть валидным числом от %d до %d."
                             .formatted(argMin, argMax));
                 }
@@ -184,15 +228,14 @@ public class EventService {
     }
 
     @Transactional
-    public void deleteEventById(long entityId, long fromId){
-        Optional<EventEntity> event = eventRepository.findById(entityId);
-        event.ifPresent(e->{
-                int callerRole = memberService.getMemberRolePriority(e.getChatId(), fromId);
-                roleService.checkRoleInteractionAbility(e.getRolePriority(), callerRole);
-                eventRepository.deleteById(e.getId());
-                invalidateEventsCache(e.getChatId());
-          }
-        );
+    public void deleteEventById(long eventId, long fromId){
+        EventEntity event = eventRepository.findById(eventId)
+                .orElseThrow(()->new EventNotFoundException(eventId));
+
+        int callerRole = memberService.getMemberRolePriority(event.getChatId(), fromId);
+        roleService.checkRoleInteractionAbility(event.getRolePriority(), callerRole);
+        eventRepository.deleteById(event.getId());
+        invalidateEventsCache(event.getChatId());
     }
 
     public ImmutableMap<ChatEventType, ImmutableSet<EventDto>> getCachedChatEvents(long chatId){
@@ -211,6 +254,22 @@ public class EventService {
         });
 
     }
+    public Set<EventDto> getChatEventsWithRequiredTypes(long chatId, @NonNull Set<MyEventType> typeSet){
+
+        HashSet<EventDto> eventsToReturn = new HashSet<>();
+        if(typeSet.isEmpty()) return eventsToReturn;
+
+        ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventMap = getCachedChatEvents(chatId);
+
+        eventMap.values().forEach(set->set.forEach(event->{
+                    if(typeSet.contains(event.getType())){
+                        eventsToReturn.add(event);
+                    }
+                }
+        ));
+        return eventsToReturn;
+    }
+
    private void invalidateEventsCache(long chatId){
        cacheManager.getEventsCache().invalidate(chatId);
    }
@@ -229,21 +288,6 @@ public class EventService {
         return true;
     }
 
-    public Set<EventDto> getChatEventsWithRequiredTypes(long chatId, @NonNull Set<MyEventType> typeSet){
-
-        HashSet<EventDto> eventsToReturn = new HashSet<>();
-        if(typeSet.isEmpty()) return eventsToReturn;
-
-        ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventMap = getCachedChatEvents(chatId);
-
-        eventMap.values().forEach(set->set.forEach(event->{
-            if(typeSet.contains(event.getType())){
-                eventsToReturn.add(event);
-            }
-          }
-        ));
-        return eventsToReturn;
-    }
 
 
 

@@ -7,6 +7,7 @@ import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.chat.ChatActionService;
 import com.example.my_bot.service.event.EventExecutionService;
 import com.example.my_bot.utils.ChatUtils;
+import com.example.my_bot.utils.TextUtils;
 import com.example.my_bot.vk.VkAction;
 import com.example.my_bot.vk.VkMessage;
 import com.example.my_bot.vk.VkMessageNew;
@@ -75,7 +76,7 @@ public class AsyncEventHandler {
 
         }else{
             chatId = extractConversationId(peerId);
-            if (hasTheBotJustBeenAdded(chatId, message.getAction())){
+            if (hasTheBotJustBeenAdded(message.getAction())){
                 try {
                     vkChatClient.sendText(WELCOME_MESSAGE, ChatUtils.convertToPeerId(chatId), true);
                 } catch (ClientException |ApiException e) {
@@ -106,7 +107,7 @@ public class AsyncEventHandler {
     /**
      * @return true, если данный бот был добавлен в чат
      */
-    private boolean hasTheBotJustBeenAdded(long chatId, @Nullable VkAction action) {
+    private boolean hasTheBotJustBeenAdded(@Nullable VkAction action) {
         if(action==null) return false;
         VkActionType type = action.getType();
         if(type!=VkActionType.CHAT_INVITE_USER||action.getMemberId()==null) return false;

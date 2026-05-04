@@ -11,13 +11,12 @@ import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.ChatUtils;
+import com.example.my_bot.utils.TextUtils;
 import com.example.my_bot.utils.TimeUtils;
 import com.example.my_bot.vk.VkAction;
 import com.example.my_bot.vk.enumeration.VkActionType;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
-import com.vk.api.sdk.objects.messages.ActionOneOf;
-import com.vk.api.sdk.objects.messages.MessageActionStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,7 +26,7 @@ import java.time.Instant;
 import java.util.*;
 
 import static com.example.my_bot.enumeration.member.MemberPresenceType.*;
-import static com.example.my_bot.utils.ChatUtils.createMention;
+import static com.example.my_bot.utils.TextUtils.createMention;
 
 @Slf4j
 @Service
@@ -44,7 +43,7 @@ public class ChatActionService {
 
     private final CommandAccessService commandAccessService;
 
-    private static final long AUTO_SYNC_INTERVAL_MINUTES = 20;
+    private static final long AUTO_SYNC_INTERVAL_MINUTES = 60;
 
 
 

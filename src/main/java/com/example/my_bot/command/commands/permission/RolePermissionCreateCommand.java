@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_VALID_INTEGER_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
-import static com.example.my_bot.utils.ChatUtils.*;
+import static com.example.my_bot.utils.TextUtils.*;
 
 @Slf4j
 @Command(mainCommandName = "правороли", alternativeCommandNames = {"roleallow"}, defaultRole = ADMINISTRATOR, eventable = false)

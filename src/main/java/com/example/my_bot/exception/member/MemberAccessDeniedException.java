@@ -1,6 +1,6 @@
 package com.example.my_bot.exception.member;
 
-import static com.example.my_bot.utils.ChatUtils.createMention;
+import static com.example.my_bot.utils.TextUtils.createMention;
 
 public class MemberAccessDeniedException extends MemberException {
     public MemberAccessDeniedException(long userToInteract, long fromId) {

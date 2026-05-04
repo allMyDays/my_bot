@@ -1,9 +1,10 @@
 package com.example.my_bot.service.event;
 
-import com.example.my_bot.cache.key.ChatIdAndMemberIdKey;
+import com.example.my_bot.cache.key.EventIdAndUniqueIdKey;
 import com.example.my_bot.cache.key.EventIdAndMemberIdKey;
 import com.example.my_bot.cache.key.GroupIdAndUserIdKey;
 import com.example.my_bot.cache.value.MessageCounter;
+import com.example.my_bot.cache.value.TimePeriodAndCallQuantity;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.dto.event.EventDto;
@@ -13,6 +14,7 @@ import com.example.my_bot.mapper.CommandMapper;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.ChatUtils;
+import com.example.my_bot.utils.TextUtils;
 import com.example.my_bot.vk.VkAction;
 import com.example.my_bot.vk.VkMessage;
 import com.example.my_bot.vk.attachment.Video;
@@ -20,11 +22,9 @@ import com.example.my_bot.vk.attachment.VkMessageAttachment;
 import com.example.my_bot.vk.enumeration.VideoType;
 import com.example.my_bot.vk.enumeration.VkActionType;
 import com.example.my_bot.vk.enumeration.VkMessageAttachmentType;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.*;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.vdurmont.emoji.*;
 import com.vk.api.sdk.objects.messages.*;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
@@ -35,7 +35,9 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -43,7 +45,10 @@ import java.util.stream.Collectors;
 import static com.example.my_bot.enumeration.event.ChatEventType.*;
 import static com.example.my_bot.enumeration.event.EventArgumentType.INTEGER;
 import static com.example.my_bot.enumeration.event.MyEventType.*;
-import static com.example.my_bot.utils.ChatUtils.*;
+import static com.example.my_bot.service.event.EventService.getMaxPeriodForAdvancedEvents;
+import static com.example.my_bot.utils.TextUtils.*;
+import static com.example.my_bot.utils.TextUtils.isMostlyCaps;
+import static com.example.my_bot.utils.TextUtils.isZalgo;
 
 
 @Slf4j
@@ -61,7 +66,7 @@ public class EventExecutionService {
    private final static String USER_PARAMETER = "%user%";
    private final static String MEMBER_ID_PARAMETER = "%member_id%";
 
-   private static final Pattern USER_PATTERN =
+   private static final Pattern USER_PARAMETER_PATTERN =
             Pattern.compile(USER_PARAMETER, Pattern.CASE_INSENSITIVE);
 
    private static final Pattern MEMBER_ID_PATTERN =
@@ -95,20 +100,57 @@ public class EventExecutionService {
             .expireAfterWrite(30, TimeUnit.SECONDS)
             .build();
 
-    // кеш вызово события "одинаковые сообщения": key -> (user text -> quantity)
+    // кеш вызовов события "одинаковые сообщения": key -> (user text -> quantity)
     private static final Cache<EventIdAndMemberIdKey, MessageCounter> SAME_MESSAGES_CACHE = Caffeine.newBuilder()
             .expireAfterWrite(1, TimeUnit.HOURS)
             .build();
 
+    // Генератор уникальных ID
+    private final static AtomicLong uniqueIdGen = new AtomicLong();
 
+    // подсчёт вызовов конкретного события: eventId -> AtomicLong
+    private final static Cache<Long, AtomicInteger> advancedEventCounters = Caffeine.newBuilder()
+            .expireAfterWrite(getMaxPeriodForAdvancedEvents(), TimeUnit.SECONDS).build();
+
+    // хранение вызовов события с авто-вытеснением (event Id+unigue key) -> long event period in seconds
+    private final static Cache<EventIdAndUniqueIdKey, TimePeriodAndCallQuantity> advancedEventCalls = Caffeine.newBuilder()
+            .scheduler(Scheduler.systemScheduler())
+            .expireAfter(new Expiry<EventIdAndUniqueIdKey, TimePeriodAndCallQuantity>() {
+                @Override
+                public long expireAfterCreate(EventIdAndUniqueIdKey key, TimePeriodAndCallQuantity value, long currentTime) {
+                    return TimeUnit.SECONDS.toNanos(value.getTimePeriod());
+                }
+
+                @Override
+                public long expireAfterUpdate(EventIdAndUniqueIdKey key, TimePeriodAndCallQuantity value, long currentTime, long currentDuration) {
+                    return currentDuration;
+                }
+
+                @Override
+                public long expireAfterRead(EventIdAndUniqueIdKey key, TimePeriodAndCallQuantity value, long currentTime, long currentDuration) {
+                    return currentDuration;
+                }
+            })
+            .removalListener((EventIdAndUniqueIdKey key, TimePeriodAndCallQuantity value, RemovalCause cause)->{
+                if(cause==RemovalCause.EXPIRED){
+                    advancedEventCounters.asMap().compute(key.getEventId(), (id, counter)->{
+                        if(counter==null) return null;
+                        int callQuantity = value.getCallQuantity();
+                        if(callQuantity>0){
+                            callQuantity = -callQuantity;
+                        }
+                        long newValue = counter.addAndGet(callQuantity);
+                        return (newValue> 0)? counter : null;
+                    });
+                }
+            })
+            .build();
 
     @Autowired
     @Lazy
-    public void setCommandDispatcher(CommandDispatcher commandDispatcher) {
+    public void setCommandDispatcher(CommandDispatcher commandDispatcher){
         this.commandDispatcher = commandDispatcher;
     }
-
-
 
     public void executeRequiredChatEvents(VkMessage message){
         long chatId = ChatUtils.extractConversationId(message.getPeerId());
@@ -146,25 +188,26 @@ public class EventExecutionService {
                     if(callerRole>currentEvent.getRolePriority()){
                         continue;
                     }
+                    boolean isAdvancedEvent = currentEvent.getPeriodInSeconds()!=null;
                     switch (currentEvent.getType()){
                         case ANY_MESSAGE -> {
                             if(action==null){
-                                executeEvent(chatId, fromId, null, currentEvent);
+                                executeEvent(chatId, fromId, null, currentEvent,1);
                             } continue;
                         }case FWD_QUANTITY -> {
                             int fwdQuantity = countForwardedMessages(message.getFwdMessages());
-                            if(fwdQuantity>=Integer.parseInt(currentEvent.getArgument())){
-                                executeEvent(chatId, fromId, null, currentEvent);
-                            } continue;
+                            if(!isAdvancedEvent&&fwdQuantity<Integer.parseInt(currentEvent.getArgument())) continue;
+                            executeEvent(chatId, fromId, null, currentEvent, fwdQuantity);
+                            continue;
                         }
                     }
                     switch (chatEventType){
                         case ACTION -> {
                             handleActionEvent(currentEvent, action, fromId, chatId);
                         }case TEXT -> {
-                            handleTextEvent(currentEvent, userText, attachments.size(), fromId, chatId, message.getExpireTTL()!=null);
+                            handleTextEvent(currentEvent, userText, attachments.size(), fromId, chatId, message.getExpireTTL()!=null, isAdvancedEvent);
                         }case ATTACHMENTS -> {
-                            handleAttachmentEvent(currentEvent, attachments, attachmentMap, fromId, chatId);
+                            handleAttachmentEvent(currentEvent, attachments, attachmentMap, fromId, chatId, isAdvancedEvent);
                         }
                     }
                 }
@@ -175,8 +218,7 @@ public class EventExecutionService {
               }
         }
     }
-
-     private void handleActionEvent(@NonNull EventDto eventDto,@NonNull VkAction action, long fromId, long chatId){
+    private void handleActionEvent(@NonNull EventDto eventDto,@NonNull VkAction action, long fromId, long chatId){
         MyEventType eventType = eventDto.getType();
         if(eventType.getChatEventType()!=ACTION) return;
 
@@ -219,117 +261,28 @@ public class EventExecutionService {
                      return;
                  }
              }
-         } executeEvent(chatId, fromId, memberId, eventDto);
-
+         }
+         executeEvent(chatId, fromId, memberId, eventDto, 1);
      }
 
-    private void handleTextEvent(@NonNull EventDto eventDto, @NonNull String userText, int attachmentsSize, long fromId, long chatId, boolean isSelfDestructing){
-        MyEventType eventType = eventDto.getType();
-        if(eventType.getChatEventType()!=TEXT) return;
-
-        String argument = eventDto.getArgument();
-        Integer intArg = eventType.getArgumentType()==INTEGER?Integer.parseInt(argument):null;
-
-        switch (eventType){
-            case WORD_FILTER -> {
-                if(!userText.toLowerCase().contains(argument.toLowerCase())) return;
-
-            }case STRICT_WORD_FILTER -> {
-                Pattern p = STRICT_WORD_FILTER_PATTERN_CACHE.get(argument,
-                        arg-> Pattern.compile("(?<!\\p{L}|\\p{N})" + Pattern.quote(arg) + "(?!\\p{L}|\\p{N})", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS)
-                );
-                if(!p.matcher(userText).find()) return;
-
-            }case MINIMUM_SYMBOLS -> {
-                if(attachmentsSize>0||userText.length()>intArg) return;
-
-            }case MAXIMUM_SYMBOLS -> {
-                if(userText.length()<intArg) return;
-
-            }case EMOJI_QUANTITY -> {
-                if(EmojiParser.extractEmojis(userText).size()<intArg) return;
-
-            }case ROW_QUANTITY -> {
-                int rows = 1;
-                for (int i = 0; i < userText.length(); i++) {
-                    if(userText.charAt(i) == '\n') rows++;
-                }
-                if(rows<intArg) return;
-            }
-            case ALL_MENTION -> {
-                if(!PUSH_ALL_PATTERN.matcher(userText).find()) return;
-            }
-            case ONLINE_MENTION -> {
-                if(!PUSH_ONLINE_PATTERN.matcher(userText).find()) return;
-            }
-            case ANY_LINK -> {
-                if (!URL_PATTERN.matcher(userText).find()) return;
-            }
-            case ZALGO -> {
-                if (!isZalgo(userText)) return;
-            }
-            case CHAT_INVITE_LINK -> {
-                if (!VK_CHAT_INVITE_LINK_PATTERN.matcher(userText).find()) return;
-            }
-            case CAPS -> {
-                if (!isMostlyCaps(userText)) return;
-            }
-            case REGEX_FILTER -> {
-                Pattern p = REGEX_PATTERN_CACHE.get(argument, arg ->
-                        Pattern.compile(arg, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS));
-                if(!p.matcher(userText).find()) return;
-            }
-            case SELF_DESTRUCTING_MESSAGE -> {
-                if (!isSelfDestructing) return;
-            }
-            case ANY_PUSH_QUANTITY -> {
-                Matcher matcher = ANY_PUSH_PATTERN.matcher(userText);
-                int counter = 0;
-                while(matcher.find()){
-                    counter++;
-                    if(counter>=intArg) break;
-                }
-                if(counter<intArg) return;
-
-            }
-            case SAME_MESSAGES -> {
-                EventIdAndMemberIdKey key = new EventIdAndMemberIdKey(eventDto.getId(), fromId);
-                MessageCounter value = SAME_MESSAGES_CACHE.asMap().compute(key, (k, existing) -> {
-                    if(existing==null){
-                        return new MessageCounter(userText, 1);
-                    }
-                    if(existing.getText().equalsIgnoreCase(userText)){
-                        return new MessageCounter(existing.getText(), existing.getCount()+1);
-                    }
-                    return new MessageCounter(userText, 1);
-                });
-                if(value.getCount()<intArg) return;
-                SAME_MESSAGES_CACHE.invalidate(key);
-            }
-
-        } executeEvent(chatId, fromId, null, eventDto);
-
-
-    }
-    private void handleAttachmentEvent(@NonNull EventDto eventDto, @NonNull List <VkMessageAttachment> attachmentList, @NonNull Map<VkMessageAttachmentType, List<VkMessageAttachment>> attachmentMap, long fromId, long chatId){
-
+     private void handleAttachmentEvent(@NonNull EventDto eventDto, @NonNull List <VkMessageAttachment> allAttachmentsList, @NonNull Map<VkMessageAttachmentType, List<VkMessageAttachment>> allAttachmentsMap, long fromId, long chatId, boolean isAdvancedEvent){
         MyEventType eventType = eventDto.getType();
         if(eventType.getChatEventType()!=ATTACHMENTS) return;
 
-        String argument = eventDto.getArgument();
-        Integer intArg = eventType.getArgumentType() == INTEGER?Integer.parseInt(argument):null;
+        String arg = eventDto.getArgument();
+        Integer intArg = arg!=null&&eventType.getArgumentType()==INTEGER?Integer.parseInt(arg):null;
 
-        VkMessageAttachmentType vkAttachmentType = eventType.getVkAttachmentType().orElse(null);
+        VkMessageAttachmentType vkTypeToExecute = eventType.getVkAttachmentType().orElse(null);
 
         List<VkMessageAttachment> currentTypeAttachments;
-        if (eventType==MyEventType.ATTACHMENT_QUANTITY){
-            currentTypeAttachments = attachmentList;
+        if (eventType==ATTACHMENT_QUANTITY){
+            currentTypeAttachments = allAttachmentsList;
         }else{
-            if(vkAttachmentType==null){
+            if(vkTypeToExecute==null){
                 log.warn("attachment event {} returned empty Optional<MessageAttachmentType>", eventType);
                 return;
             }
-            currentTypeAttachments = attachmentMap.get(vkAttachmentType);
+            currentTypeAttachments = allAttachmentsMap.get(vkTypeToExecute);
         }
 
         if(currentTypeAttachments==null||currentTypeAttachments.isEmpty()){
@@ -345,7 +298,7 @@ public class EventExecutionService {
                 }else{
                     if(duration<=intArg) return;
                 }
-                executeEvent(chatId, fromId, null, eventDto);
+                executeEvent(chatId, fromId, null, eventDto,1);
                 return;
             }
             case VIDEO_MESSAGE, VK_CLIP-> {
@@ -356,31 +309,163 @@ public class EventExecutionService {
                 }else{
                     if(videoType!=VideoType.SHORT_VIDEO) return;
                 }
-                executeEvent(chatId, fromId, null, eventDto);
+                executeEvent(chatId, fromId, null, eventDto, 1);
                 return;
             }
             case VIDEO -> {
                 if(currentTypeAttachments.get(0).getVideo().getType()!=VideoType.VIDEO) return;
             }
-
         }
-
-        if(intArg!=null){
+        if(!isAdvancedEvent&&intArg!=null){
             if(currentTypeAttachments.size()<intArg) {
                 return;   // вложения искомого типа есть, но их недостаточно
             }
         }
-        executeEvent(chatId, fromId, null, eventDto);
+        executeEvent(chatId, fromId, null, eventDto, currentTypeAttachments.size());
     }
 
+    private void handleTextEvent(@NonNull EventDto eventDto, @NonNull String userText, int attachmentsSize, long fromId, long chatId, boolean isSelfDestructing, boolean isAdvancedEvent){
+        MyEventType eventType = eventDto.getType();
+        if(eventType.getChatEventType()!=TEXT) return;
 
-   private void executeEvent(long chatId, long fromId, @Nullable Long memberId, @NonNull EventDto eventDto){
+        String arg = eventDto.getArgument();
+        Integer intArg = arg!=null&&eventType.getArgumentType()==INTEGER?Integer.parseInt(arg):null;
 
-       String fullCommand = USER_PATTERN
+        int callQuantity = 0;
+
+        switch (eventType){
+            case WORD_FILTER -> {
+                String lowerCaseText = userText.toLowerCase();
+                String lowerCaseArg = arg.toLowerCase();
+                int index = 0;
+                while ((index = lowerCaseText.indexOf(lowerCaseArg, index)) != -1){
+                    callQuantity++;
+                    if(!isAdvancedEvent) break;
+                    index += lowerCaseArg.length();
+                }
+
+            }case STRICT_WORD_FILTER -> {
+                Pattern p = STRICT_WORD_FILTER_PATTERN_CACHE.get(arg,
+                        a-> Pattern.compile("(?<!\\p{L}|\\p{N})" + Pattern.quote(arg) + "(?!\\p{L}|\\p{N})", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS)
+                );
+                Matcher matcher = p.matcher(userText);
+                while(matcher.find()){
+                        callQuantity++;
+                        if(!isAdvancedEvent) break;
+                }
+
+            }case SHORT_MESSAGE ->{  // ?
+                if(attachmentsSize>0||userText.length()>=intArg) return;
+                callQuantity = 1;
+
+            }case MAXIMUM_SYMBOLS -> {
+                callQuantity = userText.length();
+
+            }case EMOJI_QUANTITY -> {
+                callQuantity = TextUtils.countEmojis(userText);
+
+            }case ROW_QUANTITY -> {
+                callQuantity = 1;
+                for(int i=0; i<userText.length(); i++){
+                    if(userText.charAt(i)=='\n') callQuantity++;
+                }
+            }
+            case ALL_MENTION -> {
+                Matcher matcher = PUSH_ALL_PATTERN.matcher(userText);
+                while(matcher.find()){
+                      callQuantity++;
+                      if(!isAdvancedEvent) break;
+                }
+            }
+            case ONLINE_MENTION -> {
+                Matcher matcher = PUSH_ONLINE_PATTERN.matcher(userText);
+                while(matcher.find()){
+                    callQuantity++;
+                    if(!isAdvancedEvent) break;
+                }
+            }
+            case ANY_LINK -> {
+                Matcher matcher = URL_PATTERN.matcher(userText);
+                while(matcher.find()){
+                    callQuantity++;
+                    if(!isAdvancedEvent) break;
+                }
+            }
+            case ZALGO -> {
+                if (!isZalgo(userText)) return;
+                callQuantity = 1;
+            }
+            case CHAT_INVITE_LINK -> {
+                Matcher matcher = VK_CHAT_INVITE_LINK_PATTERN.matcher(userText);
+                while(matcher.find()){
+                    callQuantity++;
+                    if(!isAdvancedEvent) break;
+                }
+            }
+            case CAPS -> {
+                if (!isMostlyCaps(userText)) return;
+                callQuantity=1;
+            }
+            case REGEX_FILTER -> {
+                Pattern p = REGEX_PATTERN_CACHE.get(arg, a ->
+                        Pattern.compile(a, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS));
+                Matcher matcher = p.matcher(userText);
+                while(matcher.find()){
+                    callQuantity++;
+                    if(!isAdvancedEvent) break;
+                }
+            }
+            case SELF_DESTRUCTING_MESSAGE -> {
+                if (!isSelfDestructing) return;
+                callQuantity=1;
+            }
+            case ANY_PUSH_QUANTITY -> {
+                Matcher matcher = ANY_PUSH_PATTERN.matcher(userText);
+                while(matcher.find()){
+                    callQuantity++;
+                }
+            }
+            case SAME_MESSAGES -> {
+                EventIdAndMemberIdKey key = new EventIdAndMemberIdKey(eventDto.getId(), fromId);
+                MessageCounter value = SAME_MESSAGES_CACHE.asMap().compute(key, (k, existing) -> {
+                    if(existing==null){
+                        return new MessageCounter(userText, 1);
+                    }
+                    if(existing.getText().equalsIgnoreCase(userText)){
+                        return new MessageCounter(existing.getText(), existing.getCount()+1);
+                    }
+                    return new MessageCounter(userText, 1);
+                });
+                callQuantity = value.getCount();
+            }
+        }
+        if(eventType!=SHORT_MESSAGE){
+            if(!isAdvancedEvent&&intArg!=null&&callQuantity<intArg) return;
+        }
+        executeEvent(chatId, fromId, null, eventDto,callQuantity);
+    }
+
+   private void executeEvent(long chatId, long fromId, @Nullable Long memberId, @NonNull EventDto eventDto, int callQuantity){
+
+        if(callQuantity<=0) return;
+
+        if(eventDto.getMaxUsage()!=null){
+            int allEventCalls = advancedEventCounters.get(eventDto.getId(), k-> new AtomicInteger()).addAndGet(callQuantity);
+            advancedEventCalls.put(
+                    new EventIdAndUniqueIdKey(eventDto.getId(), uniqueIdGen.getAndIncrement()),
+                    new TimePeriodAndCallQuantity(eventDto.getPeriodInSeconds(),callQuantity)
+            );
+
+            if(allEventCalls<eventDto.getMaxUsage()){
+                return;
+            }
+        }
+
+       String fullCommand = USER_PARAMETER_PATTERN
                .matcher(eventDto.getFullCommand())
                .replaceAll(createMemberLink(fromId));
 
-       if (memberId!=null) {
+       if(memberId!=null){
            fullCommand = MEMBER_ID_PATTERN
                    .matcher(fullCommand)
                    .replaceAll(createMemberLink(memberId));
@@ -394,85 +479,21 @@ public class EventExecutionService {
            try {
                String message = "Ваше событие с командой «%s» завершилось с ошибкой. Возможно, вам следует его удалить."
                        .formatted(eventDto.getFullCommand());
-               vkChatClient.sendText(message, convertToPeerId(chatId), true);
+               vkChatClient.sendText(message, ChatUtils.convertToPeerId(chatId), true);
            } catch (Exception ex) {
                log.warn("chat {}: Failed to send notification about error while execution event {}",chatId,eventDto.getId(), ex);
            }
        }
-
    }
-
-
-    private static boolean isZalgo(@NonNull String text) {
-        if (text.isEmpty()) return false;
-
-        int total = 0;
-        int marks = 0;
-        int maxSequence = 0;
-        int currentSequence = 0;
-
-        int[] codePoints = text.codePoints().toArray();
-
-        for (int cp : codePoints) {
-            total++;
-
-            int type = Character.getType(cp);
-            boolean isCombiningMark = type == Character.NON_SPACING_MARK      // Mn
-                    || type == Character.COMBINING_SPACING_MARK // Mc
-                    || type == Character.ENCLOSING_MARK;
-
-            if (isCombiningMark) {
-                marks++;
-                currentSequence++;
-                maxSequence = Math.max(maxSequence, currentSequence);
-            } else {
-                currentSequence = 0;
-            }
-        }
-
-        double density = (double) marks / total;
-
-        if (maxSequence >= 3) return true;
-        if (marks >= 6) return true;
-        if (density > 0.15) return true;
-
-        return false;
-    }
-    private static boolean isMostlyCaps(@NonNull String text) {
-        text = text.trim();
-        if (text.isBlank()) return false;
-
-        int letters = 0;
-        int upper = 0;
-
-        for (int i = 0; i < text.length(); ) {
-            int cp = text.codePointAt(i);
-
-            if (Character.isLetter(cp)) {
-                letters++;
-                if (Character.isUpperCase(cp)) upper++;
-            }
-
-            i += Character.charCount(cp);
-        }
-
-        if (letters < 4) return false;
-
-        return (double) upper / letters >= 0.8;
-    }
     private int countForwardedMessages(List<ForeignMessage> fwMessages) {
-        if (fwMessages == null || fwMessages.isEmpty()) {
+        if(fwMessages==null||fwMessages.isEmpty()){
             return 0;
         }
-
         int count = 0;
-
-        for (ForeignMessage msg : fwMessages) {
+        for(ForeignMessage msg: fwMessages) {
             count++;
-            count += countForwardedMessages(msg.getFwdMessages());
+            count+=countForwardedMessages(msg.getFwdMessages());
         }
-
         return count;
     }
-
 }

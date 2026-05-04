@@ -7,6 +7,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.service.GlobalUserService;
+import com.example.my_bot.utils.ChatUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -17,7 +18,7 @@ import org.springframework.context.annotation.Lazy;
 
 import static com.example.my_bot.constant.MessageConstant.CANNOT_USE_THIS_COMMAND_IN_PERSONAL_DIALOGUE;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
-import static com.example.my_bot.utils.ChatUtils.*;
+import static com.example.my_bot.utils.TextUtils.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -45,7 +46,7 @@ public class BindCommand implements ChatCommand {
         long peerId = messageDto.getPeerId();
         long fromId = messageDto.getFromId();;
 
-        if(isPersonalChat(peerId)){
+        if(ChatUtils.isPersonalChat(peerId)){
             vkChatClient.sendText(CANNOT_USE_THIS_COMMAND_IN_PERSONAL_DIALOGUE, messageDto.getPeerId(), true);
             return;
         }

@@ -12,7 +12,6 @@ import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.chat.ChatService;
-import com.example.my_bot.utils.ChatUtils;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +29,7 @@ import java.util.Set;
 
 import static com.example.my_bot.enumeration.DefaultRole.isDefaultRole;
 import static com.example.my_bot.enumeration.timer.TimerType.*;
-import static com.example.my_bot.utils.ChatUtils.cutDefaultPrefix;
+import static com.example.my_bot.utils.TextUtils.cutDefaultPrefix;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 import static java.lang.String.format;
 

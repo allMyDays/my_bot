@@ -12,7 +12,7 @@ import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.repository.MemberPermissionRepository;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
-import com.example.my_bot.utils.ChatUtils;
+import com.example.my_bot.utils.TextUtils;
 import com.google.common.collect.ImmutableMap;
 import jakarta.transaction.Transactional;
 import lombok.NonNull;
@@ -64,7 +64,7 @@ public class MemberPermissionService {
         MemberPermissionSettingResult result = new MemberPermissionSettingResult();
 
         userCommands = userCommands.stream()
-                .map(ChatUtils::cutDefaultPrefix)
+                .map(TextUtils::cutDefaultPrefix)
                 .collect(Collectors.toSet());
 
         UserCommandValidationResult commandNormalizationResult = commandRegistry.getMainNamesOfRequiredCommands(userCommands);

@@ -7,19 +7,13 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.EventEntity;
-import com.example.my_bot.entity.TimerEntity;
-import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.event.EventException;
 import com.example.my_bot.exception.role.RoleException;
-import com.example.my_bot.exception.timer.TimerException;
 import com.example.my_bot.service.RoleService;
-import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.event.EventService;
-import com.example.my_bot.service.timer.TimerService;
-import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -28,17 +22,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.Optional;
-
 import static com.example.my_bot.constant.MessageConstant.*;
-import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
 import static com.example.my_bot.enumeration.event.MyEventType.WITH_SUBSCRIPTION;
-import static com.example.my_bot.enumeration.timer.TimerType.*;
-import static com.example.my_bot.utils.ChatUtils.*;
+import static com.example.my_bot.utils.TextUtils.*;
 
 @Slf4j
 @RequiredArgsConstructor

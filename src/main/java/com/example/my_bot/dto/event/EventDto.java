@@ -26,13 +26,19 @@ public class EventDto {
 
     private final String fullCommand;
 
-    public EventDto(long id, @NonNull MyEventType type, int rolePriority, @Nullable String argument, long creatorId, @NonNull String fullCommand) {
+    private final Integer maxUsage;
+
+    private final Integer periodInSeconds;
+
+    public EventDto(long id, @NonNull MyEventType type, int rolePriority, @Nullable String argument, long creatorId, @NonNull String fullCommand, @Nullable Integer maxUsage, @Nullable Integer periodInSeconds) {
         this.id = id;
         this.type = type;
         this.rolePriority = rolePriority;
         this.argument = argument;
         this.creatorId = creatorId;
         this.fullCommand = fullCommand;
+        this.maxUsage = maxUsage;
+        this.periodInSeconds = periodInSeconds;
     }
 
     @Override
@@ -46,4 +52,5 @@ public class EventDto {
     public int hashCode() {
         return Objects.hashCode(id);
     }
+
 }

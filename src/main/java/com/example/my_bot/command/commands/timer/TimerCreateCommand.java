@@ -22,13 +22,12 @@ import org.springframework.context.annotation.Lazy;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.enumeration.timer.TimerType.*;
-import static com.example.my_bot.utils.ChatUtils.collectArgumentsSinceIndex;
+import static com.example.my_bot.utils.TextUtils.collectArgumentsSinceIndex;
 
 @Slf4j
 @RequiredArgsConstructor

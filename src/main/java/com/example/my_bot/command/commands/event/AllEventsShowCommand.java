@@ -7,12 +7,8 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.event.EventDto;
-import com.example.my_bot.entity.EventEntity;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
-import com.example.my_bot.exception.command.CommandException;
-import com.example.my_bot.exception.event.EventException;
-import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.service.event.EventService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -25,12 +21,9 @@ import org.springframework.context.annotation.Lazy;
 
 import java.util.List;
 
-import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
-import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
-import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
-import static com.example.my_bot.enumeration.event.MyEventType.WITH_SUBSCRIPTION;
-import static com.example.my_bot.utils.ChatUtils.*;
+import static com.example.my_bot.utils.TextUtils.*;
+import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -87,12 +80,29 @@ public class AllEventsShowCommand implements ChatCommand {
                     .map("«%s»"::formatted)
                     .orElse("с приоритетом "+eventDto.getRolePriority());
 
-            sb.append("Выполнение команды «%s» при событии «%s» для роли %s и ниже."
-                    .formatted(eventDto.getFullCommand(),type.getDescription(), roleName));
+            String desc = eventDto.getType().getDescription();
+            String eventView = eventDto.getMaxUsage()==null
+                    ? "событии «%s»".formatted(desc)
+                    : "достижении лимита действия «%s» в %d за %s".formatted(desc,eventDto.getMaxUsage(),formatDurationFromSeconds(eventDto.getPeriodInSeconds(), true));
+
+            sb.append("Выполнение команды «%s» при %s для роли %s и ниже."
+                    .formatted(eventDto.getFullCommand(),eventView, roleName));
 
             if(eventDto.getArgument()!=null){
-                String arg = eventDto.getArgument();
-                sb.append(" Аргумент: ").append((type==WITH_SUBSCRIPTION||type==WITHOUT_SUBSCRIPTION)?createMention(Long.parseLong(arg)):arg);
+                String argView = eventDto.getArgument();
+
+                switch (type){
+                    case WITH_SUBSCRIPTION, WITHOUT_SUBSCRIPTION->{
+                        argView = createMention(Long.parseLong(argView));
+                    }
+                    case SHORT_MESSAGE -> {
+                        argView = argView+" (символов)";
+                    }
+                    case SHORT_VOICE_MESSAGE, LONG_VOICE_MESSAGE -> {
+                        argView = argView+" (длительность в сек.)";
+                    }
+                }
+                sb.append(" Аргумент: ").append(argView);
             } sb.append("\n");
 
         }

@@ -10,7 +10,7 @@ import com.example.my_bot.service.*;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.permission.MemberPermissionService;
 import com.example.my_bot.service.permission.RolePermissionService;
-import com.example.my_bot.utils.ChatUtils;
+import com.example.my_bot.utils.TextUtils;
 import com.google.common.collect.ImmutableMap;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.service.permission.MemberPermissionService.getMaxCustomMemberPermissionsCount;
 import static com.example.my_bot.service.permission.RolePermissionService.getMaxCustomRolePermissionsCount;
-import static com.example.my_bot.utils.ChatUtils.DEFAULT_CHAT_PREFIX;
+import static com.example.my_bot.utils.TextUtils.DEFAULT_CHAT_PREFIX;
 
 @Slf4j
 @Command(mainCommandName = "права", alternativeCommandNames = {"разрешения"}, defaultRole = MODERATOR, eventable = true)
@@ -94,7 +94,7 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
         }
 
         memberPermissionMap.forEach((userId, permissionMap)->{
-            String mention = ChatUtils.createMention(userId);
+            String mention = TextUtils.createMention(userId);
             String userName = userService.getUserNameInRequiredCase(userId, NameCase.GENITIVE)
                     .orElse("этого участника");
             sb.append("\nПерсонально для %s(%s):".formatted(mention,userName));

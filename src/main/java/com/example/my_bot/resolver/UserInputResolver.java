@@ -13,7 +13,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.example.my_bot.utils.ChatUtils.isValidLong;
+import static com.example.my_bot.utils.TextUtils.isValidLong;
 
 @Component
 @Slf4j
