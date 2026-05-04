@@ -7,6 +7,7 @@ import lombok.*;
 import org.checkerframework.checker.units.qual.N;
 
 import java.time.Instant;
+import java.time.LocalTime;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -30,7 +31,11 @@ public class EventDto {
 
     private final Integer periodInSeconds;
 
-    public EventDto(long id, @NonNull MyEventType type, int rolePriority, @Nullable String argument, long creatorId, @NonNull String fullCommand, @Nullable Integer maxUsage, @Nullable Integer periodInSeconds) {
+    private final LocalTime startDayTime;
+
+    private final LocalTime endDayTime;
+
+    public EventDto(long id, @NonNull MyEventType type, int rolePriority, @Nullable String argument, long creatorId, @NonNull String fullCommand, @Nullable Integer maxUsage, @Nullable Integer periodInSeconds, @Nullable LocalTime startDayTime,@Nullable LocalTime endDayTime) {
         this.id = id;
         this.type = type;
         this.rolePriority = rolePriority;
@@ -39,6 +44,8 @@ public class EventDto {
         this.fullCommand = fullCommand;
         this.maxUsage = maxUsage;
         this.periodInSeconds = periodInSeconds;
+        this.startDayTime = startDayTime;
+        this.endDayTime = endDayTime;
     }
 
     @Override

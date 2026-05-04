@@ -8,11 +8,13 @@ import com.example.my_bot.cache.value.TimePeriodAndCallQuantity;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.dto.event.EventDto;
+import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.mapper.CommandMapper;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.TextUtils;
 import com.example.my_bot.vk.VkAction;
@@ -34,6 +36,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -61,6 +64,7 @@ public class EventExecutionService {
    private final BanService banService;
    private final CommandMapper commandMapper;
    private final VkChatClient vkChatClient;
+   private final ChatService chatService;
    private CommandDispatcher commandDispatcher;
 
    private final static String USER_PARAMETER = "%user%";
@@ -80,7 +84,6 @@ public class EventExecutionService {
 
    private static final Pattern ANY_PUSH_PATTERN =
             Pattern.compile("\\[[^\\]\\[]+\\|[^\\]\\[]+\\]", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
-
 
    private static final Pattern URL_PATTERN = Pattern.compile(
            "(?i)(?<!\\S)((?:https?://|www\\.|(?:[a-z0-9-]+\\.)+(?:com|net|org|io|ru|de|uk|xyz|info|biz|app|dev))(?:[^\\s]*)?)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
@@ -140,7 +143,7 @@ public class EventExecutionService {
                             callQuantity = -callQuantity;
                         }
                         long newValue = counter.addAndGet(callQuantity);
-                        return (newValue> 0)? counter : null;
+                        return (newValue>0)? counter : null;
                     });
                 }
             })
@@ -157,6 +160,8 @@ public class EventExecutionService {
         long fromId = message.getFromId();
         int callerRole = memberService.getMemberRolePriority(chatId, fromId);
         ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventsCache = eventService.getCachedChatEvents(chatId);
+        TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
+        LocalTime nowInTheChat = LocalTime.now(chatTimeZone.getZoneOffset());
 
         VkAction action = message.getAction();
         List<VkMessageAttachment> attachments = message.getAttachments();
@@ -185,8 +190,13 @@ public class EventExecutionService {
             requiredEvents = eventsCache.get(chatEventType);
             if(requiredEvents!=null){
                 for(EventDto currentEvent: requiredEvents){
+
                     if(callerRole>currentEvent.getRolePriority()){
                         continue;
+                    }if(currentEvent.getStartDayTime()!=null){
+                        if(!isNowInDailyRange(currentEvent.getStartDayTime(), currentEvent.getEndDayTime(), nowInTheChat)){
+                         continue;
+                        }
                     }
                     boolean isAdvancedEvent = currentEvent.getPeriodInSeconds()!=null;
                     switch (currentEvent.getType()){
@@ -354,7 +364,7 @@ public class EventExecutionService {
                         if(!isAdvancedEvent) break;
                 }
 
-            }case SHORT_MESSAGE ->{  // ?
+            }case SHORT_MESSAGE ->{
                 if(attachmentsSize>0||userText.length()>=intArg) return;
                 callQuantity = 1;
 
@@ -446,21 +456,18 @@ public class EventExecutionService {
     }
 
    private void executeEvent(long chatId, long fromId, @Nullable Long memberId, @NonNull EventDto eventDto, int callQuantity){
+       if(callQuantity<=0) return;
 
-        if(callQuantity<=0) return;
-
-        if(eventDto.getMaxUsage()!=null){
-            int allEventCalls = advancedEventCounters.get(eventDto.getId(), k-> new AtomicInteger()).addAndGet(callQuantity);
-            advancedEventCalls.put(
-                    new EventIdAndUniqueIdKey(eventDto.getId(), uniqueIdGen.getAndIncrement()),
-                    new TimePeriodAndCallQuantity(eventDto.getPeriodInSeconds(),callQuantity)
-            );
-
-            if(allEventCalls<eventDto.getMaxUsage()){
-                return;
-            }
-        }
-
+       if(eventDto.getMaxUsage()!=null){
+           int allEventCalls = advancedEventCounters.get(eventDto.getId(), k-> new AtomicInteger()).addAndGet(callQuantity);
+           advancedEventCalls.put(
+                   new EventIdAndUniqueIdKey(eventDto.getId(), uniqueIdGen.getAndIncrement()),
+                   new TimePeriodAndCallQuantity(eventDto.getPeriodInSeconds(),callQuantity)
+           );
+           if(allEventCalls<eventDto.getMaxUsage()){
+               return;
+           }
+       }
        String fullCommand = USER_PARAMETER_PATTERN
                .matcher(eventDto.getFullCommand())
                .replaceAll(createMemberLink(fromId));
@@ -485,7 +492,7 @@ public class EventExecutionService {
            }
        }
    }
-    private int countForwardedMessages(List<ForeignMessage> fwMessages) {
+    private int countForwardedMessages(List<ForeignMessage> fwMessages){
         if(fwMessages==null||fwMessages.isEmpty()){
             return 0;
         }
@@ -496,4 +503,18 @@ public class EventExecutionService {
         }
         return count;
     }
+
+    private boolean isNowInDailyRange(@NonNull LocalTime start, @NonNull LocalTime end,@NonNull LocalTime now){
+        if(start.equals(end)){
+            return true;
+        }
+        if(start.isBefore(end)) {// 08:00–23:00
+            return !now.isBefore(start)&&now.isBefore(end);
+        }else{ // 23:00–08:00
+            return !now.isBefore(start)||now.isBefore(end);
+        }
+    }
+
+
+
 }

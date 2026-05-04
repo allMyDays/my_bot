@@ -8,12 +8,15 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Check;
 
+import java.time.LocalTime;
+
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
 @Table(name = "event", indexes = @Index(name = "events_idx_chat_id", columnList = "chatId"))
 @Check(constraints = "(max_usage IS NULL AND period_in_seconds IS NULL) OR (max_usage IS NOT NULL AND period_in_seconds IS NOT NULL)")
+@Check(constraints = "(start_day_time IS NULL AND end_day_time IS NULL) OR (start_day_time IS NOT NULL AND end_day_time IS NOT NULL)")
 public class EventEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,6 +47,12 @@ public class EventEntity {
 
     @Column(name = "period_in_seconds", nullable = true)
     private Integer periodInSeconds;
+
+    @Column(name = "start_day_time", nullable = true)
+    private LocalTime startDayTime;
+
+    @Column(name = "end_day_time", nullable = true)
+    private LocalTime endDayTime;
 
     public EventEntity(Long chatId, MyEventType type, int rolePriority, String argument, long creatorId, String fullCommand) {
         this.chatId = chatId;

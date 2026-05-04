@@ -3,6 +3,7 @@ import static com.example.my_bot.enumeration.event.EventArgumentType.*;
 import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
 import static com.example.my_bot.enumeration.event.MyEventType.WITH_SUBSCRIPTION;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
+import static java.util.concurrent.TimeUnit.DAYS;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.command.CommandRegistry;
@@ -38,6 +39,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -61,6 +65,7 @@ public class EventService {
     private static final int ADVANCED_EVENT_MAX_PERIOD_IN_SECONDS = 86_400;
     private static final int ADVANCED_EVENT_MIN_PERIOD_IN_SECONDS = 10;
     private static final int ADVANCED_EVENT_MIN_USAGE = 2;
+    private static final int DAILY_EVENT_MIN_DIFFERENCE_IN_SECONDS=30*60;
 
     @Autowired
     @Lazy
@@ -172,6 +177,25 @@ public class EventService {
 
         return eventMapper.toEventDto(event);
 
+    }
+
+    @Transactional
+    public EventDto setDailyWorkTime(long eventId, @NonNull LocalTime start, @NonNull LocalTime end, long fromId){
+
+        EventEntity event = eventRepository.findById(eventId)
+                .orElseThrow(()->new EventNotFoundException(eventId));
+        roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
+
+        long diff = Math.abs(Duration.between(start, end).toSeconds());
+        if(diff<DAILY_EVENT_MIN_DIFFERENCE_IN_SECONDS){
+            throw new IncorrectEventArgumentException("Событие обязано работать (либо не работать) минимум %s в сутки."
+                    .formatted(formatDurationFromSeconds(DAILY_EVENT_MIN_DIFFERENCE_IN_SECONDS,true)));
+        }
+        event.setStartDayTime(start);
+        event.setEndDayTime(end);
+        invalidateEventsCache(event.getChatId());
+
+        return eventMapper.toEventDto(event);
     }
 
     public int countChatEvents(long chatId){

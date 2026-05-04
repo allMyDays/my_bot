@@ -10,6 +10,7 @@ import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.service.RoleService;
+import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.event.EventService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -35,9 +36,13 @@ public class AllEventsShowCommand implements ChatCommand {
 
     private final EventService eventService;
 
+    private final ChatService chatService;
+
     private VkChatClient vkChatClient;
 
     private RoleService roleService;
+
+
 
     @Autowired
     @Lazy
@@ -66,6 +71,7 @@ public class AllEventsShowCommand implements ChatCommand {
         }
 
         long chatId = messageDto.getChatId();
+        String chatTimeZone = chatService.getChatTimeZone(chatId).getStringType();
 
         List<EventDto> events = eventService.getEventsSortedByIdInIncreasingOrder(chatId);
         sb.append("В чате установлено (%d/%d) событий:\n\n"
@@ -104,6 +110,11 @@ public class AllEventsShowCommand implements ChatCommand {
                 }
                 sb.append(" Аргумент: ").append(argView);
             } sb.append("\n");
+            if(eventDto.getStartDayTime()!=null){
+                sb.append("\uD83D\uDD57Работает ежедневно с %s до %s %s."
+                        .formatted(eventDto.getStartDayTime(), eventDto.getEndDayTime(), chatTimeZone)
+                );
+            }
 
         }
 
