@@ -1,6 +1,6 @@
 package com.example.my_bot.service.event;
 
-import com.example.my_bot.cache.key.EventIdAndUniqueIdKey;
+import com.example.my_bot.cache.key.EventIdAndMemberIdAndUniqueIdKey;
 import com.example.my_bot.cache.key.EventIdAndMemberIdKey;
 import com.example.my_bot.cache.key.GroupIdAndUserIdKey;
 import com.example.my_bot.cache.value.MessageCounter;
@@ -111,32 +111,34 @@ public class EventExecutionService {
     // Генератор уникальных ID
     private final static AtomicLong uniqueIdGen = new AtomicLong();
 
-    // подсчёт вызовов конкретного события: eventId -> AtomicLong
-    private final static Cache<Long, AtomicInteger> advancedEventCounters = Caffeine.newBuilder()
-            .expireAfterWrite(getMaxPeriodForAdvancedEvents(), TimeUnit.SECONDS).build();
+    // хранение подсчёта вызовов конкретного события для конкретного участника чата: (eventId + memberId) -> AtomicInteger
+    private final static Cache<EventIdAndMemberIdKey, AtomicInteger> advancedEventCallCounters = Caffeine.newBuilder()
+            .expireAfterWrite(getMaxPeriodForAdvancedEvents(), TimeUnit.SECONDS)
+            .build();
 
-    // хранение вызовов события с авто-вытеснением (event Id+unigue key) -> long event period in seconds
-    private final static Cache<EventIdAndUniqueIdKey, TimePeriodAndCallQuantity> advancedEventCalls = Caffeine.newBuilder()
+    // все вызовы события с авто-вытеснением (event Id + memberId + unigue key) -> long event period in seconds
+    private final static Cache<EventIdAndMemberIdAndUniqueIdKey, TimePeriodAndCallQuantity> advancedEventCalls = Caffeine.newBuilder()
             .scheduler(Scheduler.systemScheduler())
-            .expireAfter(new Expiry<EventIdAndUniqueIdKey, TimePeriodAndCallQuantity>() {
+            .expireAfter(new Expiry<EventIdAndMemberIdAndUniqueIdKey, TimePeriodAndCallQuantity>() {
                 @Override
-                public long expireAfterCreate(EventIdAndUniqueIdKey key, TimePeriodAndCallQuantity value, long currentTime) {
+                public long expireAfterCreate(EventIdAndMemberIdAndUniqueIdKey key, TimePeriodAndCallQuantity value, long currentTime) {
                     return TimeUnit.SECONDS.toNanos(value.getTimePeriod());
                 }
 
                 @Override
-                public long expireAfterUpdate(EventIdAndUniqueIdKey key, TimePeriodAndCallQuantity value, long currentTime, long currentDuration) {
+                public long expireAfterUpdate(EventIdAndMemberIdAndUniqueIdKey key, TimePeriodAndCallQuantity value, long currentTime, long currentDuration) {
                     return currentDuration;
                 }
 
                 @Override
-                public long expireAfterRead(EventIdAndUniqueIdKey key, TimePeriodAndCallQuantity value, long currentTime, long currentDuration) {
+                public long expireAfterRead(EventIdAndMemberIdAndUniqueIdKey key, TimePeriodAndCallQuantity value, long currentTime, long currentDuration) {
                     return currentDuration;
                 }
             })
-            .removalListener((EventIdAndUniqueIdKey key, TimePeriodAndCallQuantity value, RemovalCause cause)->{
+            .removalListener((EventIdAndMemberIdAndUniqueIdKey key, TimePeriodAndCallQuantity value, RemovalCause cause)->{
                 if(cause==RemovalCause.EXPIRED){
-                    advancedEventCounters.asMap().compute(key.getEventId(), (id, counter)->{
+                    EventIdAndMemberIdKey countKey = new EventIdAndMemberIdKey(key.getEventId(), key.getMemberId());
+                    advancedEventCallCounters.asMap().compute(countKey, (k, counter)->{
                         if(counter==null) return null;
                         int callQuantity = value.getCallQuantity();
                         if(callQuantity>0){
@@ -148,6 +150,28 @@ public class EventExecutionService {
                 }
             })
             .build();
+
+    // хранение кулдаунов конкретного события для конкретного участника ((eventId + memberId) -> ttl)
+    private final static Cache<EventIdAndMemberIdKey, Integer> eventCoolDownCalls= Caffeine.newBuilder()
+            .expireAfter(new Expiry<EventIdAndMemberIdKey,Integer>(){
+                @Override
+                public long expireAfterCreate(EventIdAndMemberIdKey key, Integer value, long currentTime) {
+                    return TimeUnit.SECONDS.toNanos(value);
+                }
+
+                @Override
+                public long expireAfterUpdate(EventIdAndMemberIdKey key, Integer value, long currentTime, long currentDuration) {
+                    return currentDuration;
+                }
+
+                @Override
+                public long expireAfterRead(EventIdAndMemberIdKey key, Integer value, long currentTime, long currentDuration) {
+                    return currentDuration;
+                }
+            })
+            .build();
+
+
 
     @Autowired
     @Lazy
@@ -193,12 +217,19 @@ public class EventExecutionService {
 
                     if(callerRole>currentEvent.getRolePriority()){
                         continue;
-                    }if(currentEvent.getStartDayTime()!=null){
+                    }
+                    Integer cooldown = currentEvent.getCDPeriodInSeconds();
+                    if(cooldown!=null&&cooldown>0){
+                        if(eventCoolDownCalls.getIfPresent(new EventIdAndMemberIdKey(currentEvent.getId(), fromId))!=null){
+                            continue;
+                        }
+                    }
+                    if(currentEvent.getStartDayTime()!=null){
                         if(!isNowInDailyRange(currentEvent.getStartDayTime(), currentEvent.getEndDayTime(), nowInTheChat)){
                          continue;
                         }
                     }
-                    boolean isAdvancedEvent = currentEvent.getPeriodInSeconds()!=null;
+                    boolean isAdvancedEvent = currentEvent.getAEPeriodInSeconds()!=null;
                     switch (currentEvent.getType()){
                         case ANY_MESSAGE -> {
                             if(action==null){
@@ -458,13 +489,14 @@ public class EventExecutionService {
    private void executeEvent(long chatId, long fromId, @Nullable Long memberId, @NonNull EventDto eventDto, int callQuantity){
        if(callQuantity<=0) return;
 
-       if(eventDto.getMaxUsage()!=null){
-           int allEventCalls = advancedEventCounters.get(eventDto.getId(), k-> new AtomicInteger()).addAndGet(callQuantity);
+       if(eventDto.getAEMaxUsage()!=null){
+           int allEventCalls = advancedEventCallCounters.get(new EventIdAndMemberIdKey(eventDto.getId(),fromId),
+                   k-> new AtomicInteger()).addAndGet(callQuantity);
            advancedEventCalls.put(
-                   new EventIdAndUniqueIdKey(eventDto.getId(), uniqueIdGen.getAndIncrement()),
-                   new TimePeriodAndCallQuantity(eventDto.getPeriodInSeconds(),callQuantity)
+                   new EventIdAndMemberIdAndUniqueIdKey(eventDto.getId(),fromId,uniqueIdGen.getAndIncrement()),
+                   new TimePeriodAndCallQuantity(eventDto.getAEPeriodInSeconds(),callQuantity)
            );
-           if(allEventCalls<eventDto.getMaxUsage()){
+           if(allEventCalls<eventDto.getAEMaxUsage()){
                return;
            }
        }
@@ -477,19 +509,24 @@ public class EventExecutionService {
                    .matcher(fullCommand)
                    .replaceAll(createMemberLink(memberId));
        }
+
        try{
            commandDispatcher.dispatch(
                    commandMapper.toCommandMessageDto(chatId, eventDto.getCreatorId(), fullCommand, true)
            );
        }catch (Exception e) {
-           log.warn("error while execution event {} in chat {}.",eventDto.getId(),chatId, e);
+           log.warn("error while execution event {} in chat {}.", eventDto.getId(), chatId, e);
            try {
                String message = "Ваше событие с командой «%s» завершилось с ошибкой. Возможно, вам следует его удалить."
                        .formatted(eventDto.getFullCommand());
                vkChatClient.sendText(message, ChatUtils.convertToPeerId(chatId), true);
            } catch (Exception ex) {
-               log.warn("chat {}: Failed to send notification about error while execution event {}",chatId,eventDto.getId(), ex);
+               log.warn("chat {}: Failed to send notification about error while execution event {}", chatId, eventDto.getId(), ex);
            }
+       }
+       Integer cooldown = eventDto.getCDPeriodInSeconds();
+       if(cooldown!=null&&cooldown>0){
+           eventCoolDownCalls.put(new EventIdAndMemberIdKey(eventDto.getId(), fromId), cooldown);
        }
    }
     private int countForwardedMessages(List<ForeignMessage> fwMessages){

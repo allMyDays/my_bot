@@ -2,14 +2,10 @@ package com.example.my_bot.dto.event;
 
 import com.example.my_bot.enumeration.event.MyEventType;
 import jakarta.annotation.Nullable;
-import jakarta.persistence.Column;
 import lombok.*;
-import org.checkerframework.checker.units.qual.N;
 
-import java.time.Instant;
 import java.time.LocalTime;
 import java.util.Objects;
-import java.util.Optional;
 
 
 @Getter
@@ -27,25 +23,28 @@ public class EventDto {
 
     private final String fullCommand;
 
-    private final Integer maxUsage;
+    private final Integer AEMaxUsage;
 
-    private final Integer periodInSeconds;
+    private final Integer AEPeriodInSeconds;
 
     private final LocalTime startDayTime;
 
     private final LocalTime endDayTime;
 
-    public EventDto(long id, @NonNull MyEventType type, int rolePriority, @Nullable String argument, long creatorId, @NonNull String fullCommand, @Nullable Integer maxUsage, @Nullable Integer periodInSeconds, @Nullable LocalTime startDayTime,@Nullable LocalTime endDayTime) {
+    private final Integer CDPeriodInSeconds;
+
+    public EventDto(long id, @NonNull MyEventType type, int rolePriority, @Nullable String argument, long creatorId, @NonNull String fullCommand, @Nullable Integer AEMaxUsage, @Nullable Integer AEPeriodInSeconds, @Nullable LocalTime startDayTime, @Nullable LocalTime endDayTime, Integer CDPeriodInSeconds) {
         this.id = id;
         this.type = type;
         this.rolePriority = rolePriority;
         this.argument = argument;
         this.creatorId = creatorId;
         this.fullCommand = fullCommand;
-        this.maxUsage = maxUsage;
-        this.periodInSeconds = periodInSeconds;
+        this.AEMaxUsage = AEMaxUsage;
+        this.AEPeriodInSeconds = AEPeriodInSeconds;
         this.startDayTime = startDayTime;
         this.endDayTime = endDayTime;
+        this.CDPeriodInSeconds = CDPeriodInSeconds;
     }
 
     @Override

@@ -115,6 +115,11 @@ public class EventCreateCommand implements ChatCommand {
                 message+="&#128081; Воздействует на роль «%s» и ниже.\n".formatted(roleName)+
                         "&#8618; Применяется команда: %s".formatted(createdEvent.getFullCommand());
 
+                if(type.getAdvancedEventConfig().isCanBeAdvancedEvent()){
+                    message+="\n\n❓Событие реагирует только на одно сообщение от участника. Если хотите больше сообщений, событие нужно расширить.";
+
+                }
+
 
         vkChatClient.sendText(message, peerId, true);
 

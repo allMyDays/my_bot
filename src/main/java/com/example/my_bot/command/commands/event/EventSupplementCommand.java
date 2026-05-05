@@ -46,6 +46,8 @@ public class EventSupplementCommand implements ChatCommand {
 
     private final static String WORK_TIME_ARGUMENT = "времяработы";
 
+    private final static String COOLDOWN_ARGUMENT = "кулдаун";
+
     private final static Pattern WORK_TIME_PATTERN = Pattern.compile("(([01][0-9]|2[0-3]):[0-5][0-9])-(([01][0-9]|2[0-3]):[0-5][0-9])");
 
 
@@ -75,32 +77,7 @@ public class EventSupplementCommand implements ChatCommand {
         EventDto editedEvent;
         String message;
 
-        if(args[1].equalsIgnoreCase(ACTION_LIMIT_ARGUMENT)){  // !дополнитьивент 1 лимитдействия 100 2 часа
-            if(args.length<5){
-                vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId,true);
-                return;
-            }if(!isValidInteger(args[2])){
-                vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId, true);
-                return;
-            }
-            Optional<Long> timePeriodInSeconds =  TimeUtils.toSecondsFromString(args[3],args[4]);
-            if(timePeriodInSeconds.isEmpty()){
-                vkChatClient.sendText(INVALID_TIME_PERIOD_MESSAGE, peerId,true);
-                return;
-            }
-            try{
-               editedEvent = eventService.setTimePeriodAndMaxUsage(events.get(outerEventId-1).getId(),timePeriodInSeconds.get(),Integer.parseInt(args[2]),messageDto.getFromId());
-            }catch (EventException | RoleException e){
-                vkChatClient.sendText(e.getMessage(), peerId,true);
-                return;
-            }
-            message = "✅Вы успешно добавили событию №%d («%s») лимит действия в %d за %s\n❓Теперь команда, указанная в этом событии, будет активироваться только по достижении участником данного лимита за данный период времени (для события «%s»)."
-                    .formatted(outerEventId,editedEvent.getType().getDescription(), editedEvent.getMaxUsage(),formatDurationFromSeconds(editedEvent.getPeriodInSeconds(),true),editedEvent.getType().getDescription());
-
-            vkChatClient.sendText(message,peerId, true);
-            return;
-
-        }if(args[1].equalsIgnoreCase(WORK_TIME_ARGUMENT)){   // !дополнитьивент 1 времяработы 23:00-08:00
+        if(args[1].equalsIgnoreCase(WORK_TIME_ARGUMENT)){   // !дополнитьивент 1 времяработы 23:00-08:00
             Matcher matcher = WORK_TIME_PATTERN.matcher(args[2]);
             if(matcher.find()){
                 LocalTime start = TimeUtils.parseTimeOfDay(matcher.group(1)).orElse(null);
@@ -122,6 +99,59 @@ public class EventSupplementCommand implements ChatCommand {
             }
         }
 
+        if(args[1].equalsIgnoreCase(ACTION_LIMIT_ARGUMENT)){  // !дополнитьивент 1 лимитдействия 100 2 часа
+            if(args.length<5){
+                vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId,true);
+                return;
+            }if(!isValidInteger(args[2])){
+                vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId, true);
+                return;
+            }
+            Optional<Long> timePeriodInSeconds =  TimeUtils.toSecondsFromString(args[3],args[4]);
+            if(timePeriodInSeconds.isEmpty()){
+                vkChatClient.sendText(INVALID_TIME_PERIOD_MESSAGE, peerId,true);
+                return;
+            }
+            try{
+               editedEvent = eventService.setAETimePeriodAndMaxUsage(events.get(outerEventId-1).getId(),timePeriodInSeconds.get(),Integer.parseInt(args[2]),messageDto.getFromId());
+            }catch (EventException | RoleException e){
+                vkChatClient.sendText(e.getMessage(), peerId,true);
+                return;
+            }
+            message = "✅Вы успешно добавили событию №%d («%s») лимит действия в %d за %s\n❓Теперь команда, указанная в этом событии, будет активироваться только по достижении участником данного лимита за данный период времени (для события «%s»)."
+                    .formatted(outerEventId,editedEvent.getType().getDescription(), editedEvent.getAEMaxUsage(),formatDurationFromSeconds(editedEvent.getAEPeriodInSeconds(),true),editedEvent.getType().getDescription());
+
+            vkChatClient.sendText(message,peerId, true);
+            return;
+        }
+        if(args[1].equalsIgnoreCase(COOLDOWN_ARGUMENT)){  // !дополнитьивент 1 кулдаун 1 час
+            if(args.length<4){
+                vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId,true);
+                return;
+            }
+            Optional<Long> timePeriodInSeconds =  TimeUtils.toSecondsFromString(args[2],args[3]);
+            if(timePeriodInSeconds.isEmpty()){
+                vkChatClient.sendText(INVALID_TIME_PERIOD_MESSAGE, peerId,true);
+                return;
+            }
+            try{
+                editedEvent = eventService.setCDTimePeriod(events.get(outerEventId-1).getId(),timePeriodInSeconds.get(),messageDto.getFromId());
+            }catch (EventException | RoleException e){
+                vkChatClient.sendText(e.getMessage(), peerId,true);
+                return;
+            }
+            int cdPeriod = editedEvent.getCDPeriodInSeconds();
+            String eventDesc = editedEvent.getType().getDescription();
+            if(cdPeriod==0){
+                message= "✅Вы успешно отключили кулдаун срабатывания для события №%d («%s»)."
+                        .formatted(outerEventId,eventDesc);
+            }else{
+                message = ("✅Вы успешно добавили событию №%d («%s») кулдаун срабатывания.\n❓Теперь команда, указанная в событии, будет активироваться на одного участника максимум один раз в %s")
+                    .formatted(outerEventId,eventDesc,formatDurationFromSeconds(editedEvent.getCDPeriodInSeconds(),true));
+            }
+            vkChatClient.sendText(message,peerId, true);
+            return;
+        }
         else{
             vkChatClient.sendText("Вы ввели несуществующий тип для редактирования.", peerId,true);
             return;

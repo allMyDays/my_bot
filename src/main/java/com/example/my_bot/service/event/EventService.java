@@ -3,7 +3,6 @@ import static com.example.my_bot.enumeration.event.EventArgumentType.*;
 import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
 import static com.example.my_bot.enumeration.event.MyEventType.WITH_SUBSCRIPTION;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
-import static java.util.concurrent.TimeUnit.DAYS;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.command.CommandRegistry;
@@ -27,6 +26,7 @@ import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.TextUtils;
+import com.example.my_bot.utils.TimeUtils;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -40,7 +40,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -66,6 +65,7 @@ public class EventService {
     private static final int ADVANCED_EVENT_MIN_PERIOD_IN_SECONDS = 10;
     private static final int ADVANCED_EVENT_MIN_USAGE = 2;
     private static final int DAILY_EVENT_MIN_DIFFERENCE_IN_SECONDS=30*60;
+    private static final int COOLDOWN_MAX_PERIOD_IN_SECONDS = 3_600;
 
     @Autowired
     @Lazy
@@ -145,12 +145,12 @@ public class EventService {
     }
 
     @Transactional
-    public EventDto setTimePeriodAndMaxUsage(long eventId, long periodInSeconds, int maxUsage, long fromId){
+    public EventDto setAETimePeriodAndMaxUsage(long eventId, long periodInSeconds, int maxUsage, long fromId){
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
 
-        if(event.getMaxUsage()!=null){
+        if(event.getAEMaxUsage()!=null){
             throw new CurrentEventAlreadyAdvancedException();
         }
         roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
@@ -168,8 +168,8 @@ public class EventService {
             throw new IncorrectEventArgumentException("Для данного типа события, лимит действия должен быть от %d до %d."
                     .formatted(ADVANCED_EVENT_MIN_USAGE,eventMaxUsage));
         }
-        event.setMaxUsage(maxUsage);
-        event.setPeriodInSeconds((int)periodInSeconds);
+        event.setAEMaxUsage(maxUsage);
+        event.setAEPeriodInSeconds((int)periodInSeconds);
         if(!advancedConfig.isEventArgumentRequired()){
             event.setArgument(null);
         }
@@ -195,6 +195,27 @@ public class EventService {
         event.setEndDayTime(end);
         invalidateEventsCache(event.getChatId());
 
+        return eventMapper.toEventDto(event);
+    }
+
+    @Transactional
+    public EventDto setCDTimePeriod(long eventId, long periodInSeconds, long fromId){
+
+        EventEntity event = eventRepository.findById(eventId)
+                .orElseThrow(()->new EventNotFoundException(eventId));
+
+        if(event.getCDPeriodInSeconds()!=null){
+            throw new CurrentEventAlreadyHasCooldownException();
+        }
+        roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
+
+        if(periodInSeconds<0) periodInSeconds=0;
+        if(periodInSeconds>COOLDOWN_MAX_PERIOD_IN_SECONDS){
+            throw new IncorrectEventArgumentException("Максимальный период для кулдауна — %s"
+                    .formatted(formatDurationFromSeconds(COOLDOWN_MAX_PERIOD_IN_SECONDS,true)));
+        }
+        event.setCDPeriodInSeconds((int)periodInSeconds);
+        invalidateEventsCache(event.getChatId());
         return eventMapper.toEventDto(event);
     }
 

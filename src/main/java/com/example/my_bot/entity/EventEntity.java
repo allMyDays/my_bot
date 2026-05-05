@@ -1,6 +1,5 @@
 package com.example.my_bot.entity;
 
-import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.MyEventType;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -15,7 +14,7 @@ import java.time.LocalTime;
 @Setter
 @NoArgsConstructor
 @Table(name = "event", indexes = @Index(name = "events_idx_chat_id", columnList = "chatId"))
-@Check(constraints = "(max_usage IS NULL AND period_in_seconds IS NULL) OR (max_usage IS NOT NULL AND period_in_seconds IS NOT NULL)")
+@Check(constraints = "(ae_max_usage IS NULL AND ae_period_in_seconds IS NULL) OR (ae_max_usage IS NOT NULL AND ae_period_in_seconds IS NOT NULL)")
 @Check(constraints = "(start_day_time IS NULL AND end_day_time IS NULL) OR (start_day_time IS NOT NULL AND end_day_time IS NOT NULL)")
 public class EventEntity {
     @Id
@@ -41,18 +40,21 @@ public class EventEntity {
     @Column(nullable = false)
     private String fullCommand;
 
-    @Column(name = "max_usage", nullable = true)
-    @Check(constraints = "max_usage >= 1")
-    private Integer maxUsage;
+    @Column(name = "ae_max_usage", nullable = true)
+    @Check(constraints = "ae_max_usage >= 1")
+    private Integer AEMaxUsage;
 
-    @Column(name = "period_in_seconds", nullable = true)
-    private Integer periodInSeconds;
+    @Column(name = "ae_period_in_seconds", nullable = true)
+    private Integer AEPeriodInSeconds;
 
     @Column(name = "start_day_time", nullable = true)
     private LocalTime startDayTime;
 
     @Column(name = "end_day_time", nullable = true)
     private LocalTime endDayTime;
+
+    @Column(name = "cd_period_in_seconds", nullable = true)
+    private Integer CDPeriodInSeconds;
 
     public EventEntity(Long chatId, MyEventType type, int rolePriority, String argument, long creatorId, String fullCommand) {
         this.chatId = chatId;

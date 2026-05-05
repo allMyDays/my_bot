@@ -12,6 +12,7 @@ import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.event.EventService;
+import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -87,9 +88,9 @@ public class AllEventsShowCommand implements ChatCommand {
                     .orElse("с приоритетом "+eventDto.getRolePriority());
 
             String desc = eventDto.getType().getDescription();
-            String eventView = eventDto.getMaxUsage()==null
+            String eventView = eventDto.getAEMaxUsage()==null
                     ? "событии «%s»".formatted(desc)
-                    : "достижении лимита действия «%s» в %d за %s".formatted(desc,eventDto.getMaxUsage(),formatDurationFromSeconds(eventDto.getPeriodInSeconds(), true));
+                    : "достижении лимита действия «%s» в %d за %s".formatted(desc,eventDto.getAEMaxUsage(),formatDurationFromSeconds(eventDto.getAEPeriodInSeconds(), true));
 
             sb.append("Выполнение команды «%s» при %s для роли %s и ниже."
                     .formatted(eventDto.getFullCommand(),eventView, roleName));
@@ -111,11 +112,17 @@ public class AllEventsShowCommand implements ChatCommand {
                 sb.append(" Аргумент: ").append(argView);
             } sb.append("\n");
             if(eventDto.getStartDayTime()!=null){
-                sb.append("\uD83D\uDD57Работает ежедневно с %s до %s %s."
+                sb.append("\uD83D\uDD57Работает ежедневно с %s до %s %s.\n"
                         .formatted(eventDto.getStartDayTime(), eventDto.getEndDayTime(), chatTimeZone)
                 );
             }
-
+            Integer cd = eventDto.getCDPeriodInSeconds();
+            if(cd!=null){
+                sb.append("⏳Кулдаун: ").append(cd == 0
+                        ? "отключён"
+                        : "реагирует на участника максимум 1 раз в %s".formatted(formatDurationFromSeconds(cd, true))
+                ).append("\n");
+            }
         }
 
 

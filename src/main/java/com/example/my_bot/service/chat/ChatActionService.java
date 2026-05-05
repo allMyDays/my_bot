@@ -85,12 +85,9 @@ public class ChatActionService {
 
         Optional<Instant> lastSync = chatDto.getOptionalLastSyncTime();
 
-        if (lastSync.isEmpty()||
-                Duration.between(lastSync.get(), Instant.now()).toMinutes() >= AUTO_SYNC_INTERVAL_MINUTES) {
-
+        if(lastSync.isEmpty()||Duration.between(lastSync.get(),Instant.now()).toMinutes()>=AUTO_SYNC_INTERVAL_MINUTES){
             memberService.synchronizeChatMembers(chatId);
         }
-
     }
 
     /**
