@@ -1,9 +1,11 @@
 package com.example.my_bot.enumeration.event;
 import static com.example.my_bot.enumeration.event.ChatEventType.*;
 import static com.example.my_bot.enumeration.event.EventArgumentType.*;
+import static com.example.my_bot.utils.ChatUtils.MAX_MESSAGE_LENGTH;
 import static com.example.my_bot.vk.enumeration.VkActionType.*;
 
 import com.example.my_bot.config.AdvancedEventConfig;
+import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.vk.enumeration.VkActionType;
 import com.example.my_bot.vk.enumeration.VkMessageAttachmentType;
 import lombok.Getter;
@@ -15,10 +17,10 @@ import java.util.stream.Collectors;
 
 
 public enum MyEventType {
-    ANY_MESSAGE("сообщение","Отправка любого сообщения", TEXT_OR_ATTACHMENT, new AdvancedEventConfig(true, false, 10_000)),
+    ANY_MESSAGE("сообщение","Отправка любого сообщения", TEXT_OR_ATTACHMENT, new AdvancedEventConfig(true, false, 20_000)),
 
 
-    INVITE_ANOTHER("приглашение", "Приглашение в чат", ACTION, Set.of(CHAT_INVITE_USER), new AdvancedEventConfig(true, false, 500)),
+    INVITE_ANOTHER("приглашение", "Приглашение в чат", ACTION, Set.of(CHAT_INVITE_USER), new AdvancedEventConfig(true, false, 1500)),
     KICK_ANOTHER("исключение","Исключение участника", ACTION, Set.of(CHAT_KICK_USER), new AdvancedEventConfig(true, false, 500)),
     ENTRANCE_BY_LINK("вход","Вход по ссылке", ACTION, Set.of(CHAT_INVITE_USER_BY_LINK), new AdvancedEventConfig(false, false)),
     CHANGE_TITLE("название","Смена названия чата",  ACTION, Set.of(CHAT_TITLE_UPDATE), new AdvancedEventConfig(true, false, 100)),
@@ -60,9 +62,9 @@ public enum MyEventType {
 
     WORD_FILTER("фильтр","Фильтр слов", TEXT, STRING,1,150,  new AdvancedEventConfig(true, true, 1_000)),
     STRICT_WORD_FILTER("строгийфильтр","Строгий фильтр слов", TEXT, STRING,1,150,new AdvancedEventConfig(true, true, 1_000)),
-    MAXIMUM_SYMBOLS("макссимволов","Максимальное количество символов", TEXT, INTEGER, 5, 600, new AdvancedEventConfig(true, false, 100_000)),
-    EMOJI_QUANTITY("эмоджи","Количество эмоджи",TEXT, INTEGER,1,3000,  new AdvancedEventConfig(true, false, 5_000)),
-    ROW_QUANTITY("строки","Количество строк", TEXT, INTEGER, 2, 300,  new AdvancedEventConfig(true, true, 5_000)),
+    MAXIMUM_SYMBOLS("макссимволов","Максимальное количество символов", TEXT, INTEGER, 5, MAX_MESSAGE_LENGTH, new AdvancedEventConfig(true, false, MAX_MESSAGE_LENGTH*25)),
+    EMOJI_QUANTITY("эмоджи","Количество эмоджи",TEXT, INTEGER,1,MAX_MESSAGE_LENGTH,  new AdvancedEventConfig(true, false, 15_000)),
+    ROW_QUANTITY("строки","Количество строк", TEXT, INTEGER, 2, MAX_MESSAGE_LENGTH,  new AdvancedEventConfig(true, true, MAX_MESSAGE_LENGTH*10)),
     ALL_MENTION("пушвсех","Упоминание всех участников", TEXT, new AdvancedEventConfig(true, false, 200)),
     ONLINE_MENTION("пушонлайн", "Упоминание всех онлайн участников", TEXT,  new AdvancedEventConfig(true, false, 200)),
     ANY_LINK("ссылка","Любая ссылка", TEXT,  new AdvancedEventConfig(true, false,500)),
@@ -71,9 +73,9 @@ public enum MyEventType {
     CAPS("капс", "сообщение КАПСом", TEXT, new AdvancedEventConfig(true, false,5_000)),
     REGEX_FILTER("регулярка","Регулярное выражение", TEXT, STRING,1,35,  new AdvancedEventConfig(true, true,1_000)),
     SELF_DESTRUCTING_MESSAGE("исчезающее", "Исчезающее сообщение", TEXT,  new AdvancedEventConfig(true, false,5_000)),
-    ANY_PUSH_QUANTITY("пуши","Количество пушей", TEXT, INTEGER, 1, 300,  new AdvancedEventConfig(true, false,5_000)),
+    ANY_PUSH_QUANTITY("пуши","Количество пушей", TEXT, INTEGER, 1, 1000,  new AdvancedEventConfig(true, false,10_000)),
     SAME_MESSAGES("одинаковые", "Одинаковые сообщения подряд", TEXT, INTEGER, 2, 100,  new AdvancedEventConfig(false, false)),
-    SHORT_MESSAGE("короткоесмс","Сообщение с минимальным количеством символов", TEXT, INTEGER, 1, 300, new AdvancedEventConfig(true, true,7_000));
+    SHORT_MESSAGE("короткоесмс","Сообщение с минимальным количеством символов", TEXT, INTEGER, 1, MAX_MESSAGE_LENGTH, new AdvancedEventConfig(true, true,7_000));
 
 
     @Getter

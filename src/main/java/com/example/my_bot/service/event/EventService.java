@@ -10,13 +10,16 @@ import com.example.my_bot.config.AdvancedEventConfig;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.event.EventDto;
+import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.entity.EventEntity;
 import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
+import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.event.*;
+import com.example.my_bot.exception.member.UserNeverBeenInChatException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.EventMapper;
 import com.example.my_bot.repository.EventRepository;
@@ -26,7 +29,6 @@ import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.TextUtils;
-import com.example.my_bot.utils.TimeUtils;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -66,6 +68,7 @@ public class EventService {
     private static final int ADVANCED_EVENT_MIN_USAGE = 2;
     private static final int DAILY_EVENT_MIN_DIFFERENCE_IN_SECONDS=30*60;
     private static final int COOLDOWN_MAX_PERIOD_IN_SECONDS = 3_600;
+    private final static int EXCEPTIONAL_MEMBERS_MAX_LIMIT = 20;
 
     @Autowired
     @Lazy
@@ -219,6 +222,59 @@ public class EventService {
         return eventMapper.toEventDto(event);
     }
 
+    @Transactional
+    public EventDto addMemberToExceptional(long eventId, long memberToAdd, long fromId){
+
+        EventEntity event = eventRepository.findById(eventId)
+                .orElseThrow(()->new EventNotFoundException(eventId));
+
+        Set<Long> exceptionalSet = event.getExceptionalMembers();
+        if(exceptionalSet.size()>=EXCEPTIONAL_MEMBERS_MAX_LIMIT){
+            throw new TooManyExceptionalMembersException();
+        }
+        roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
+
+        if(exceptionalSet.contains(memberToAdd)){
+            throw new IncorrectEventArgumentException("Данный участник уже находится в исключении у этого события.");
+        }
+        if(memberToAdd==fromId){
+            throw new CannotApplyThisCommandToYourselfException();
+        }
+        Optional<MemberDto> memberInfo = memberService.getCachedMemberInfo(event.getChatId(),memberToAdd);
+        if(memberInfo.isEmpty()){
+            throw new UserNeverBeenInChatException(memberToAdd);
+        }
+        if(!isEventRoleHighEnough(event.getRolePriority(), memberInfo.get().getRolePriority())){
+            throw new EventCannotReactToThisMemberException("\uD83E\uDD14Данное событие и так не реагирует на этого участника, нет смысла добавлять его в исключения.");
+
+        }
+        memberService.checkMemberInteractionAbility(event.getChatId(), fromId, memberToAdd);
+        exceptionalSet.add(memberToAdd);
+        invalidateEventsCache(event.getChatId());
+        return eventMapper.toEventDto(event);
+    }
+
+    @Transactional
+    public EventDto removeMemberFromExceptional(long eventId, long memberToAdd, long fromId){
+
+        EventEntity event = eventRepository.findById(eventId)
+                .orElseThrow(()->new EventNotFoundException(eventId));
+
+        roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
+
+        if(!event.getExceptionalMembers().contains(memberToAdd)){
+            throw new IncorrectEventArgumentException("Данный участник не находится в исключении у этого события.");
+        }
+        if(memberToAdd==fromId){
+            throw new CannotApplyThisCommandToYourselfException();
+        }
+        memberService.checkMemberInteractionAbility(event.getChatId(), fromId, memberToAdd);
+        event.getExceptionalMembers().remove(memberToAdd);
+        invalidateEventsCache(event.getChatId());
+        return eventMapper.toEventDto(event);
+    }
+
+
     public int countChatEvents(long chatId){
        return Math.toIntExact(getCachedChatEvents(chatId).values().stream().mapToLong(Set::size).sum());
 
@@ -332,6 +388,13 @@ public class EventService {
         if (pattern.contains(")+") || pattern.contains("++")) return false;
         return true;
     }
+
+    public boolean isEventRoleHighEnough(int eventRole, int memberRole){
+        return memberRole<=eventRole;
+
+    }
+
+
 
 
 

@@ -40,7 +40,6 @@ import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -108,9 +107,6 @@ public class EventExecutionService {
             .expireAfterWrite(1, TimeUnit.HOURS)
             .build();
 
-    // Генератор уникальных ID
-    private final static AtomicLong uniqueIdGen = new AtomicLong();
-
     // хранение подсчёта вызовов конкретного события для конкретного участника чата: (eventId + memberId) -> AtomicInteger
     private final static Cache<EventIdAndMemberIdKey, AtomicInteger> advancedEventCallCounters = Caffeine.newBuilder()
             .expireAfterWrite(getMaxPeriodForAdvancedEvents(), TimeUnit.SECONDS)
@@ -137,14 +133,9 @@ public class EventExecutionService {
             })
             .removalListener((EventIdAndMemberIdAndUniqueIdKey key, TimePeriodAndCallQuantity value, RemovalCause cause)->{
                 if(cause==RemovalCause.EXPIRED){
-                    EventIdAndMemberIdKey countKey = new EventIdAndMemberIdKey(key.getEventId(), key.getMemberId());
-                    advancedEventCallCounters.asMap().compute(countKey, (k, counter)->{
+                    advancedEventCallCounters.asMap().compute(key.eventIdAndMemberId(), (k, counter)->{
                         if(counter==null) return null;
-                        int callQuantity = value.getCallQuantity();
-                        if(callQuantity>0){
-                            callQuantity = -callQuantity;
-                        }
-                        long newValue = counter.addAndGet(callQuantity);
+                        long newValue = counter.addAndGet(Math.abs(value.getCallQuantity())*-1);
                         return (newValue>0)? counter : null;
                     });
                 }
@@ -182,6 +173,8 @@ public class EventExecutionService {
     public void executeRequiredChatEvents(VkMessage message){
         long chatId = ChatUtils.extractConversationId(message.getPeerId());
         long fromId = message.getFromId();
+        int chatMessageId = message.getConversationMessageId();
+
         int callerRole = memberService.getMemberRolePriority(chatId, fromId);
         ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventsCache = eventService.getCachedChatEvents(chatId);
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
@@ -215,7 +208,9 @@ public class EventExecutionService {
             if(requiredEvents!=null){
                 for(EventDto currentEvent: requiredEvents){
 
-                    if(callerRole>currentEvent.getRolePriority()){
+                    if(!eventService.isEventRoleHighEnough(currentEvent.getRolePriority(), callerRole)){
+                        continue;
+                    }if(currentEvent.getExceptionalMembers().contains(fromId)){
                         continue;
                     }
                     Integer cooldown = currentEvent.getCDPeriodInSeconds();
@@ -233,22 +228,22 @@ public class EventExecutionService {
                     switch (currentEvent.getType()){
                         case ANY_MESSAGE -> {
                             if(action==null){
-                                executeEvent(chatId, fromId, null, currentEvent,1);
+                                executeEvent(chatId, fromId, null, currentEvent,1, chatMessageId);
                             } continue;
                         }case FWD_QUANTITY -> {
                             int fwdQuantity = countForwardedMessages(message.getFwdMessages());
                             if(!isAdvancedEvent&&fwdQuantity<Integer.parseInt(currentEvent.getArgument())) continue;
-                            executeEvent(chatId, fromId, null, currentEvent, fwdQuantity);
+                            executeEvent(chatId, fromId, null, currentEvent, fwdQuantity, chatMessageId);
                             continue;
                         }
                     }
                     switch (chatEventType){
                         case ACTION -> {
-                            handleActionEvent(currentEvent, action, fromId, chatId);
+                            handleActionEvent(currentEvent, action, fromId, chatId, chatMessageId);
                         }case TEXT -> {
-                            handleTextEvent(currentEvent, userText, attachments.size(), fromId, chatId, message.getExpireTTL()!=null, isAdvancedEvent);
+                            handleTextEvent(currentEvent, userText, attachments.size(), fromId, chatId,  chatMessageId, message.getExpireTTL()!=null, isAdvancedEvent);
                         }case ATTACHMENTS -> {
-                            handleAttachmentEvent(currentEvent, attachments, attachmentMap, fromId, chatId, isAdvancedEvent);
+                            handleAttachmentEvent(currentEvent, attachments, attachmentMap, fromId, chatId, chatMessageId, isAdvancedEvent);
                         }
                     }
                 }
@@ -259,7 +254,7 @@ public class EventExecutionService {
               }
         }
     }
-    private void handleActionEvent(@NonNull EventDto eventDto,@NonNull VkAction action, long fromId, long chatId){
+    private void handleActionEvent(@NonNull EventDto eventDto,@NonNull VkAction action, long fromId, long chatId, int chatMessageId){
         MyEventType eventType = eventDto.getType();
         if(eventType.getChatEventType()!=ACTION) return;
 
@@ -303,10 +298,10 @@ public class EventExecutionService {
                  }
              }
          }
-         executeEvent(chatId, fromId, memberId, eventDto, 1);
+         executeEvent(chatId, fromId, memberId, eventDto, 1, chatMessageId);
      }
 
-     private void handleAttachmentEvent(@NonNull EventDto eventDto, @NonNull List <VkMessageAttachment> allAttachmentsList, @NonNull Map<VkMessageAttachmentType, List<VkMessageAttachment>> allAttachmentsMap, long fromId, long chatId, boolean isAdvancedEvent){
+     private void handleAttachmentEvent(@NonNull EventDto eventDto, @NonNull List <VkMessageAttachment> allAttachmentsList, @NonNull Map<VkMessageAttachmentType, List<VkMessageAttachment>> allAttachmentsMap, long fromId, long chatId, int chatMessageId, boolean isAdvancedEvent){
         MyEventType eventType = eventDto.getType();
         if(eventType.getChatEventType()!=ATTACHMENTS) return;
 
@@ -339,7 +334,7 @@ public class EventExecutionService {
                 }else{
                     if(duration<=intArg) return;
                 }
-                executeEvent(chatId, fromId, null, eventDto,1);
+                executeEvent(chatId, fromId, null, eventDto,1, chatMessageId);
                 return;
             }
             case VIDEO_MESSAGE, VK_CLIP-> {
@@ -350,7 +345,7 @@ public class EventExecutionService {
                 }else{
                     if(videoType!=VideoType.SHORT_VIDEO) return;
                 }
-                executeEvent(chatId, fromId, null, eventDto, 1);
+                executeEvent(chatId, fromId, null, eventDto, 1, chatMessageId);
                 return;
             }
             case VIDEO -> {
@@ -362,10 +357,10 @@ public class EventExecutionService {
                 return;   // вложения искомого типа есть, но их недостаточно
             }
         }
-        executeEvent(chatId, fromId, null, eventDto, currentTypeAttachments.size());
+        executeEvent(chatId, fromId, null, eventDto, currentTypeAttachments.size(), chatMessageId);
     }
 
-    private void handleTextEvent(@NonNull EventDto eventDto, @NonNull String userText, int attachmentsSize, long fromId, long chatId, boolean isSelfDestructing, boolean isAdvancedEvent){
+    private void handleTextEvent(@NonNull EventDto eventDto, @NonNull String userText, int attachmentsSize, long fromId, long chatId, int chatMessageId, boolean isSelfDestructing, boolean isAdvancedEvent){
         MyEventType eventType = eventDto.getType();
         if(eventType.getChatEventType()!=TEXT) return;
 
@@ -483,23 +478,39 @@ public class EventExecutionService {
         if(eventType!=SHORT_MESSAGE){
             if(!isAdvancedEvent&&intArg!=null&&callQuantity<intArg) return;
         }
-        executeEvent(chatId, fromId, null, eventDto,callQuantity);
+        executeEvent(chatId, fromId, null, eventDto,callQuantity, chatMessageId);
     }
 
-   private void executeEvent(long chatId, long fromId, @Nullable Long memberId, @NonNull EventDto eventDto, int callQuantity){
+   private void executeEvent(long chatId, long fromId, @Nullable Long memberId, @NonNull EventDto eventDto, int callQuantity, int chatMessageId){
        if(callQuantity<=0) return;
+       EventIdAndMemberIdKey eventKey=null;
+
 
        if(eventDto.getAEMaxUsage()!=null){
-           int allEventCalls = advancedEventCallCounters.get(new EventIdAndMemberIdKey(eventDto.getId(),fromId),
-                   k-> new AtomicInteger()).addAndGet(callQuantity);
+           eventKey = new EventIdAndMemberIdKey(eventDto.getId(),fromId);
+
+           int allEventCalls = advancedEventCallCounters.get(eventKey, k-> new AtomicInteger()).addAndGet(callQuantity);
            advancedEventCalls.put(
-                   new EventIdAndMemberIdAndUniqueIdKey(eventDto.getId(),fromId,uniqueIdGen.getAndIncrement()),
+                   new EventIdAndMemberIdAndUniqueIdKey(eventKey, chatMessageId),
                    new TimePeriodAndCallQuantity(eventDto.getAEPeriodInSeconds(),callQuantity)
            );
            if(allEventCalls<eventDto.getAEMaxUsage()){
+
                return;
            }
        }
+
+       Integer cdPeriod = eventDto.getCDPeriodInSeconds();
+       if(cdPeriod!=null&&cdPeriod>0){
+           if(eventKey==null){
+              eventKey = new EventIdAndMemberIdKey(eventDto.getId(), fromId);
+           }
+           Integer existingValue = eventCoolDownCalls.asMap().putIfAbsent(eventKey, cdPeriod);
+           if(existingValue!=null){  // другой поток уже успел завладеть
+               return;
+           }
+       }
+
        String fullCommand = USER_PARAMETER_PATTERN
                .matcher(eventDto.getFullCommand())
                .replaceAll(createMemberLink(fromId));
@@ -514,7 +525,7 @@ public class EventExecutionService {
            commandDispatcher.dispatch(
                    commandMapper.toCommandMessageDto(chatId, eventDto.getCreatorId(), fullCommand, true)
            );
-       }catch (Exception e) {
+       }catch (Exception e){
            log.warn("error while execution event {} in chat {}.", eventDto.getId(), chatId, e);
            try {
                String message = "Ваше событие с командой «%s» завершилось с ошибкой. Возможно, вам следует его удалить."
@@ -523,10 +534,6 @@ public class EventExecutionService {
            } catch (Exception ex) {
                log.warn("chat {}: Failed to send notification about error while execution event {}", chatId, eventDto.getId(), ex);
            }
-       }
-       Integer cooldown = eventDto.getCDPeriodInSeconds();
-       if(cooldown!=null&&cooldown>0){
-           eventCoolDownCalls.put(new EventIdAndMemberIdKey(eventDto.getId(), fromId), cooldown);
        }
    }
     private int countForwardedMessages(List<ForeignMessage> fwMessages){

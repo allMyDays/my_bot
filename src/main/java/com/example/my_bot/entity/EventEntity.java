@@ -8,6 +8,8 @@ import lombok.Setter;
 import org.hibernate.annotations.Check;
 
 import java.time.LocalTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -55,6 +57,9 @@ public class EventEntity {
 
     @Column(name = "cd_period_in_seconds", nullable = true)
     private Integer CDPeriodInSeconds;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    private Set<Long> exceptionalMembers = new HashSet<>();
 
     public EventEntity(Long chatId, MyEventType type, int rolePriority, String argument, long creatorId, String fullCommand) {
         this.chatId = chatId;

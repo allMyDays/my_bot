@@ -317,7 +317,7 @@ public class MemberService {
         return member.map(MemberDto::isChatAdmin).orElse(false);
     }
 
-    private Optional<MemberDto> getCachedMemberInfo(long chatId, long memberId){
+    public Optional<MemberDto> getCachedMemberInfo(long chatId, long memberId){
 
         ConcurrentHashMap<Long, Optional<MemberDto>> members = cacheManager.getActiveMembersCache().get(chatId,k->new ConcurrentHashMap<>());
         return members.computeIfAbsent(memberId, key-> {

@@ -8,6 +8,10 @@ public class ChatUtils {
 
     public final static long PEER_ID_CHAT_OFFSET = 2_000_000_000L;
 
+    public final static int MAX_MESSAGE_LENGTH = 4096;
+
+
+
 
     public static long extractConversationId(long peerId){
         if (peerId >= PEER_ID_CHAT_OFFSET) {

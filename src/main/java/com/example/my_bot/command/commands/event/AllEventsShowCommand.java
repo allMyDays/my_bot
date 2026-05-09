@@ -9,9 +9,11 @@ import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
+import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.event.EventService;
+import com.example.my_bot.utils.TextUtils;
 import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -22,6 +24,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.utils.TextUtils.*;
@@ -120,8 +124,17 @@ public class AllEventsShowCommand implements ChatCommand {
             if(cd!=null){
                 sb.append("⏳Кулдаун: ").append(cd == 0
                         ? "отключён"
-                        : "реагирует на участника максимум 1 раз в %s".formatted(formatDurationFromSeconds(cd, true))
+                        : "наказывает участника максимум 1 раз в %s".formatted(formatDurationFromSeconds(cd, true))
                 ).append("\n");
+            }
+            if(!eventDto.getExceptionalMembers().isEmpty()){
+                AtomicInteger atomicInteger = new AtomicInteger();
+                String members = eventDto.getExceptionalMembers().stream()
+                        .map(m->"%s(%s)".formatted(createMention(m), atomicInteger.incrementAndGet()))
+                        .collect(Collectors.joining(", "));
+
+                sb.append("❌Не реагирует на: ").append(members).append("\n");
+
             }
         }
 
