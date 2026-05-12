@@ -27,8 +27,9 @@ services:
     image: boro/localtunnel-client:latest
     container_name: lt-for-bot
     restart: unless-stopped
-    command: --local-host host.docker.internal --port 6480 --subdomain mycoolbot
+    command: --local-host host.docker.internal --port 6480 --subdomain mycoolvkmanager
     network_mode: "host"
+
 
 
 

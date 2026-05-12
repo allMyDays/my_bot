@@ -30,7 +30,8 @@ spring:
 
 
 vk:
+  mode: longpoll
   group:
    id: 194191149
    token: vk1.a.2eXAaw-0fKXjILCQrVtywe_Itf-I9N9uJY5rXZAA-PSNOvUXA6KGA8ZqaPj9GaLH1UEjzGXnxFrHdInuIbO7hfNgfLFgsM_v9_2ovTsYj97cadVOYaAugljO3Iy8O6Y08lpdbpjPUNs7qvc5PpBzOvhLCwPPxhSXL8EeocxpLfugvy16KadQA4pEQ6hfD7y5
-   confirmation: 718bd3fa
+   confirmation: 3f4db39e

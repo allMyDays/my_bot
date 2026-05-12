@@ -44,13 +44,13 @@ public class VkChatClient{
     private final long groupId;
     private MemberService memberService;
 
-    public VkChatClient(
-            @Value("${vk.group.id}") long groupId,
-            @Value("${vk.group.token}") String accessToken){
-        this.vkApiClient = new VkApiClient(new HttpTransportClient());
-        this.groupActor =  new GroupActor(groupId, accessToken);
-        this.groupId = groupId;
+    public VkChatClient(VkApiClient vkApiClient, GroupActor groupActor) {
+        this.vkApiClient = vkApiClient;
+        this.groupActor = groupActor;
+        this.groupId = groupActor.getGroupId();
     }
+
+
     @Autowired
     @Lazy
     public void setMemberService(MemberService memberService) {

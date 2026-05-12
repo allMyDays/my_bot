@@ -9,9 +9,9 @@ import java.time.Instant;
 @Entity
 @Getter
 @Setter
-@Table(indexes = @Index(name = "idx_unban_at", columnList = "unbanAt"),
+@Table(indexes = @Index(name = "idx_banned_until", columnList = "banned_until"),
         name = "bans",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"chat_id", "user_id"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"chat_id", "member_id"}))
 public class BanEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
