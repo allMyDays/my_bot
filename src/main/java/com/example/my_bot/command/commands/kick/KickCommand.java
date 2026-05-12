@@ -28,7 +28,7 @@ import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 public class KickCommand implements ChatCommand {
 
     @Getter
-    private final CommandCooldown cooldown = new CommandCooldown(20,60);
+    private final CommandCooldown cooldown = new CommandCooldown(30,60);
 
     private VkChatClient vkChatClient;
 

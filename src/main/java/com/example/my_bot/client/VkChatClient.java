@@ -2,6 +2,7 @@ package com.example.my_bot.client;
 
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.utils.ChatUtils;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -33,8 +34,7 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 
 import static com.example.my_bot.enumeration.member.MemberPresenceType.KICKED;
-import static com.example.my_bot.utils.ChatUtils.convertToPeerId;
-import static com.example.my_bot.utils.ChatUtils.isGroupId;
+import static com.example.my_bot.utils.ChatUtils.*;
 
 @Component
 @Slf4j
@@ -57,15 +57,29 @@ public class VkChatClient{
         this.memberService = memberService;
     }
 
-    public void sendText(String text, long peerId, boolean disableMentions) throws ClientException, ApiException {
+
+  public void sendText(String text, long peerId, boolean disableMentions) throws ClientException, ApiException{
+
+      while (text.length()>MAX_MESSAGE_LENGTH){
+          int cutIndex=text.lastIndexOf(" ", MAX_MESSAGE_LENGTH);
+          if(cutIndex==-1){
+              cutIndex = MAX_MESSAGE_LENGTH;
+          }
+          String part = text.substring(0, cutIndex);
+          sendNotLongText(part, peerId, disableMentions);
+          text = text.substring(cutIndex).trim();
+      }
+      sendNotLongText(text, peerId, disableMentions);
+  }
+
+    private void sendNotLongText(String text, long peerId, boolean disableMentions) throws ClientException, ApiException{
         vkApiClient.messages()
                 .sendDeprecated(groupActor)
                 .peerId(peerId)
                 .message(text)
                 .disableMentions(disableMentions)
-                .randomId((int) (System.currentTimeMillis() & 0xFFFFFFFFL))
+                .randomId((int) System.currentTimeMillis())
                 .execute();
-
     }
 
     public List<ConversationMember> getAllConversationMembers(long chatId) throws ClientException, ApiException {
