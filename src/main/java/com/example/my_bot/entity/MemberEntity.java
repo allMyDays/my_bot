@@ -38,7 +38,6 @@ public class MemberEntity {
     @Column(nullable = false)
     private MemberPresenceType presenceType;
 
-
     @Column(nullable = true)
     private Long invitedById;
 

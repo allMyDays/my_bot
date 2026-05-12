@@ -6,7 +6,6 @@ import jakarta.annotation.Nullable;
 import lombok.*;
 
 import java.time.LocalTime;
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -28,17 +27,31 @@ public class EventDto {
 
     private final Integer AEMaxUsage;
 
-    private final Integer AEPeriodInSeconds;
+    private final Integer AEPeriodSec;
 
     private final LocalTime startDayTime;
 
     private final LocalTime endDayTime;
 
-    private final Integer CDPeriodInSeconds;
+    private final Integer CDPeriodSec;
 
     private final ImmutableSet<Long> exceptionalMembers;
 
-    public EventDto(long id, @NonNull MyEventType type, int rolePriority, @Nullable String argument, long creatorId, @NonNull String fullCommand, @Nullable Integer AEMaxUsage, @Nullable Integer AEPeriodInSeconds, @Nullable LocalTime startDayTime, @Nullable LocalTime endDayTime, Integer CDPeriodInSeconds, @Nullable Set<Long> exceptionalMembers) {
+    private final Integer newMembersPeriodSec;
+
+    public EventDto(long id,
+                    @NonNull MyEventType type,
+                    int rolePriority,
+                    @Nullable String argument,
+                    long creatorId,
+                    @NonNull String fullCommand,
+                    @Nullable Integer AEMaxUsage,
+                    @Nullable Integer AEPeriodSec,
+                    @Nullable LocalTime startDayTime,
+                    @Nullable LocalTime endDayTime,
+                    @Nullable Integer CDPeriodSec,
+                    @Nullable Set<Long> exceptionalMembers,
+                    @Nullable Integer newMembersPeriodSec) {
         this.id = id;
         this.type = type;
         this.rolePriority = rolePriority;
@@ -46,10 +59,11 @@ public class EventDto {
         this.creatorId = creatorId;
         this.fullCommand = fullCommand;
         this.AEMaxUsage = AEMaxUsage;
-        this.AEPeriodInSeconds = AEPeriodInSeconds;
+        this.AEPeriodSec = AEPeriodSec;
         this.startDayTime = startDayTime;
         this.endDayTime = endDayTime;
-        this.CDPeriodInSeconds = CDPeriodInSeconds;
+        this.CDPeriodSec = CDPeriodSec;
+        this.newMembersPeriodSec = newMembersPeriodSec;
 
         ImmutableSet.Builder<Long> builder = new ImmutableSet.Builder<>();
         if(exceptionalMembers!=null){

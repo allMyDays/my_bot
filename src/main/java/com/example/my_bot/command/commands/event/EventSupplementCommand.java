@@ -47,6 +47,8 @@ public class EventSupplementCommand implements ChatCommand {
 
     private final UserInputResolver userInputResolver;
 
+    private final static String REMOVE_ARGUMENT = "удалить";
+
     private final static String ACTION_LIMIT_ARGUMENT = "лимитдействия";
 
     private final static String WORK_TIME_ARGUMENT = "времяработы";
@@ -55,7 +57,7 @@ public class EventSupplementCommand implements ChatCommand {
 
     private final static String EXCEPTIONAL_ARGUMENT = "исключение";
 
-    private final static String EXCEPTIONAL_REMOVE_ARGUMENT = "удалить";
+    private final static String NEW_MEMBERS_ARGUMENT = "дляновичков";
 
     private final static Pattern WORK_TIME_PATTERN = Pattern.compile("(([01][0-9]|2[0-3]):[0-5][0-9])-(([01][0-9]|2[0-3]):[0-5][0-9])");
 
@@ -114,7 +116,7 @@ public class EventSupplementCommand implements ChatCommand {
                 // !дополнитьивент 1 исключение удалить @durov
 
                 boolean remove = false;
-                if(args[2].equalsIgnoreCase(EXCEPTIONAL_REMOVE_ARGUMENT)){
+                if(args[2].equalsIgnoreCase(REMOVE_ARGUMENT)){
                     if(args.length<4){
                         vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId,true);
                         return;
@@ -162,7 +164,7 @@ public class EventSupplementCommand implements ChatCommand {
                     return;
                 }
                 message = "✅Вы успешно добавили событию №%d («%s») лимит действия в %d за %s\n❓Теперь команда, указанная в этом событии, будет активироваться только по достижении участником данного лимита за данный период времени (для события «%s»)."
-                        .formatted(outerEventId,editedEvent.getType().getDescription(), editedEvent.getAEMaxUsage(),formatDurationFromSeconds(editedEvent.getAEPeriodInSeconds(),true),editedEvent.getType().getDescription());
+                        .formatted(outerEventId,editedEvent.getType().getDescription(), editedEvent.getAEMaxUsage(),formatDurationFromSeconds(editedEvent.getAEPeriodSec(),true),editedEvent.getType().getDescription());
 
                 vkChatClient.sendText(message,peerId, true);
 
@@ -183,15 +185,35 @@ public class EventSupplementCommand implements ChatCommand {
                     vkChatClient.sendText(e.getMessage(), peerId,true);
                     return;
                 }
-                int cdPeriod = editedEvent.getCDPeriodInSeconds();
+                int cdPeriod = editedEvent.getCDPeriodSec();
                 String eventDesc = editedEvent.getType().getDescription();
                 if(cdPeriod==0){
                     message= "✅Вы успешно отключили кулдаун срабатывания для события №%d («%s»)."
                             .formatted(outerEventId,eventDesc);
                 }else{
                     message = ("✅Вы успешно добавили событию №%d («%s») кулдаун срабатывания.\n❓Теперь команда, указанная в событии, будет активироваться на одного участника максимум один раз в %s")
-                            .formatted(outerEventId,eventDesc,formatDurationFromSeconds(editedEvent.getCDPeriodInSeconds(),true));
+                            .formatted(outerEventId,eventDesc,formatDurationFromSeconds(editedEvent.getCDPeriodSec(),true));
                 }
+                vkChatClient.sendText(message,peerId, true);
+            }
+            case NEW_MEMBERS_ARGUMENT -> {  // !дополнитьивент 1 дляновичков 26 часов
+                if(args.length<4){
+                    vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId,true);
+                    return;
+                }
+                Optional<Long> timePeriodInSeconds =TimeUtils.toSecondsFromString(args[2],args[3]);
+                if(timePeriodInSeconds.isEmpty()){
+                    vkChatClient.sendText(INVALID_TIME_PERIOD_MESSAGE, peerId,true);
+                    return;
+                }
+                try{
+                    editedEvent = eventService.setNewMembersTimePeriod(eventEntityId,timePeriodInSeconds.get(),fromId);
+                }catch (EventException | RoleException e){
+                    vkChatClient.sendText(e.getMessage(), peerId,true);
+                    return;
+                }
+                message = "✅Теперь событие №%d («%s») будет срабатывать только на новых участников, впервые появившихся в чате менее чем %s назад."
+                            .formatted(outerEventId,editedEvent.getType().getDescription(),formatDurationFromSeconds(editedEvent.getNewMembersPeriodSec(),true));
                 vkChatClient.sendText(message,peerId, true);
             }
             default -> {

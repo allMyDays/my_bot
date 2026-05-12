@@ -47,7 +47,7 @@ public class EventEntity {
     private Integer AEMaxUsage;
 
     @Column(name = "ae_period_in_seconds", nullable = true)
-    private Integer AEPeriodInSeconds;
+    private Integer AEPeriodSec;
 
     @Column(name = "start_day_time", nullable = true)
     private LocalTime startDayTime;
@@ -56,10 +56,15 @@ public class EventEntity {
     private LocalTime endDayTime;
 
     @Column(name = "cd_period_in_seconds", nullable = true)
-    private Integer CDPeriodInSeconds;
+    private Integer CDPeriodSec;
 
     @ElementCollection(fetch = FetchType.EAGER)
     private Set<Long> exceptionalMembers = new HashSet<>();
+
+    @Column(name = "new_members_period_in_seconds", nullable = true)
+    private Integer newMembersPeriodSec;
+
+
 
     public EventEntity(Long chatId, MyEventType type, int rolePriority, String argument, long creatorId, String fullCommand) {
         this.chatId = chatId;

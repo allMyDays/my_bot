@@ -109,7 +109,6 @@ public class MemberService {
                 newMembers.add(entity);
                 entity.setInvitedById(vkMember.getInvitedBy());
             }
-
             entity.setPresenceType(IN_CHAT);
             if (Boolean.TRUE.equals(vkMember.getIsOwner())) {
                 entity.setRolePriority(CHAT_CREATOR.getRolePriority());
@@ -141,6 +140,11 @@ public class MemberService {
     public int getMemberRolePriority(long chatId, long userId){
         Optional<MemberDto> member = getCachedMemberInfo(chatId, userId);
         return member.map(MemberDto::getRolePriority).orElse(MEMBER.getRolePriority());
+
+    }
+    public Optional<Instant> getFirstAppearance(long chatId, long userId){
+        Optional<MemberDto> member = getCachedMemberInfo(chatId, userId);
+        return member.map(MemberDto::getFirstAppearance);
 
     }
 

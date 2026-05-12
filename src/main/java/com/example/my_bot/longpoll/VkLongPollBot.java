@@ -12,7 +12,6 @@ import com.vk.api.sdk.objects.callback.longpoll.responses.GetLongPollEventsRespo
 import com.vk.api.sdk.objects.groups.LongPollServer;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -75,7 +74,6 @@ public class VkLongPollBot {
         }
 
         while (running && !Thread.currentThread().isInterrupted()) {
-
             try {
                 GetLongPollEventsResponse response = vkApiClient.longPoll()
                         .getEvents(serverData.server(), serverData.key(), serverData.ts())
@@ -105,11 +103,6 @@ public class VkLongPollBot {
 
             }catch (ApiException e){
                 log.warn("Ошибка VK API. Код: {}, сообщение: {}", e.getCode(), e.getMessage());
-
-                /*
-                 * VK LongPoll требует обновить server/key/ts
-                 * при некоторых кодах ошибок.
-                 */
                 serverData = refreshLongPollServer(groupActor);
 
                 if(serverData==null){

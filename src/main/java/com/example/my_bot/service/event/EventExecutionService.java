@@ -36,6 +36,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.*;
@@ -179,6 +180,7 @@ public class EventExecutionService {
         ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventsCache = eventService.getCachedChatEvents(chatId);
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
         LocalTime nowInTheChat = LocalTime.now(chatTimeZone.getZoneOffset());
+        Instant nowInstant = Instant.now();
 
         VkAction action = message.getAction();
         List<VkMessageAttachment> attachments = message.getAttachments();
@@ -213,8 +215,8 @@ public class EventExecutionService {
                     }if(currentEvent.getExceptionalMembers().contains(fromId)){
                         continue;
                     }
-                    Integer cooldown = currentEvent.getCDPeriodInSeconds();
-                    if(cooldown!=null&&cooldown>0){
+                    Integer CDPeriod = currentEvent.getCDPeriodSec();
+                    if(CDPeriod!=null&&CDPeriod>0){
                         if(eventCoolDownCalls.getIfPresent(new EventIdAndMemberIdKey(currentEvent.getId(), fromId))!=null){
                             continue;
                         }
@@ -224,7 +226,13 @@ public class EventExecutionService {
                          continue;
                         }
                     }
-                    boolean isAdvancedEvent = currentEvent.getAEPeriodInSeconds()!=null;
+                    Integer newMembersPeriod = currentEvent.getNewMembersPeriodSec();
+                    if(newMembersPeriod!=null&&newMembersPeriod>0){
+                        if(!isNewMember(nowInstant, memberService.getFirstAppearance(chatId,fromId).orElse(nowInstant),newMembersPeriod)){
+                            continue;
+                        }
+                    }
+                    boolean isAdvancedEvent = currentEvent.getAEPeriodSec()!=null;
                     switch (currentEvent.getType()){
                         case ANY_MESSAGE -> {
                             if(action==null){
@@ -492,7 +500,7 @@ public class EventExecutionService {
            int allEventCalls = advancedEventCallCounters.get(eventKey, k-> new AtomicInteger()).addAndGet(callQuantity);
            advancedEventCalls.put(
                    new EventIdAndMemberIdAndUniqueIdKey(eventKey, chatMessageId),
-                   new TimePeriodAndCallQuantity(eventDto.getAEPeriodInSeconds(),callQuantity)
+                   new TimePeriodAndCallQuantity(eventDto.getAEPeriodSec(),callQuantity)
            );
            if(allEventCalls<eventDto.getAEMaxUsage()){
 
@@ -500,7 +508,7 @@ public class EventExecutionService {
            }
        }
 
-       Integer cdPeriod = eventDto.getCDPeriodInSeconds();
+       Integer cdPeriod = eventDto.getCDPeriodSec();
        if(cdPeriod!=null&&cdPeriod>0){
            if(eventKey==null){
               eventKey = new EventIdAndMemberIdKey(eventDto.getId(), fromId);
@@ -558,6 +566,10 @@ public class EventExecutionService {
             return !now.isBefore(start)||now.isBefore(end);
         }
     }
+    private boolean isNewMember(@NonNull Instant now, @NonNull Instant memberJoinDate, int period){
+        return !memberJoinDate.isBefore(now.minusSeconds(period));
+    }
+
 
 
 

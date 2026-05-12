@@ -7,6 +7,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @AllArgsConstructor
 @Setter
 @Getter
@@ -19,5 +21,7 @@ public class MemberDto {
     private boolean isChatAdmin;
 
     private MemberPresenceType presenceType;
+
+    private Instant firstAppearance;
 
 }

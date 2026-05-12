@@ -69,6 +69,8 @@ public class EventService {
     private static final int DAILY_EVENT_MIN_DIFFERENCE_IN_SECONDS=30*60;
     private static final int COOLDOWN_MAX_PERIOD_IN_SECONDS = 3_600;
     private final static int EXCEPTIONAL_MEMBERS_MAX_LIMIT = 20;
+    private static final int NEW_MEMBERS_MAX_PERIOD_IN_SECONDS = 864_000;
+
 
     @Autowired
     @Lazy
@@ -172,7 +174,7 @@ public class EventService {
                     .formatted(ADVANCED_EVENT_MIN_USAGE,eventMaxUsage));
         }
         event.setAEMaxUsage(maxUsage);
-        event.setAEPeriodInSeconds((int)periodInSeconds);
+        event.setAEPeriodSec((int)periodInSeconds);
         if(!advancedConfig.isEventArgumentRequired()){
             event.setArgument(null);
         }
@@ -207,7 +209,7 @@ public class EventService {
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
 
-        if(event.getCDPeriodInSeconds()!=null){
+        if(event.getCDPeriodSec()!=null){
             throw new CurrentEventAlreadyHasCooldownException();
         }
         roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
@@ -217,10 +219,29 @@ public class EventService {
             throw new IncorrectEventArgumentException("Максимальный период для кулдауна — %s"
                     .formatted(formatDurationFromSeconds(COOLDOWN_MAX_PERIOD_IN_SECONDS,true)));
         }
-        event.setCDPeriodInSeconds((int)periodInSeconds);
+        event.setCDPeriodSec((int)periodInSeconds);
         invalidateEventsCache(event.getChatId());
         return eventMapper.toEventDto(event);
     }
+
+    @Transactional
+    public EventDto setNewMembersTimePeriod(long eventId, long periodInSeconds, long fromId){
+
+        EventEntity event = eventRepository.findById(eventId)
+                .orElseThrow(()->new EventNotFoundException(eventId));
+
+        roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
+
+        if(periodInSeconds<0) periodInSeconds=0;
+        if(periodInSeconds>NEW_MEMBERS_MAX_PERIOD_IN_SECONDS){
+            throw new IncorrectEventArgumentException("Максимальный период, за который участник может считаться новичком — %s"
+                    .formatted(formatDurationFromSeconds(NEW_MEMBERS_MAX_PERIOD_IN_SECONDS,true)));
+        }
+        event.setNewMembersPeriodSec((int)periodInSeconds);
+        invalidateEventsCache(event.getChatId());
+        return eventMapper.toEventDto(event);
+    }
+
 
     @Transactional
     public EventDto addMemberToExceptional(long eventId, long memberToAdd, long fromId){

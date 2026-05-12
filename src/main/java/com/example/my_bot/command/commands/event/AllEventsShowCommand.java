@@ -9,11 +9,9 @@ import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
-import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.event.EventService;
-import com.example.my_bot.utils.TextUtils;
 import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -23,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
+import java.sql.Time;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -94,7 +93,7 @@ public class AllEventsShowCommand implements ChatCommand {
             String desc = eventDto.getType().getDescription();
             String eventView = eventDto.getAEMaxUsage()==null
                     ? "событии «%s»".formatted(desc)
-                    : "достижении лимита действия «%s» в %d за %s".formatted(desc,eventDto.getAEMaxUsage(),formatDurationFromSeconds(eventDto.getAEPeriodInSeconds(), true));
+                    : "достижении лимита действия «%s» в %d за %s".formatted(desc,eventDto.getAEMaxUsage(),formatDurationFromSeconds(eventDto.getAEPeriodSec(), true));
 
             sb.append("Выполнение команды «%s» при %s для роли %s и ниже."
                     .formatted(eventDto.getFullCommand(),eventView, roleName));
@@ -120,7 +119,7 @@ public class AllEventsShowCommand implements ChatCommand {
                         .formatted(eventDto.getStartDayTime(), eventDto.getEndDayTime(), chatTimeZone)
                 );
             }
-            Integer cd = eventDto.getCDPeriodInSeconds();
+            Integer cd = eventDto.getCDPeriodSec();
             if(cd!=null){
                 sb.append("⏳Кулдаун: ").append(cd == 0
                         ? "отключён"
@@ -134,8 +133,13 @@ public class AllEventsShowCommand implements ChatCommand {
                         .collect(Collectors.joining(", "));
 
                 sb.append("❌Не реагирует на: ").append(members).append("\n");
-
             }
+            if(eventDto.getNewMembersPeriodSec()!=null){
+                sb.append("⌚Только для новичков, находившихся в чате менее чем ")
+                        .append(TimeUtils.formatDurationFromSeconds(eventDto.getNewMembersPeriodSec(), true))
+                        .append("\n");
+            }
+
         }
 
 
