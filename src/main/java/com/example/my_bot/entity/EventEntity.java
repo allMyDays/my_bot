@@ -39,7 +39,7 @@ public class EventEntity {
     @Column(nullable = false)
     private long creatorId;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String fullCommand;
 
     @Column(name = "ae_max_usage", nullable = true)
@@ -64,14 +64,17 @@ public class EventEntity {
     @Column(name = "new_members_period_in_seconds", nullable = true)
     private Integer newMembersPeriodSec;
 
+    private boolean delete;
 
 
-    public EventEntity(Long chatId, MyEventType type, int rolePriority, String argument, long creatorId, String fullCommand) {
+
+    public EventEntity(Long chatId, MyEventType type, int rolePriority, String argument, long creatorId, String fullCommand, boolean delete) {
         this.chatId = chatId;
         this.type = type;
         this.rolePriority = rolePriority;
         this.argument = argument;
         this.creatorId = creatorId;
         this.fullCommand = fullCommand;
+        this.delete = delete;
     }
 }

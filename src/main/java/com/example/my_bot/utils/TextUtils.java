@@ -1,5 +1,6 @@
 package com.example.my_bot.utils;
 
+import jakarta.annotation.Nullable;
 import lombok.NonNull;
 
 import java.util.Arrays;
@@ -63,7 +64,8 @@ public class TextUtils {
 
     }
 
-    public static String cutDefaultPrefix(@NonNull String command){
+    public static String cutDefaultPrefix(@Nullable String command){
+        if (command==null) return null;
         command = command.trim();
         if(!command.isEmpty()){
             if(command.charAt(0)==DEFAULT_CHAT_PREFIX){

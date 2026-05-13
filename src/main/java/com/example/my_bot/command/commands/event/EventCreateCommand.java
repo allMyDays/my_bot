@@ -22,6 +22,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
@@ -41,6 +44,10 @@ public class EventCreateCommand implements ChatCommand {
     private VkChatClient vkChatClient;
 
     private RoleService roleService;
+
+    private final static String DELETE_PARAMETER = "&delete";
+    private final static Pattern DELETE_PARAMETER_PATTERN =  Pattern.compile(DELETE_PARAMETER, Pattern.CASE_INSENSITIVE);
+
 
     @Autowired
     @Lazy
@@ -88,14 +95,23 @@ public class EventCreateCommand implements ChatCommand {
 
         EventEntity createdEvent;
         eventRole=eventRole.trim();
+
+        boolean delete = false;
+
+        Matcher deleteMatcher = DELETE_PARAMETER_PATTERN.matcher(fullCommand);
+        if(deleteMatcher.find()){
+            delete = true;
+            fullCommand = deleteMatcher.replaceAll("");
+        }
         fullCommand=fullCommand.trim();
+        fullCommand = fullCommand.isEmpty()?null:fullCommand;
 
         try{
             if(isValidInteger(eventRole)){
-                createdEvent = eventService.createNewEvent(chatId, foundEventType, Integer.parseInt(eventRole), eventArgument, fullCommand, fromId);
+                createdEvent = eventService.createNewEvent(chatId, foundEventType, Integer.parseInt(eventRole), eventArgument, fullCommand, fromId, delete);
             }else{
                 // предполагается что ввели название роли
-                createdEvent = eventService.createNewEvent(chatId, foundEventType, eventRole, eventArgument, fullCommand, fromId);
+                createdEvent = eventService.createNewEvent(chatId, foundEventType, eventRole, eventArgument, fullCommand, fromId, delete);
             }
 
         } catch (RoleException | EventException | CommandException e) {
@@ -112,9 +128,10 @@ public class EventCreateCommand implements ChatCommand {
                     String arg = createdEvent.getArgument();
                     message+="&#128204; Аргумент: %s\n".formatted((type==WITH_SUBSCRIPTION||type==WITHOUT_SUBSCRIPTION)?createMention(Long.parseLong(arg)):arg);
                 }
-                message+="&#128081; Воздействует на роль «%s» и ниже.\n".formatted(roleName)+
-                        "&#8618; Применяется команда: %s".formatted(createdEvent.getFullCommand());
-
+                message+="&#128081; Воздействует на роль «%s» и ниже.\n".formatted(roleName);
+                if(createdEvent.getFullCommand()!=null){
+                    message+="&#8618; Применяется команда: %s".formatted(createdEvent.getFullCommand());
+                }
                 if(type.getAdvancedEventConfig().isCanBeAdvancedEvent()){
                     message+="\n\n❓Событие реагирует только на одно сообщение от участника. Если хотите больше сообщений, событие нужно расширить.";
 

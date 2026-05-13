@@ -27,11 +27,14 @@ import com.example.my_bot.vk.enumeration.VkMessageAttachmentType;
 import com.github.benmanes.caffeine.cache.*;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.vk.api.sdk.exceptions.ApiException;
+import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.*;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.units.qual.C;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -49,6 +52,7 @@ import static com.example.my_bot.enumeration.event.ChatEventType.*;
 import static com.example.my_bot.enumeration.event.EventArgumentType.INTEGER;
 import static com.example.my_bot.enumeration.event.MyEventType.*;
 import static com.example.my_bot.service.event.EventService.getMaxPeriodForAdvancedEvents;
+import static com.example.my_bot.utils.ChatUtils.convertToPeerId;
 import static com.example.my_bot.utils.TextUtils.*;
 import static com.example.my_bot.utils.TextUtils.isMostlyCaps;
 import static com.example.my_bot.utils.TextUtils.isZalgo;
@@ -493,7 +497,6 @@ public class EventExecutionService {
        if(callQuantity<=0) return;
        EventIdAndMemberIdKey eventKey=null;
 
-
        if(eventDto.getAEMaxUsage()!=null){
            eventKey = new EventIdAndMemberIdKey(eventDto.getId(),fromId);
 
@@ -507,7 +510,6 @@ public class EventExecutionService {
                return;
            }
        }
-
        Integer cdPeriod = eventDto.getCDPeriodSec();
        if(cdPeriod!=null&&cdPeriod>0){
            if(eventKey==null){
@@ -519,28 +521,37 @@ public class EventExecutionService {
            }
        }
 
-       String fullCommand = USER_PARAMETER_PATTERN
-               .matcher(eventDto.getFullCommand())
-               .replaceAll(createMemberLink(fromId));
+       if(eventDto.getFullCommand()!=null){
+           String fullCommand = USER_PARAMETER_PATTERN
+                   .matcher(eventDto.getFullCommand())
+                   .replaceAll(createMemberLink(fromId));
 
-       if(memberId!=null){
-           fullCommand = MEMBER_ID_PATTERN
-                   .matcher(fullCommand)
-                   .replaceAll(createMemberLink(memberId));
-       }
-
-       try{
-           commandDispatcher.dispatch(
-                   commandMapper.toCommandMessageDto(chatId, eventDto.getCreatorId(), fullCommand, true)
-           );
-       }catch (Exception e){
-           log.warn("error while execution event {} in chat {}.", eventDto.getId(), chatId, e);
-           try {
-               String message = "Ваше событие с командой «%s» завершилось с ошибкой. Возможно, вам следует его удалить."
-                       .formatted(eventDto.getFullCommand());
-               vkChatClient.sendText(message, ChatUtils.convertToPeerId(chatId), true);
-           } catch (Exception ex) {
-               log.warn("chat {}: Failed to send notification about error while execution event {}", chatId, eventDto.getId(), ex);
+           if(memberId!=null){
+               fullCommand = MEMBER_ID_PATTERN
+                       .matcher(fullCommand)
+                       .replaceAll(createMemberLink(memberId));
+           }
+           try{
+               commandDispatcher.dispatch(
+                       commandMapper.toCommandMessageDto(chatId, eventDto.getCreatorId(), fullCommand, true)
+               );
+           }catch (Exception e){
+               log.warn("error while execution event {} in chat {}.", eventDto.getId(), chatId, e);
+               try {
+                   String message = "Ваше событие с командой «%s» завершилось с ошибкой. Возможно, вам следует его удалить."
+                           .formatted(eventDto.getFullCommand());
+                   vkChatClient.sendText(message, convertToPeerId(chatId), true);
+               } catch (Exception ex) {
+                   log.warn("chat {}: Failed to send notification about error while execution event {}", chatId, eventDto.getId(), ex);
+               }
+           }
+       }if(eventDto.isDelete()){
+           if(!memberService.isChatAdmin(chatId,fromId)){
+               try {
+                   vkChatClient.deleteOneMessage(convertToPeerId(chatId), chatMessageId);
+               } catch (Exception e) {
+                   log.warn("chat {} error: could not delete not-chat-admin message {}",chatId,chatMessageId, e);
+               }
            }
        }
    }

@@ -95,8 +95,9 @@ public class AllEventsShowCommand implements ChatCommand {
                     ? "событии «%s»".formatted(desc)
                     : "достижении лимита действия «%s» в %d за %s".formatted(desc,eventDto.getAEMaxUsage(),formatDurationFromSeconds(eventDto.getAEPeriodSec(), true));
 
-            sb.append("Выполнение команды «%s» при %s для роли %s и ниже."
-                    .formatted(eventDto.getFullCommand(),eventView, roleName));
+            sb.append(eventDto.isDelete()?"\uD83D\uDDD1":"")
+                    .append("Выполнение команды «%s» при %s для роли %s и ниже."
+                    .formatted(eventDto.getFullCommand()==null?"none":eventDto.getFullCommand(),eventView, roleName));
 
             if(eventDto.getArgument()!=null){
                 String argView = eventDto.getArgument();

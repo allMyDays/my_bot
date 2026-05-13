@@ -1,4 +1,5 @@
 package com.example.my_bot.service.event;
+import static com.example.my_bot.enumeration.event.ChatEventType.ACTION;
 import static com.example.my_bot.enumeration.event.EventArgumentType.*;
 import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
 import static com.example.my_bot.enumeration.event.MyEventType.WITH_SUBSCRIPTION;
@@ -17,6 +18,7 @@ import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
+import com.example.my_bot.exception.command.CommandArgumentTooLongException;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.event.*;
 import com.example.my_bot.exception.member.UserNeverBeenInChatException;
@@ -70,6 +72,9 @@ public class EventService {
     private static final int COOLDOWN_MAX_PERIOD_IN_SECONDS = 3_600;
     private final static int EXCEPTIONAL_MEMBERS_MAX_LIMIT = 20;
     private static final int NEW_MEMBERS_MAX_PERIOD_IN_SECONDS = 864_000;
+    private static final int EVENT_COMMAND_ARGUMENT_MAX_LENGTH = 300;
+
+
 
 
     @Autowired
@@ -92,8 +97,9 @@ public class EventService {
                                @NonNull MyEventType eventType,
                                int rolePriority,
                                @Nullable String userArgument,
-                               @NonNull String fullCommand,
-                               long fromId){
+                               @Nullable String fullCommand,
+                               long fromId,
+                               boolean delete){
 
         userArgument = validateEventArgument(eventType,userArgument);
 
@@ -112,17 +118,29 @@ public class EventService {
         roleService.checkRoleInteractionAbility(rolePriority, callerRole);
 
         fullCommand = TextUtils.cutDefaultPrefix(fullCommand);
-        String userCommand = UserInputResolver.splitFullCommand(fullCommand)[0];
-        Command annotation = commandRegistry.getCommandAnnotation(userCommand).orElseThrow(()->
-                new UserCommandNotFoundException(userCommand));
-        if(!annotation.eventable()){
-            throw new CannotUseThisCommandForEventException(annotation.mainCommandName());
-        }boolean executable = commandAccessService.checkCommandAuthorization(chatId, userCommand, callerRole, fromId);
-        if(!executable){
-            throw new CommandAccessDeniedException(fromId,userCommand);
+        fullCommand = fullCommand!=null&&fullCommand.isEmpty()?null:fullCommand;
+
+        if(fullCommand!=null){
+            String userCommand = UserInputResolver.splitFullCommand(fullCommand)[0];
+            if(fullCommand.length()-userCommand.length()>EVENT_COMMAND_ARGUMENT_MAX_LENGTH){
+                throw new CommandArgumentTooLongException(EVENT_COMMAND_ARGUMENT_MAX_LENGTH);
+            }
+            Command annotation = commandRegistry.getCommandAnnotation(userCommand).orElseThrow(()->
+                    new UserCommandNotFoundException(userCommand));
+            if(!annotation.eventable()){
+                throw new CannotUseThisCommandForEventException(annotation.mainCommandName());
+            }
+            boolean accessToCmd = commandAccessService.checkCommandAuthorization(chatId, userCommand, callerRole, fromId);
+            if(!accessToCmd){
+                throw new CommandAccessDeniedException(fromId,userCommand);
+            }
+        }else if(eventType.getChatEventType()==ACTION||!delete){
+            throw new EventCommandCannotBeNullForThisCaseException(
+                    "Команду событию можно не устанавливать только если указан параметр удаления сообщения, вызвавшего событие, и тип события не относится к системному действию (выход, приглашение и т.д.).");
         }
+
         EventEntity savedEvent = eventRepository.save(
-                new EventEntity(chatId, eventType, rolePriority, userArgument, fromId, fullCommand)
+                new EventEntity(chatId, eventType, rolePriority, userArgument, fromId, fullCommand, delete)
         );
         invalidateEventsCache(chatId);
         return savedEvent;
@@ -133,12 +151,13 @@ public class EventService {
                                       @NonNull MyEventType eventType,
                                       @NonNull String roleName,
                                       @Nullable String userArgument,
-                                      @NonNull String fullCommand,
-                                      long fromId){
+                                      @Nullable String fullCommand,
+                                      long fromId,
+                                      boolean delete){
         RoleDto foundRole = roleService.getRoleByNameIgnoreCase(chatId, roleName)
                 .orElseThrow(RoleNotFoundException::new);
 
-        return createNewEvent(chatId, eventType, foundRole.getRolePriority(), userArgument, fullCommand, fromId);
+        return createNewEvent(chatId, eventType, foundRole.getRolePriority(), userArgument, fullCommand, fromId, delete);
     }
 
     public List<EventDto> getEventsSortedByIdInIncreasingOrder(long chatId){

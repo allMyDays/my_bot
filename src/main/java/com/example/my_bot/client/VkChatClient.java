@@ -18,6 +18,7 @@ import com.vk.api.sdk.objects.base.BoolInt;
 import com.vk.api.sdk.objects.base.NameCase;
 import com.vk.api.sdk.objects.base.responses.BoolResponse;
 import com.vk.api.sdk.objects.messages.ConversationMember;
+import com.vk.api.sdk.objects.messages.responses.DeleteFullResponse;
 import com.vk.api.sdk.objects.messages.responses.GetConversationMembersResponse;
 import com.vk.api.sdk.objects.messages.responses.IsMessagesFromGroupAllowedResponse;
 import com.vk.api.sdk.objects.utils.DomainResolvedType;
@@ -270,6 +271,18 @@ public class VkChatClient{
             return false;
         }
     }
+    public void deleteOneMessage(long peerId, int conversationMessageId) throws ClientException, ApiException {
+            List<DeleteFullResponse> response = vkApiClient.messages()
+                    .deleteFull(groupActor)
+                    .peerId(peerId)
+                    .cmids(conversationMessageId)
+                    .deleteForAll(true)
+                    .execute();
+
+            if (response != null && !response.isEmpty()) {
+                log.warn("deleteFull method returned null or empty List<DeleteFullResponse>");
+            }
+        }
 
 
 

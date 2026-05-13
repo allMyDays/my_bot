@@ -39,19 +39,22 @@ public class EventDto {
 
     private final Integer newMembersPeriodSec;
 
+    private final boolean delete;
+
     public EventDto(long id,
                     @NonNull MyEventType type,
                     int rolePriority,
                     @Nullable String argument,
                     long creatorId,
-                    @NonNull String fullCommand,
+                    @Nullable String fullCommand,
                     @Nullable Integer AEMaxUsage,
                     @Nullable Integer AEPeriodSec,
                     @Nullable LocalTime startDayTime,
                     @Nullable LocalTime endDayTime,
                     @Nullable Integer CDPeriodSec,
                     @Nullable Set<Long> exceptionalMembers,
-                    @Nullable Integer newMembersPeriodSec) {
+                    @Nullable Integer newMembersPeriodSec,
+                    boolean delete) {
         this.id = id;
         this.type = type;
         this.rolePriority = rolePriority;
@@ -64,6 +67,7 @@ public class EventDto {
         this.endDayTime = endDayTime;
         this.CDPeriodSec = CDPeriodSec;
         this.newMembersPeriodSec = newMembersPeriodSec;
+        this.delete = delete;
 
         ImmutableSet.Builder<Long> builder = new ImmutableSet.Builder<>();
         if(exceptionalMembers!=null){
