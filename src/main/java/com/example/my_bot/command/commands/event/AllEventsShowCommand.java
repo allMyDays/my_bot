@@ -9,6 +9,8 @@ import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
+import com.example.my_bot.enumeration.user.NameCase;
+import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.event.EventService;
@@ -23,6 +25,7 @@ import org.springframework.context.annotation.Lazy;
 
 import java.sql.Time;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -42,9 +45,13 @@ public class AllEventsShowCommand implements ChatCommand {
 
     private final ChatService chatService;
 
+    private final GlobalUserService globalUserService;
+
     private VkChatClient vkChatClient;
 
     private RoleService roleService;
+
+
 
 
 
@@ -86,18 +93,25 @@ public class AllEventsShowCommand implements ChatCommand {
         for(EventDto eventDto: events){
             MyEventType type = eventDto.getType();
             sb.append("%s(%d). ".formatted(createMention(eventDto.getCreatorId()), counter++));
-            String roleName = roleService.getRoleName(chatId, eventDto.getRolePriority())
-                    .map("«%s»"::formatted)
-                    .orElse("с приоритетом "+eventDto.getRolePriority());
+
+            String forRoleOrMember;
+            Long memberToTrigger = eventDto.getMemberToTrigger();
+            if(memberToTrigger!=null){  // личное событие
+                forRoleOrMember = "%s(%s)"
+                        .formatted(createMention(memberToTrigger), globalUserService.getUserNameInRequiredCase(memberToTrigger, NameCase.GENITIVE).orElse("этого участника"));
+            }else{
+                String roleName = roleService.getRoleName(chatId, eventDto.getRolePriority()).orElse(null);
+                forRoleOrMember = "роли %s и ниже".formatted(roleName!=null?"«"+roleName+"»":"с приоритетом "+eventDto.getRolePriority());
+            }
 
             String desc = eventDto.getType().getDescription();
-            String eventView = eventDto.getAEMaxUsage()==null
+            String simpleOrAdvancedEvent = eventDto.getAEMaxUsage()==null
                     ? "событии «%s»".formatted(desc)
                     : "достижении лимита действия «%s» в %d за %s".formatted(desc,eventDto.getAEMaxUsage(),formatDurationFromSeconds(eventDto.getAEPeriodSec(), true));
 
             sb.append(eventDto.isDelete()?"\uD83D\uDDD1":"")
-                    .append("Выполнение команды «%s» при %s для роли %s и ниже."
-                    .formatted(eventDto.getFullCommand()==null?"none":eventDto.getFullCommand(),eventView, roleName));
+                    .append("Выполнение команды «%s» при %s для %s."
+                    .formatted(eventDto.getFullCommand()==null?"none":eventDto.getFullCommand(),simpleOrAdvancedEvent, forRoleOrMember));
 
             if(eventDto.getArgument()!=null){
                 String argView = eventDto.getArgument();
@@ -140,10 +154,7 @@ public class AllEventsShowCommand implements ChatCommand {
                         .append(TimeUtils.formatDurationFromSeconds(eventDto.getNewMembersPeriodSec(), true))
                         .append("\n");
             }
-
         }
-
-
         vkChatClient.sendText(sb.toString(), messageDto.getPeerId(), true);
 
     }

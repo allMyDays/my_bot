@@ -17,7 +17,9 @@ public class EventDto {
 
     private final MyEventType type;
 
-    private final int rolePriority;
+    private final Integer rolePriority;
+
+    private final Long memberToTrigger;
 
     private final String argument;
 
@@ -43,7 +45,8 @@ public class EventDto {
 
     public EventDto(long id,
                     @NonNull MyEventType type,
-                    int rolePriority,
+                    @Nullable Integer rolePriority,
+                    @Nullable Long memberToTrigger,
                     @Nullable String argument,
                     long creatorId,
                     @Nullable String fullCommand,
@@ -58,6 +61,7 @@ public class EventDto {
         this.id = id;
         this.type = type;
         this.rolePriority = rolePriority;
+        this.memberToTrigger = memberToTrigger;
         this.argument = argument;
         this.creatorId = creatorId;
         this.fullCommand = fullCommand;

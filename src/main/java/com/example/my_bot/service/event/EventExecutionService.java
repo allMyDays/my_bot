@@ -214,9 +214,14 @@ public class EventExecutionService {
             if(requiredEvents!=null){
                 for(EventDto currentEvent: requiredEvents){
 
-                    if(!eventService.isEventRoleHighEnough(currentEvent.getRolePriority(), callerRole)){
+                    Long memberToTrigger = currentEvent.getMemberToTrigger();
+                    if(memberToTrigger!=null){  // личное событие
+                        if(memberToTrigger!=fromId) continue;
+
+                    }else if(!eventService.isEventRoleHighEnough(currentEvent.getRolePriority(), callerRole)){
                         continue;
-                    }if(currentEvent.getExceptionalMembers().contains(fromId)){
+                    }
+                    if(currentEvent.getExceptionalMembers().contains(fromId)){  // не личное событие, но есть участники-исключения
                         continue;
                     }
                     Integer CDPeriod = currentEvent.getCDPeriodSec();

@@ -6,11 +6,14 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.event.EventDto;
+import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.event.EventException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.resolver.UserInputResolver;
+import com.example.my_bot.service.GlobalUserService;
+import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.event.EventService;
 import com.example.my_bot.utils.TimeUtils;
@@ -28,13 +31,14 @@ import java.util.regex.Pattern;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.utils.TextUtils.createMention;
 import static com.example.my_bot.utils.TextUtils.isValidInteger;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
 @Slf4j
-@Command(mainCommandName = "дополнитьивент", alternativeCommandNames = {"supplementevent"}, defaultRole = ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "редивент", alternativeCommandNames = {"editevent"}, defaultRole = ADMINISTRATOR, eventable = false)
 @RequiredArgsConstructor
-public class EventSupplementCommand implements ChatCommand {
+public class EventEditCommand implements ChatCommand {
 
     @Getter
     private final CommandCooldown cooldown = new CommandCooldown(4,60);
@@ -46,6 +50,8 @@ public class EventSupplementCommand implements ChatCommand {
     private final ChatService chatService;
 
     private final UserInputResolver userInputResolver;
+
+    private final GlobalUserService globalUserService;
 
     private final static String REMOVE_ARGUMENT = "удалить";
 
@@ -59,7 +65,12 @@ public class EventSupplementCommand implements ChatCommand {
 
     private final static String NEW_MEMBERS_ARGUMENT = "дляновичков";
 
+    private final static String PERSONAL_EVENT_ARGUMENT = "толькодля";
+
+
+
     private final static Pattern WORK_TIME_PATTERN = Pattern.compile("(([01][0-9]|2[0-3]):[0-5][0-9])-(([01][0-9]|2[0-3]):[0-5][0-9])");
+    private final MemberService memberService;
 
 
     @Override
@@ -92,14 +103,14 @@ public class EventSupplementCommand implements ChatCommand {
         String message;
 
         switch(args[1].toLowerCase()){
-            case WORK_TIME_ARGUMENT -> {  // !дополнитьивент 1 времяработы 23:00-08:00
+            case WORK_TIME_ARGUMENT -> {  // !редивент 1 времяработы 23:00-08:00
                 Matcher matcher = WORK_TIME_PATTERN.matcher(args[2]);
                 if(matcher.find()){
                     LocalTime start = TimeUtils.parseTimeOfDay(matcher.group(1)).orElse(null);
                     LocalTime end = TimeUtils.parseTimeOfDay(matcher.group(3)).orElse(null);
                     try{
                         editedEvent = eventService.setDailyWorkTime(eventEntityId, start, end,fromId);
-                    }catch (EventException | RoleException e){
+                    }catch (EventException | RoleException | MemberException e){
                         vkChatClient.sendText(e.getMessage(), peerId,true);
                         return;
                     }
@@ -112,8 +123,8 @@ public class EventSupplementCommand implements ChatCommand {
                 }
             }
             case EXCEPTIONAL_ARGUMENT -> {
-                // !дополнитьивент 1 исключение @durov
-                // !дополнитьивент 1 исключение удалить @durov
+                // !редивент 1 исключение @durov
+                // !редивент 1 исключение удалить @durov
 
                 boolean remove = false;
                 if(args[2].equalsIgnoreCase(REMOVE_ARGUMENT)){
@@ -144,7 +155,24 @@ public class EventSupplementCommand implements ChatCommand {
                 message = message.formatted(outerEventId, editedEvent.getType().getDescription());
                 vkChatClient.sendText(message, peerId,true);
             }
-            case ACTION_LIMIT_ARGUMENT -> {      // !дополнитьивент 1 лимитдействия 100 2 часа
+            case PERSONAL_EVENT_ARGUMENT -> {     // !редивент 1 толькодля @durov
+                Optional<Long> memberId = userInputResolver.getMemberIdByStringInput(args[2]);
+                if(memberId.isEmpty()){
+                    vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT, peerId, true);
+                    return;
+                }
+                try{
+                    editedEvent = eventService.makeEventPersonal(eventEntityId, memberId.get(), fromId);
+                }catch (EventException | RoleException | CommandException | MemberException e){
+                    vkChatClient.sendText(e.getMessage(), peerId,true);
+                    return;
+                }
+                Long memberToTrigger = editedEvent.getMemberToTrigger();
+                message = "✅Вы успешно сделали событие №%d («%s») персональным для %s(%s). \n❓Теперь событие будет реагировать только на этого участника."
+                .formatted(outerEventId, editedEvent.getType().getDescription(),createMention(memberToTrigger),globalUserService.getUserNameInRequiredCase(memberToTrigger, NameCase.GENITIVE).orElse("этого участника"));
+                vkChatClient.sendText(message, peerId,true);
+            }
+            case ACTION_LIMIT_ARGUMENT -> {      // !редивент 1 лимитдействия 100 2 часа
                 if(args.length<5){
                     vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId,true);
                     return;
@@ -159,7 +187,7 @@ public class EventSupplementCommand implements ChatCommand {
                 }
                 try{
                     editedEvent = eventService.setAETimePeriodAndMaxUsage(eventEntityId,timePeriodInSeconds.get(),Integer.parseInt(args[2]),fromId);
-                }catch (EventException | RoleException e){
+                }catch (EventException | RoleException | MemberException e){
                     vkChatClient.sendText(e.getMessage(), peerId,true);
                     return;
                 }
@@ -169,7 +197,7 @@ public class EventSupplementCommand implements ChatCommand {
                 vkChatClient.sendText(message,peerId, true);
 
             }
-            case COOLDOWN_ARGUMENT -> {  // !дополнитьивент 1 кулдаун 1 час
+            case COOLDOWN_ARGUMENT -> {  // !редивент 1 кулдаун 1 час
                 if(args.length<4){
                     vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId,true);
                     return;
@@ -181,7 +209,7 @@ public class EventSupplementCommand implements ChatCommand {
                 }
                 try{
                     editedEvent = eventService.setCDTimePeriod(eventEntityId,timePeriodInSeconds.get(),fromId);
-                }catch (EventException | RoleException e){
+                }catch (EventException | RoleException | MemberException e){
                     vkChatClient.sendText(e.getMessage(), peerId,true);
                     return;
                 }
@@ -196,7 +224,7 @@ public class EventSupplementCommand implements ChatCommand {
                 }
                 vkChatClient.sendText(message,peerId, true);
             }
-            case NEW_MEMBERS_ARGUMENT -> {  // !дополнитьивент 1 дляновичков 26 часов
+            case NEW_MEMBERS_ARGUMENT -> {  // !редивент 1 дляновичков 26 часов
                 if(args.length<4){
                     vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId,true);
                     return;

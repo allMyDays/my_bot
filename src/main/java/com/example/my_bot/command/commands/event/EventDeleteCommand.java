@@ -7,6 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.exception.event.EventException;
+import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.service.event.EventService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -59,7 +60,7 @@ public class EventDeleteCommand implements ChatCommand {
         }
         try{
             eventService.deleteEventById(events.get(outerEventId-1).getId(), messageDto.getFromId());
-        }catch (EventException | RoleException e){
+        }catch (EventException | RoleException | MemberException e){
           vkChatClient.sendText(e.getMessage(), peerId,true);
           return;
         } vkChatClient.sendText("✅Событие с ID %d было успешно удалёно.".formatted(outerEventId),peerId, true);

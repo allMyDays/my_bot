@@ -75,8 +75,6 @@ public class EventService {
     private static final int EVENT_COMMAND_ARGUMENT_MAX_LENGTH = 300;
 
 
-
-
     @Autowired
     @Lazy
     public void setCommandRegistry(CommandRegistry commandRegistry) {
@@ -140,7 +138,7 @@ public class EventService {
         }
 
         EventEntity savedEvent = eventRepository.save(
-                new EventEntity(chatId, eventType, rolePriority, userArgument, fromId, fullCommand, delete)
+                new EventEntity(chatId, eventType, rolePriority, null, userArgument, fromId, fullCommand, delete)
         );
         invalidateEventsCache(chatId);
         return savedEvent;
@@ -177,7 +175,7 @@ public class EventService {
         if(event.getAEMaxUsage()!=null){
             throw new CurrentEventAlreadyAdvancedException();
         }
-        roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
+        checkEventAuthorization(event, fromId);
 
         AdvancedEventConfig advancedConfig = event.getType().getAdvancedEventConfig();
         if(!advancedConfig.isCanBeAdvancedEvent()){
@@ -198,7 +196,6 @@ public class EventService {
             event.setArgument(null);
         }
         invalidateEventsCache(event.getChatId());
-
         return eventMapper.toEventDto(event);
 
     }
@@ -208,7 +205,7 @@ public class EventService {
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
-        roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
+        checkEventAuthorization(event, fromId);
 
         long diff = Math.abs(Duration.between(start, end).toSeconds());
         if(diff<DAILY_EVENT_MIN_DIFFERENCE_IN_SECONDS){
@@ -218,7 +215,6 @@ public class EventService {
         event.setStartDayTime(start);
         event.setEndDayTime(end);
         invalidateEventsCache(event.getChatId());
-
         return eventMapper.toEventDto(event);
     }
 
@@ -231,7 +227,7 @@ public class EventService {
         if(event.getCDPeriodSec()!=null){
             throw new CurrentEventAlreadyHasCooldownException();
         }
-        roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
+        checkEventAuthorization(event, fromId);
 
         if(periodInSeconds<0) periodInSeconds=0;
         if(periodInSeconds>COOLDOWN_MAX_PERIOD_IN_SECONDS){
@@ -248,8 +244,10 @@ public class EventService {
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
-
-        roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
+        if(event.getMemberToTrigger()!=null){
+            throw new CannotApplyThisCommandToPersonalEventException();
+        }
+        checkEventAuthorization(event,fromId);
 
         if(periodInSeconds<0) periodInSeconds=0;
         if(periodInSeconds>NEW_MEMBERS_MAX_PERIOD_IN_SECONDS){
@@ -267,12 +265,15 @@ public class EventService {
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
-
+        if(event.getMemberToTrigger()!=null){
+            throw new CannotApplyThisCommandToPersonalEventException();
+        }
         Set<Long> exceptionalSet = event.getExceptionalMembers();
         if(exceptionalSet.size()>=EXCEPTIONAL_MEMBERS_MAX_LIMIT){
             throw new TooManyExceptionalMembersException();
         }
-        roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
+        memberService.checkMemberInteractionAbility(event.getChatId(), fromId, memberToAdd);
+        checkEventAuthorization(event, fromId);
 
         if(exceptionalSet.contains(memberToAdd)){
             throw new IncorrectEventArgumentException("Данный участник уже находится в исключении у этого события.");
@@ -280,46 +281,68 @@ public class EventService {
         if(memberToAdd==fromId){
             throw new CannotApplyThisCommandToYourselfException();
         }
-        Optional<MemberDto> memberInfo = memberService.getCachedMemberInfo(event.getChatId(),memberToAdd);
-        if(memberInfo.isEmpty()){
-            throw new UserNeverBeenInChatException(memberToAdd);
-        }
-        if(!isEventRoleHighEnough(event.getRolePriority(), memberInfo.get().getRolePriority())){
+        MemberDto memberInfo = memberService.getCachedMemberInfo(event.getChatId(),memberToAdd)
+                .orElseThrow(()->new UserNeverBeenInChatException(memberToAdd));
+
+        if(!isEventRoleHighEnough(event.getRolePriority(), memberInfo.getRolePriority())){
             throw new EventCannotReactToThisMemberException("\uD83E\uDD14Данное событие и так не реагирует на этого участника, нет смысла добавлять его в исключения.");
 
         }
-        memberService.checkMemberInteractionAbility(event.getChatId(), fromId, memberToAdd);
         exceptionalSet.add(memberToAdd);
         invalidateEventsCache(event.getChatId());
         return eventMapper.toEventDto(event);
     }
 
     @Transactional
-    public EventDto removeMemberFromExceptional(long eventId, long memberToAdd, long fromId){
+    public EventDto removeMemberFromExceptional(long eventId, long memberToRemove, long fromId){
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
+        if(event.getMemberToTrigger()!=null){
+            throw new CannotApplyThisCommandToPersonalEventException();
+        }
+        memberService.checkMemberInteractionAbility(event.getChatId(), fromId, memberToRemove);
+        checkEventAuthorization(event,fromId);
 
-        roleService.checkRoleInteractionAbility(event.getRolePriority(), memberService.getMemberRolePriority(event.getChatId(), fromId));
-
-        if(!event.getExceptionalMembers().contains(memberToAdd)){
+        if(!event.getExceptionalMembers().contains(memberToRemove)){
             throw new IncorrectEventArgumentException("Данный участник не находится в исключении у этого события.");
         }
-        if(memberToAdd==fromId){
+        if(memberToRemove==fromId){
             throw new CannotApplyThisCommandToYourselfException();
         }
-        memberService.checkMemberInteractionAbility(event.getChatId(), fromId, memberToAdd);
-        event.getExceptionalMembers().remove(memberToAdd);
+        event.getExceptionalMembers().remove(memberToRemove);
         invalidateEventsCache(event.getChatId());
         return eventMapper.toEventDto(event);
     }
 
+    @Transactional
+    public EventDto makeEventPersonal(long eventId, long memberToTrigger, long fromId){
+
+        EventEntity event = eventRepository.findById(eventId)
+                .orElseThrow(()->new EventNotFoundException(eventId));
+
+        memberService.checkMemberInteractionAbility(event.getChatId(), fromId, memberToTrigger);
+        checkEventAuthorization(event, fromId);
+        if(memberToTrigger==fromId){
+            throw new CannotApplyThisCommandToYourselfException();
+        }
+        if(memberService.getCachedMemberInfo(event.getChatId(),memberToTrigger).isEmpty()){
+            throw new UserNeverBeenInChatException(memberToTrigger);
+        }
+        event.setRolePriority(null);
+        event.setMemberToTrigger(memberToTrigger);
+
+        event.setNewMembersPeriodSec(null);
+        event.getExceptionalMembers().clear(); // у личного события не должно быть этих параметров
+
+        invalidateEventsCache(event.getChatId());
+        return eventMapper.toEventDto(event);
+    }
 
     public int countChatEvents(long chatId){
        return Math.toIntExact(getCachedChatEvents(chatId).values().stream().mapToLong(Set::size).sum());
 
     }
-
 
     private String validateEventArgument(@NonNull MyEventType eventType, @Nullable String userArgument){
         EventArgumentType eventArgType = eventType.getArgumentType();
@@ -367,14 +390,11 @@ public class EventService {
         } return userArgument;
 
     }
-
     @Transactional
     public void deleteEventById(long eventId, long fromId){
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
-
-        int callerRole = memberService.getMemberRolePriority(event.getChatId(), fromId);
-        roleService.checkRoleInteractionAbility(event.getRolePriority(), callerRole);
+        checkEventAuthorization(event,fromId);
         eventRepository.deleteById(event.getId());
         invalidateEventsCache(event.getChatId());
     }
@@ -418,14 +438,14 @@ public class EventService {
    private boolean isValidUserRegex(@NonNull String pattern){
 
         pattern = pattern.trim();
-        if (pattern.isEmpty()) return false;
+        if(pattern.isEmpty()) return false;
 
-        try {
+        try{
             Pattern.compile(pattern);
-        } catch (PatternSyntaxException e) {
+        }catch(PatternSyntaxException e){
             return false;
         }
-        if (pattern.contains(")+") || pattern.contains("++")) return false;
+        if(pattern.contains(")+")||pattern.contains("++")) return false;
         return true;
     }
 
@@ -434,11 +454,15 @@ public class EventService {
 
     }
 
+    private void checkEventAuthorization(@NonNull EventEntity eventEntity, long fromId){
+        long chatId = eventEntity.getChatId();
 
+        if(eventEntity.getMemberToTrigger()!=null){  // личное событие
+            memberService.checkMemberInteractionAbility(chatId, fromId, eventEntity.getMemberToTrigger());
+        }else{
+            roleService.checkRoleInteractionAbility(eventEntity.getRolePriority(), memberService.getMemberRolePriority(chatId, fromId));
 
-
-
-
-
+        }
+    }
 
 }

@@ -1,9 +1,11 @@
 package com.example.my_bot.entity;
 
 import com.example.my_bot.enumeration.event.MyEventType;
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 import lombok.Setter;
 import org.hibernate.annotations.Check;
 
@@ -18,6 +20,7 @@ import java.util.Set;
 @Table(name = "event", indexes = @Index(name = "events_idx_chat_id", columnList = "chatId"))
 @Check(constraints = "(ae_max_usage IS NULL AND ae_period_in_seconds IS NULL) OR (ae_max_usage IS NOT NULL AND ae_period_in_seconds IS NOT NULL)")
 @Check(constraints = "(start_day_time IS NULL AND end_day_time IS NULL) OR (start_day_time IS NOT NULL AND end_day_time IS NOT NULL)")
+@Check(constraints = "(role_priority IS NULL AND member_to_trigger IS NOT NULL) OR (role_priority IS NOT NULL AND member_to_trigger IS NULL)")
 public class EventEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,8 +33,11 @@ public class EventEntity {
     @Enumerated(EnumType.STRING)
     private MyEventType type;
 
-    @Column(nullable = false)
-    private int rolePriority;
+    @Column(name = "role_priority",nullable = true)
+    private Integer rolePriority;
+
+    @Column(name = "member_to_trigger", nullable = true)
+    private Long memberToTrigger;
 
     @Column(nullable = true)
     private String argument;
@@ -68,13 +74,22 @@ public class EventEntity {
 
 
 
-    public EventEntity(Long chatId, MyEventType type, int rolePriority, String argument, long creatorId, String fullCommand, boolean delete) {
+    public EventEntity(long chatId,
+                       @NonNull MyEventType type,
+                       @Nullable Integer rolePriority,
+                       @Nullable Long memberToTrigger,
+                       @Nullable String argument,
+                       long creatorId,
+                       @Nullable String fullCommand,
+                       boolean delete) {
         this.chatId = chatId;
         this.type = type;
         this.rolePriority = rolePriority;
+        this.memberToTrigger = memberToTrigger;
         this.argument = argument;
         this.creatorId = creatorId;
         this.fullCommand = fullCommand;
         this.delete = delete;
+
     }
 }
