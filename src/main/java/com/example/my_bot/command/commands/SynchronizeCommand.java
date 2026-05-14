@@ -6,6 +6,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -29,6 +30,8 @@ public class SynchronizeCommand implements ChatCommand {
 
     private final MemberService memberService;
 
+    private final MessageMapper messageMapper;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -42,7 +45,8 @@ public class SynchronizeCommand implements ChatCommand {
 
         memberService.synchronizeChatMembers(messageDto.getChatId());
 
-        vkChatClient.sendText("✅Текущие участники чата были синхронизированы с моей базой данных.", messageDto.getPeerId(), true);
+        vkChatClient.sendText(
+                messageMapper.toSendMessageDto("✅Текущие участники чата были синхронизированы с моей базой данных.",messageDto));
 
     }
 }

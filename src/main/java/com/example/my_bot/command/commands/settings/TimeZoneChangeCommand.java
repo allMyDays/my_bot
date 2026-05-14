@@ -1,26 +1,28 @@
-package com.example.my_bot.command.commands;
+package com.example.my_bot.command.commands.settings;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.enumeration.TimeZoneType;
-import com.example.my_bot.exception.chat.ForbiddenPrefixException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import java.time.Instant;
-import java.util.Optional;
 
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
 
 @Command(mainCommandName = "таймзона",alternativeCommandNames = {"timezone"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = true)
+@RequiredArgsConstructor
 public class TimeZoneChangeCommand implements ChatCommand {
 
     @Getter
@@ -29,6 +31,8 @@ public class TimeZoneChangeCommand implements ChatCommand {
     private ChatService chatService;
 
     private VkChatClient vkChatClient;
+
+    private final MessageMapper messageMapper;
 
     @Autowired
     @Lazy
@@ -43,7 +47,8 @@ public class TimeZoneChangeCommand implements ChatCommand {
 
         String[] args = messageDto.getFirstRowArguments();
         long chatId = messageDto.getChatId();
-        long peerId = messageDto.getPeerId();
+
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
 
         TimeZoneType timeZoneToAssign;
 
@@ -52,16 +57,18 @@ public class TimeZoneChangeCommand implements ChatCommand {
         } else {
             timeZoneToAssign = TimeZoneType.findZoneByStringType(args[0]).orElse(null);
             if (timeZoneToAssign == null) {
-                vkChatClient.sendText("Не найдено временной зоны по указанному аргументу.", peerId, true);
+                sendMessage.setText("Не найдено временной зоны по указанному аргументу.");
+                vkChatClient.sendText(sendMessage);
                 return;
             }
         }
         chatService.setChatTimeZone(chatId, timeZoneToAssign);
-        String message = "✅Временная зона чата была успешно установлена на %s.".formatted(timeZoneToAssign.getStringType())
-                +"\nТекущее время: "+ TimeUtils.getStringDateTimeWithTimeZone(Instant.now(), timeZoneToAssign);
+        sendMessage.setText(
+                "✅Временная зона чата была успешно установлена на %s.".formatted(timeZoneToAssign.getStringType())
+                +"\nТекущее время: "+ TimeUtils.getStringDateTimeWithTimeZone(Instant.now(), timeZoneToAssign)
+        );
 
-
-        vkChatClient.sendText(message,peerId,true);
+        vkChatClient.sendText(sendMessage);
 
 
     }

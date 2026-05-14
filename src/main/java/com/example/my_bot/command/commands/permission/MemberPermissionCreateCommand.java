@@ -4,6 +4,7 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.permission.MemberPermissionSettingResult;
 import com.example.my_bot.enumeration.user.NameCase;
@@ -11,6 +12,7 @@ import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.permission.PermissionException;
 import com.example.my_bot.exception.role.RoleException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.permission.MemberPermissionService;
@@ -49,21 +51,26 @@ public class MemberPermissionCreateCommand implements ChatCommand {
 
     private final GlobalUserService userService;
 
+    private final MessageMapper messageMapper;
+
 
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         long chatId = messageDto.getChatId();
         String[] args = messageDto.getFirstRowArguments();
-        long peerId = messageDto.getPeerId();
+
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
 
         if(args.length<2){
-            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
+            sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }
         Optional<Long> targetUserId = userInputResolver.getMemberIdByStringInput(args[0].trim());
         if(targetUserId.isEmpty()){
-            vkChatClient.sendText(MEMBER_LINK_IS_NOT_CORRECT, peerId,true);
+            sendMessage.setText(MEMBER_LINK_IS_NOT_CORRECT);
+            vkChatClient.sendText(sendMessage);
             return;
         }
 
@@ -84,12 +91,14 @@ public class MemberPermissionCreateCommand implements ChatCommand {
                         chatId, messageDto.getFromId(), userCommandsToProcess, targetUserId.get(), allow);
 
         }catch (PermissionException | RoleException | CommandException | MemberException e){
-            vkChatClient.sendText(e.getMessage(),peerId, true);
+            sendMessage.setText(e.getMessage());
+            vkChatClient.sendText(sendMessage);
             return;
         }
         if(permissionResult==null){
             log.error("chat {} error: permissionResult is null after executing method allowOrForbidCommandForMember", chatId);
-            vkChatClient.sendText("Произошла ошибка при попытке обработать команды.",peerId, true);
+            sendMessage.setText("Произошла ошибка при попытке обработать команды.");
+            vkChatClient.sendText(sendMessage);
             return;
         }
         char chatPrefix = chatService.getChatPrefix(chatId).orElse(DEFAULT_CHAT_PREFIX);
@@ -113,7 +122,8 @@ public class MemberPermissionCreateCommand implements ChatCommand {
         appendSection(result, permissionResult.getNotFound(), "❓",
                 "❌Аргументы:\n", "%s\nНе являются командами или написаны с опечатками.", userMention);
 
-        vkChatClient.sendText(result.toString(),peerId, true);
+        sendMessage.setText(result.toString());
+        vkChatClient.sendText(sendMessage);
 
     }
 

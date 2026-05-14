@@ -1,8 +1,8 @@
 package com.example.my_bot.client;
 
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
 import com.example.my_bot.service.MemberService;
-import com.example.my_bot.utils.ChatUtils;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -13,11 +13,11 @@ import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ApiExtendedException;
 import com.vk.api.sdk.exceptions.ClientException;
-import com.vk.api.sdk.httpclient.HttpTransportClient;
 import com.vk.api.sdk.objects.base.BoolInt;
 import com.vk.api.sdk.objects.base.NameCase;
 import com.vk.api.sdk.objects.base.responses.BoolResponse;
 import com.vk.api.sdk.objects.messages.ConversationMember;
+import com.vk.api.sdk.objects.messages.Forward;
 import com.vk.api.sdk.objects.messages.responses.DeleteFullResponse;
 import com.vk.api.sdk.objects.messages.responses.GetConversationMembersResponse;
 import com.vk.api.sdk.objects.messages.responses.IsMessagesFromGroupAllowedResponse;
@@ -25,10 +25,10 @@ import com.vk.api.sdk.objects.utils.DomainResolvedType;
 import com.vk.api.sdk.objects.utils.responses.ResolveScreenNameResponse;
 import com.vk.api.sdk.queries.execute.ExecuteBatchQuery;
 import com.vk.api.sdk.queries.messages.MessagesRemoveChatUserQuery;
+import com.vk.api.sdk.queries.messages.MessagesSendQueryWithDeprecated;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
@@ -59,7 +59,9 @@ public class VkChatClient{
     }
 
 
-  public void sendText(String text, long peerId, boolean disableMentions) throws ClientException, ApiException{
+  public void sendText(@NonNull SendMessageDto sendMessageDto) throws ClientException, ApiException{
+
+     String text = sendMessageDto.getText();
 
       while (text.length()>MAX_MESSAGE_LENGTH){
           int cutIndex=text.lastIndexOf(" ", MAX_MESSAGE_LENGTH);
@@ -67,20 +69,35 @@ public class VkChatClient{
               cutIndex = MAX_MESSAGE_LENGTH;
           }
           String part = text.substring(0, cutIndex);
-          sendNotLongText(part, peerId, disableMentions);
+          sendMessageDto.setText(part);
+          sendNotLongText(sendMessageDto);
           text = text.substring(cutIndex).trim();
       }
-      sendNotLongText(text, peerId, disableMentions);
+      sendMessageDto.setText(text);
+      sendNotLongText(sendMessageDto);
   }
 
-    private void sendNotLongText(String text, long peerId, boolean disableMentions) throws ClientException, ApiException{
-        vkApiClient.messages()
+    private void sendNotLongText(@NonNull SendMessageDto sendMessageDto) throws ClientException, ApiException{
+
+        MessagesSendQueryWithDeprecated query = vkApiClient.messages()
                 .sendDeprecated(groupActor)
-                .peerId(peerId)
-                .message(text)
-                .disableMentions(disableMentions)
-                .randomId((int) System.currentTimeMillis())
-                .execute();
+                .peerId(sendMessageDto.getPeerId())
+                .message(sendMessageDto.getText())
+                .disableMentions(!sendMessageDto.isAbleMentions())
+                .randomId((int) System.currentTimeMillis());
+
+        if(sendMessageDto.isReplyToMessageId()&&sendMessageDto.getConversationMessageId()!=null){
+
+            Forward forward = new Forward();
+            forward.setConversationMessageIds(List.of(sendMessageDto.getConversationMessageId()));
+            forward.setPeerId(sendMessageDto.getPeerId());
+            forward.setIsReply(true);
+
+            query.forward(forward);
+        }
+        query.execute();
+
+
     }
 
     public List<ConversationMember> getAllConversationMembers(long chatId) throws ClientException, ApiException {

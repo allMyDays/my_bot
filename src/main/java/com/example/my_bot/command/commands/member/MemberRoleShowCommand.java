@@ -7,6 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.enumeration.user.NameCase;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
@@ -42,18 +43,22 @@ public class MemberRoleShowCommand implements ChatCommand {
 
     private final long groupId;
 
+    private final MessageMapper messageMapper;
+
 
     public MemberRoleShowCommand(MemberService memberService,
                                  UserInputResolver userInputResolver,
                                  RoleService roleService,
                                  GlobalUserService userService,
-                                 @Value("${vk.group.id}") long groupId
+                                 @Value("${vk.group.id}") long groupId,
+                                 MessageMapper messageMapper
     ) {
         this.memberService = memberService;
         this.userInputResolver = userInputResolver;
         this.roleService = roleService;
         this.userService = userService;
         this.groupId = groupId;
+        this.messageMapper = messageMapper;
     }
 
     @Autowired
@@ -67,7 +72,6 @@ public class MemberRoleShowCommand implements ChatCommand {
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         long chatId = messageDto.getChatId();
-        long peerId = messageDto.getPeerId();
 
         long memberToCheck;
 
@@ -86,9 +90,10 @@ public class MemberRoleShowCommand implements ChatCommand {
         String userName = userService.getUserNameInRequiredCase(memberToCheck, NameCase.GENITIVE)
                 .orElse("участника");
 
-        vkChatClient.sendText("Роль %s(%s) в чате — «%s». Приоритет роли: %d".formatted(createMention(memberToCheck),userName,roleName, userRolePriority)
-                ,peerId
-                , true);
+
+        vkChatClient.sendText(
+                messageMapper.toSendMessageDto("Роль %s(%s) в чате — «%s». Приоритет роли: %d".formatted(createMention(memberToCheck),userName,roleName, userRolePriority),
+                        messageDto));
 
 
     }

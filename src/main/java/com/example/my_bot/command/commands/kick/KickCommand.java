@@ -5,10 +5,12 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.exception.member.MemberAccessDeniedException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -36,6 +38,8 @@ public class KickCommand implements ChatCommand {
 
     private final UserInputResolver userInputResolver;
 
+    private final MessageMapper messageMapper;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -48,7 +52,8 @@ public class KickCommand implements ChatCommand {
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         long chatId = messageDto.getChatId();
-        long peerId = messageDto.getPeerId();
+
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
 
         long memberToRemove;
 
@@ -56,19 +61,22 @@ public class KickCommand implements ChatCommand {
         if(inputResult.getMemberId().isPresent()){
             memberToRemove = inputResult.getMemberId().get();
         }else{
-            vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS, peerId,true);
+            sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
+            vkChatClient.sendText(sendMessage);
             return;
         }
 
         if(memberToRemove==messageDto.getFromId()){
-            vkChatClient.sendText(new CannotApplyThisCommandToYourselfException().getMessage(), peerId,true);
+            sendMessage.setText(new CannotApplyThisCommandToYourselfException().getMessage());
+            vkChatClient.sendText(sendMessage);
             return;
         }
 
         try{
             memberService.checkMemberInteractionAbility(chatId, messageDto.getFromId(), memberToRemove);
         }catch (MemberAccessDeniedException e){
-            vkChatClient.sendText(e.getMessage(),peerId, true);
+            sendMessage.setText(e.getMessage());
+            vkChatClient.sendText(sendMessage);
             return;
         }
 
@@ -76,7 +84,8 @@ public class KickCommand implements ChatCommand {
        try{
            vkChatClient.kickOneChatMember(chatId, memberToRemove);
        }catch (ApiException e){
-           vkChatClient.sendText("Не удалось исключить пользователя. "+e.getMessage(),peerId, true);
+           sendMessage.setText("Не удалось исключить пользователя. "+e.getMessage());
+           vkChatClient.sendText(sendMessage);
        }
 
     }

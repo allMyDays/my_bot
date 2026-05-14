@@ -5,6 +5,7 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.enumeration.TimeZoneType;
@@ -12,6 +13,7 @@ import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.ban.BanException;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.GlobalUserService;
@@ -40,6 +42,8 @@ public class BanCommand implements ChatCommand {
     @Getter
     private final CommandCooldown cooldown = new CommandCooldown(20,60);
 
+    private final MessageMapper messageMapper;
+
     private VkChatClient vkChatClient;
 
     private final ChatService chatService;
@@ -62,13 +66,12 @@ public class BanCommand implements ChatCommand {
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         long chatId = messageDto.getChatId();
-        long peerId = messageDto.getPeerId();
         String[] args = messageDto.getFirstRowArguments();
         long fromId = messageDto.getFromId();
 
         long memberToBan;
         String reason=null;
-        Long banPeriodInSeconds=null;
+        Long banPeriodInSeconds;
 
         // варианты:
         // !бан @durov
@@ -76,25 +79,30 @@ public class BanCommand implements ChatCommand {
         // !бан @durov 2 часа
         // !бан 2 часа (пересланное смс)
 
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+
         ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(messageDto, 0);
         if(inputResult.getMemberId().isPresent()){
             memberToBan = inputResult.getMemberId().get();
             if(args.length>=2){ // временный бан
                 boolean isFwd = inputResult.isFwdMessage();
                 if(!isFwd&&args.length<3){   // указали ссылку на участника, но недостаточно аргументов для периода бана
-                    vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
+                    sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+                    vkChatClient.sendText(sendMessage);
                     return;
                 }
                 banPeriodInSeconds = TimeUtils.toSecondsFromString(args[isFwd?0:1],args[isFwd?1:2]).orElse(null); //!бан @durov 2 часа или !бан 2 часа (пересланное смс)
                 if(banPeriodInSeconds==null){
-                    vkChatClient.sendText(INVALID_TIME_PERIOD_MESSAGE,peerId, true);
+                    sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
+                    vkChatClient.sendText(sendMessage);
                     return;
                 }
             }else{   // вечный бан
                 banPeriodInSeconds = chatService.getDefaultBanPeriod(chatId).orElse(null);
             }
         }else{
-            vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS, peerId,true);
+            sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
+            vkChatClient.sendText(sendMessage);
             return;
         }
         String [] rows = messageDto.getAllRows();
@@ -106,11 +114,13 @@ public class BanCommand implements ChatCommand {
            bannedUntil = banService.createMemberBan(chatId, memberToBan, reason, banPeriodInSeconds,fromId);
            vkChatClient.kickOneChatMember(chatId, memberToBan);
        }catch (CommandException | MemberException | BanException e){
-           vkChatClient.sendText(e.getMessage(),peerId, true);
+           sendMessage.setText(e.getMessage());
+           vkChatClient.sendText(sendMessage);
            return;
        } catch (ApiException e){
            if(e.getCode()!=935){    // 935 - скорее всего дали бан тому, кого в чате никогда не было, чтобы он не смог присоединиться
-             vkChatClient.sendText("Пользователь забанен, но его не удалось исключить из чата. "+e.getMessage(),peerId, true);
+             sendMessage.setText("Пользователь забанен, но его не удалось исключить из чата. "+e.getMessage());
+             vkChatClient.sendText(sendMessage);
              return;
            }
        }
@@ -130,7 +140,8 @@ public class BanCommand implements ChatCommand {
            message+="\nПричина: "+reason;
        }
 
-       vkChatClient.sendText(message,peerId, true);
+       sendMessage.setText(message);
+       vkChatClient.sendText(sendMessage);
 
     }
 }

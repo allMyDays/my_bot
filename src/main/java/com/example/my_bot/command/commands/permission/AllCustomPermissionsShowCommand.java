@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.enumeration.user.NameCase;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.*;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.permission.MemberPermissionService;
@@ -40,6 +41,8 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
     private final RolePermissionService rolePermissionService;
 
     private final MemberPermissionService memberPermissionService;
+
+    private final MessageMapper messageMapper;
 
     private final ChatService chatService;
     private final RoleService roleService;
@@ -103,7 +106,7 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
             });
         });
 
-        vkChatClient.sendText(sb.toString(),messageDto.getPeerId(), true);
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(), messageDto));
     }
 
 

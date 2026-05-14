@@ -4,11 +4,13 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.permission.PermissionException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.permission.MemberPermissionService;
 import com.example.my_bot.service.permission.RolePermissionService;
@@ -43,6 +45,7 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
 
     private final GlobalUserService userService;
 
+    private final MessageMapper messageMapper;
 
 
 
@@ -53,15 +56,18 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
         long chatId = messageDto.getChatId();
         String[] args = messageDto.getFirstRowArguments();
         Optional<Long> userId=Optional.empty();
-        long peerId = messageDto.getPeerId();
+
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
 
         if(args.length==0){
-            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
+            sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }if(args.length==2){
             userId = userInputResolver.getMemberIdByStringInput(args[1]);
             if(userId.isEmpty()){
-                vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS,peerId, true);
+                sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
+                vkChatClient.sendText(sendMessage);
                 return;
             }
         }
@@ -72,21 +78,22 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
                 memberPermissionService.deleteCustomMemberPermission(chatId, args[0], userId.get(),messageDto.getFromId());
             }
         }catch (CommandException | PermissionException | MemberException e){
-            vkChatClient.sendText(e.getMessage(),peerId, true);
+            sendMessage.setText(e.getMessage());
+            vkChatClient.sendText(sendMessage);
             return;
         }
 
-        String message = userId.map(aLong ->{
+        sendMessage.setText(userId.map(aLong ->{
                     String userName = userService.getUserNameInRequiredCase(aLong, NameCase.ACCUSATIVE)
                             .orElse("этого участника");
 
                     return  "✅Настройка сброшена. Теперь возможность использовать эту команду у %s(%s) зависит только от уровня его роли."
                             .formatted(createMention(aLong),userName);
                 }
-        ).orElse("✅Настройка прав для указанной команды была сброшена до дефолтной роли.");
+        ).orElse("✅Настройка прав для указанной команды была сброшена до дефолтной роли."));
 
 
-        vkChatClient.sendText(message, peerId, true);
+        vkChatClient.sendText(sendMessage);
 
     }
 

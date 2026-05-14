@@ -5,7 +5,7 @@ import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.entity.TimerEntity;
 import com.example.my_bot.exception.timer.TimerHasReachedExecutionLimitException;
-import com.example.my_bot.mapper.CommandMapper;
+import com.example.my_bot.mapper.MessageMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -31,10 +31,11 @@ public class TimerExecutionService {
 
     private final static int CORE_POOL_SIZE = 3;
     private final static long MAX_SECONDS_BETWEEN_NOW_AND_EXECUTION = 30*60;
+    private final static int CONVERSATION_MESSAGE_ID = 0;
 
     private TimerService timerService;
     private CommandDispatcher commandDispatcher;
-    private final CommandMapper commandMapper;
+    private final MessageMapper messageMapper;
     private final CaffeineCacheManager cacheManager;
     private final ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(CORE_POOL_SIZE);
     private final VkChatClient vkChatClient;
@@ -87,7 +88,7 @@ public class TimerExecutionService {
             long timerId = timer.getId();
                 try{
                     commandDispatcher.dispatch(
-                            commandMapper.toCommandMessageDto(chatId, timer.getCreatorId(), timer.getFullCommand(), true)
+                            messageMapper.toCommandMessageDto(chatId, timer.getCreatorId(), timer.getFullCommand(), CONVERSATION_MESSAGE_ID,false,true)
                     );
                 }catch (Exception e) {
                     log.warn("error while execution timer {} in chat {}, the timer is gonna be deleted.",timerId,chatId, e);
@@ -126,7 +127,7 @@ public class TimerExecutionService {
             log.warn("Failed to delete timer {} after error", timerId, e);
         }
         try {
-            vkChatClient.sendText(messageTemplate.formatted(command), convertToPeerId(chatId), true);
+            vkChatClient.sendText(messageMapper.toSendMessageDto(messageTemplate.formatted(command), convertToPeerId(chatId)));
         } catch (Exception e) {
             log.warn("Failed to send notification about timer {} deletion after error", timerId, e);
         }

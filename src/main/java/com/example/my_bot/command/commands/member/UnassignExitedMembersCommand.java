@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -26,6 +27,7 @@ public class UnassignExitedMembersCommand implements ChatCommand {
 
     private final MemberService memberService;
     private VkChatClient vkChatClient;
+    private final MessageMapper messageMapper;
 
     @Autowired
     @Lazy
@@ -43,7 +45,7 @@ public class UnassignExitedMembersCommand implements ChatCommand {
         String message = "✅%s(Вы) успешно разжаловали всех вышедших и исключенных участников, чья роль ниже вашей («%s» с приоритетом %d)."
                 .formatted(createMention(fromId),callerRole.getRoleName(), callerRole.getRolePriority());
 
-        vkChatClient.sendText(message,messageDto.getPeerId(),false);
+        vkChatClient.sendText(messageMapper.toSendMessageDto(message,messageDto));
 
     }
 

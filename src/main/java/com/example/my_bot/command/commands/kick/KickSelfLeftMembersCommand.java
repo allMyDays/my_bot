@@ -8,6 +8,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.enumeration.DefaultRole;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.MemberService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -34,6 +35,8 @@ public class KickSelfLeftMembersCommand implements ChatCommand {
 
     private final MemberService memberService;
 
+    private final MessageMapper messageMapper;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -57,8 +60,9 @@ public class KickSelfLeftMembersCommand implements ChatCommand {
                         .map(MemberEntity::getUserId)
                         .toList());
 
-        vkChatClient.sendText("✅Было исключено %d из %d вышедших, но не исключённых участников с ролью ниже чем «%s»."
-                .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), requiredRole.getRoleName()), messageDto.getPeerId(), true);
+        vkChatClient.sendText(messageMapper.toSendMessageDto(
+                "✅Было исключено %d из %d вышедших, но не исключённых участников с ролью ниже чем «%s»."
+                .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), requiredRole.getRoleName()),messageDto));
 
 
 

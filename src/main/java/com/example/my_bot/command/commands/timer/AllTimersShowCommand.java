@@ -9,6 +9,7 @@ import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.TimerEntity;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.timer.TimerType;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.timer.TimerService;
 import com.example.my_bot.utils.TimeUtils;
@@ -43,6 +44,8 @@ public class AllTimersShowCommand implements ChatCommand {
 
     private final ChatService chatService;
 
+    private final MessageMapper messageMapper;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -55,7 +58,6 @@ public class AllTimersShowCommand implements ChatCommand {
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         long chatId = messageDto.getChatId();
-        long peerId = messageDto.getPeerId();
 
         List<TimerEntity> timers = timerService.getChatTimersSortedByIdAsc(chatId);
 
@@ -90,8 +92,7 @@ public class AllTimersShowCommand implements ChatCommand {
                     sb.append("\n");
 
         }
-
-        vkChatClient.sendText(sb.toString(),peerId, true);
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),messageDto));
 
     }
 }

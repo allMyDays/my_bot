@@ -5,11 +5,13 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.user.GlobalUserException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.GlobalUserService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -37,6 +39,8 @@ public class UnBindCommand implements ChatCommand {
 
     private final UserInputResolver userInputResolver;
 
+    private final MessageMapper messageMapper;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -48,9 +52,9 @@ public class UnBindCommand implements ChatCommand {
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long peerId = messageDto.getPeerId();
         long fromId = messageDto.getFromId();;
-        String[] args = messageDto.getFirstRowArguments();
+
+        SendMessageDto sendMessage =  messageMapper.toSendMessageDto("",messageDto);
 
         long userToUnbind;
 
@@ -65,14 +69,16 @@ public class UnBindCommand implements ChatCommand {
         try {
             userService.unBindChatFromUser(messageDto.getChatId(), fromId, userToUnbind);
         }catch (MemberException | GlobalUserException e){
-            vkChatClient.sendText(e.getMessage(), messageDto.getPeerId(), true);
+            sendMessage.setText(e.getMessage());
+            vkChatClient.sendText(sendMessage);
             return;
         }
-        String message = "Вы успешно сняли с %s(%s) привязку этого чата.".formatted(createMention(userToUnbind),userToUnbind==fromId
+        sendMessage.setText("Вы успешно сняли с %s(%s) привязку этого чата.".formatted(createMention(userToUnbind),userToUnbind==fromId
                          ? "себя"
-                         : userService.getUserNameInRequiredCase(userToUnbind, NameCase.DATIVE).orElse("данного пользователя"));
+                         : userService.getUserNameInRequiredCase(userToUnbind, NameCase.DATIVE).orElse("данного пользователя"))
+        );
 
-        vkChatClient.sendText(message, peerId,true);
+        vkChatClient.sendText(sendMessage);
 
     }
 }

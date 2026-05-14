@@ -4,9 +4,11 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.TimerEntity;
 import com.example.my_bot.exception.timer.TimerException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.timer.TimerService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -32,19 +34,24 @@ public class TimerChangeExecutionLimitCommand implements ChatCommand {
 
     private final TimerService timerService;
 
+    private final MessageMapper messageMapper;
+
 
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         long chatId = messageDto.getChatId();
         String[] args = messageDto.getFirstRowArguments();
-        long peerId = messageDto.getPeerId();
+
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
 
         if(args.length<2){
-            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId,true);
+            sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }if(!isValidInteger(args[0])||!isValidInteger(args[1])){
-            vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId,true);
+            sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }
         List<TimerEntity> timers;
@@ -52,19 +59,22 @@ public class TimerChangeExecutionLimitCommand implements ChatCommand {
         int outerTimerId = Integer.parseInt(args[0]);
 
         if(outerTimerId<1||outerTimerId>(timers = timerService.getChatTimersSortedByIdAsc(chatId)).size()){
-            vkChatClient.sendText("Не найдено таймера с таким ID.",peerId,true);
+            sendMessage.setText("Не найдено таймера с таким ID.");
+            vkChatClient.sendText(sendMessage);
             return;
         }
         int newExecutionLimit = Integer.parseInt(args[1]);
         try{
             timerService.setCustomExecutionLimit(timers.get(outerTimerId-1).getId(), newExecutionLimit);
         }catch (TimerException e){
-          vkChatClient.sendText(e.getMessage(), peerId,true);
+          sendMessage.setText(e.getMessage());
+          vkChatClient.sendText(sendMessage);
           return;
         }
-        String message = "✅Теперь таймер с ID %d выполнится максимум %d раз, после чего будет удалён."
-                .formatted(outerTimerId, newExecutionLimit);
+        sendMessage.setText("✅Теперь таймер с ID %d выполнится максимум %d раз, после чего будет удалён."
+                .formatted(outerTimerId, newExecutionLimit)
+        );
 
-        vkChatClient.sendText(message,peerId, true);
+        vkChatClient.sendText(sendMessage);
     }
 }

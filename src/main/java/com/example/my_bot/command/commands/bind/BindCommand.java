@@ -5,7 +5,9 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.utils.ChatUtils;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -32,6 +34,8 @@ public class BindCommand implements ChatCommand {
 
     private final GlobalUserService userService;
 
+    private final MessageMapper messageMapper;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -46,52 +50,35 @@ public class BindCommand implements ChatCommand {
         long peerId = messageDto.getPeerId();
         long fromId = messageDto.getFromId();;
 
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+
+
         if(ChatUtils.isPersonalChat(peerId)){
-            vkChatClient.sendText(CANNOT_USE_THIS_COMMAND_IN_PERSONAL_DIALOGUE, messageDto.getPeerId(), true);
+            sendMessage.setText(CANNOT_USE_THIS_COMMAND_IN_PERSONAL_DIALOGUE);
+            vkChatClient.sendText(sendMessage);
             return;
         }
-        String message;
         if(!vkChatClient.canTheBotWriteToUser(fromId)){
-            message = "Для выполнения этой команды, %s(Вы) должны разрешить мне (группе) отправлять вам личные сообщения. Для этого напишите любой текст в личные сообщения сообщества."
-                    .formatted(createMention(fromId));
-            vkChatClient.sendText(message, messageDto.getPeerId(), true);
+            sendMessage.setText("Для выполнения этой команды, %s(Вы) должны разрешить мне (группе) отправлять вам личные сообщения. Для этого напишите любой текст в личные сообщения сообщества."
+                    .formatted(createMention(fromId))
+            );
+            vkChatClient.sendText(sendMessage);
             return;
         }
         userService.bindChatToUser(messageDto.getChatId(), fromId);
         try{
-            message = "\uD83D\uDD17 Вы успешно привязали чат к своим личным сообщениям. " +
-                    "Теперь вы можете писать команды и получать ответы на них прямо здесь. Команды продолжат выполняться в том чате.";
-
-            vkChatClient.sendText(message, fromId, true);
-            return;
+            sendMessage.setText("\uD83D\uDD17 Вы успешно привязали чат к своим личным сообщениям. " +
+                    "Теперь вы можете писать команды и получать ответы на них прямо здесь. Команды продолжат выполняться в том чате."
+            );
+            vkChatClient.sendText(sendMessage);
         }catch (Exception e){
             log.error("chat {} error: user {} allowed personal messages, but I could not send it to him",messageDto.getChatId(), fromId, e);
-            message = "%s(Вы) успешно привязали чат к своим личным сообщениям, однако мне не удалось отправить вам личное сообщение. " +
-                    "Убедитесь, что вы разрешили мне отправлять себе личные сообщения.";
-            vkChatClient.sendText(message, messageDto.getPeerId(), true);
-
+            sendMessage.setText(
+                    "%s(Вы) успешно привязали чат к своим личным сообщениям, однако мне не удалось отправить вам личное сообщение. " +
+                    "Убедитесь, что вы разрешили мне отправлять себе личные сообщения."
+            );
+            vkChatClient.sendText(sendMessage);
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        vkChatClient.sendText("ПОНГ", messageDto.getPeerId(), true);
 
     }
 }

@@ -1,4 +1,4 @@
-package com.example.my_bot.command.commands;
+package com.example.my_bot.command.commands.settings;
 
 
 import com.example.my_bot.annotation.Command;
@@ -7,6 +7,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -22,7 +23,7 @@ import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 @Slf4j
 @RequiredArgsConstructor
 @Command(mainCommandName = "настройки", alternativeCommandNames = {"settings"}, defaultRole = MEMBER, eventable = true)
-public class ChatSettingsCommand implements ChatCommand {
+public class ChatSettingsShowCommand implements ChatCommand {
 
     @Getter
     private final CommandCooldown cooldown = new CommandCooldown(10,60*2);
@@ -30,6 +31,8 @@ public class ChatSettingsCommand implements ChatCommand {
     private VkChatClient vkChatClient;
 
     private final ChatService chatService;
+
+    private final MessageMapper messageMapper;
 
     @Autowired
     @Lazy
@@ -51,11 +54,12 @@ public class ChatSettingsCommand implements ChatCommand {
         String sb = "⚙ Список настроек чата:\n\n" +
                 "\n ❗ Префикс: " + details.getOptionalPrefix().map(a -> on).orElse(off) +
                 "\n 🔕 Тихий запрет: " + (details.isSilentRestriction() ? on : off) +
+                "\n ↪ Пересыл команд: " + (details.isMessageReplying()? on : off) +
                 "\n \uD83C\uDF0D Таймзона: " + details.getTimeZoneType().getStringType() +
                 "\n ⌚ Дефолтный срок бана: " + details.getOptionalBanPeriod().map(p -> TimeUtils.formatDurationFromSeconds(p, true)).orElse(off) +
                 "\n \uD83D\uDD27 Авторазбан приглашенных: " + (details.isAutoUnban() ? on : off);
 
-        vkChatClient.sendText(sb, messageDto.getPeerId(), true);
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb,messageDto));
 
     }
 }

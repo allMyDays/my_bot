@@ -4,11 +4,13 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.limit.RoleRateLimitDto;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.limit.RateLimitException;
 import com.example.my_bot.exception.role.RoleException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.RoleRateLimitService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -35,6 +37,8 @@ public class RateLimitDeleteCommand implements ChatCommand {
 
     private final RoleRateLimitService roleRateLimitService;
 
+    private final MessageMapper messageMapper;
+
 
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
@@ -42,13 +46,16 @@ public class RateLimitDeleteCommand implements ChatCommand {
         long chatId = messageDto.getChatId();
         String[] args = messageDto.getFirstRowArguments();
         long fromId = messageDto.getFromId();
-        long peerId = messageDto.getPeerId();
+
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", messageDto);
 
         if(args.length<1){
-            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId,true);
+            sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }if(!isValidInteger(args[0])){
-            vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId,true);
+            sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
 
         } List<RoleRateLimitDto> roleLimits;
@@ -56,15 +63,20 @@ public class RateLimitDeleteCommand implements ChatCommand {
         int limitId = Integer.parseInt(args[0]);
 
         if(limitId<1||limitId>(roleLimits = roleRateLimitService.getRoleLimitsSortedByEntityId(chatId)).size()){
-            vkChatClient.sendText("Не найдено лимита с таким ID.",peerId,true);
+            sendMessage.setText("Не найдено лимита с таким ID.");
+            vkChatClient.sendText(sendMessage);
             return;
         }
         try{
             roleRateLimitService.deleteLimit(roleLimits.get(limitId-1),chatId,fromId);
 
         }catch (RateLimitException | RoleException | CommandException e){
-          vkChatClient.sendText(e.getMessage(), peerId,true);
+          sendMessage.setText(e.getMessage());
+          vkChatClient.sendText(sendMessage);
           return;
-        } vkChatClient.sendText("✅Лимит с ID %d был успешно удалён.".formatted(limitId),peerId, true);
+        }
+
+        sendMessage.setText("✅Лимит с ID %d был успешно удалён.".formatted(limitId));
+        vkChatClient.sendText(sendMessage);
     }
 }

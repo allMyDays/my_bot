@@ -69,11 +69,11 @@ public class UserInputResolver {
 
         ParseMemberInputResult result = new ParseMemberInputResult();
         Long targetMember = null;
-        if(messageDto.getReplyMessageFromId().isPresent()){
-            targetMember = messageDto.getReplyMessageFromId().get();
+        if(messageDto.getReplyMessageOwnerId().isPresent()){
+            targetMember = messageDto.getReplyMessageOwnerId().get();
             result.setFwdMessage(true);
-        }else if(!messageDto.getFwdMessageFromIds().isEmpty()){
-            targetMember = messageDto.getFwdMessageFromIds().get(0);
+        }else if(!messageDto.getFwdMessageOwnerIds().isEmpty()){
+            targetMember = messageDto.getFwdMessageOwnerIds().get(0);
             result.setFwdMessage(true);
         }else{
             if(messageDto.getFirstRowArguments().length>=(userIndex+1)){

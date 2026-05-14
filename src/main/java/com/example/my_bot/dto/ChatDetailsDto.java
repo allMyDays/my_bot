@@ -20,6 +20,8 @@ public class ChatDetailsDto {
 
     private boolean silentRestriction;
 
+    private boolean messageReplying;
+
     private TimeZoneType timeZoneType;
 
     private Long banPeriodSeconds;

@@ -1,4 +1,4 @@
-package com.example.my_bot.command.commands.ban;
+package com.example.my_bot.command.commands.settings;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
@@ -18,18 +18,18 @@ import org.springframework.context.annotation.Lazy;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
 import static com.example.my_bot.enumeration.chat.SwitchChatSettingResult.ON;
 
-@Command(mainCommandName = "авторазбан",alternativeCommandNames = {"autounban"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "тихийзапрет",alternativeCommandNames = {"silentrestr","silentrestriction"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
 @RequiredArgsConstructor
-public class AutoUnbanCommand implements ChatCommand {
+public class SilentRestrictionChangeCommand implements ChatCommand {
 
     @Getter
     private final CommandCooldown cooldown = new CommandCooldown(4,60*2);
 
-    private final MessageMapper messageMapper;
-
     private ChatService chatService;
 
     private VkChatClient vkChatClient;
+
+    private final MessageMapper messageMapper;
 
     @Autowired
     @Lazy
@@ -42,13 +42,11 @@ public class AutoUnbanCommand implements ChatCommand {
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        SwitchChatSettingResult switchResult = chatService.switchAutoUnban(messageDto.getChatId());
-        String unbanCommandName = UnbanCommand.class.getAnnotation(Command.class).mainCommandName();
-
-            vkChatClient.sendText(messageMapper.toSendMessageDto(
-                    "✅Теперь мне %s автоматически снимать бан с пользователей, которые были приглашены участниками, которым хватает прав на команду «%s»."
-                            .formatted(switchResult==ON?"можно":"нельзя",unbanCommandName)
-                    ,messageDto));
+        SwitchChatSettingResult switchResult = chatService.switchSilentRestriction(messageDto.getChatId());
+            vkChatClient.sendText(
+                    messageMapper.toSendMessageDto(
+                    "Теперь мне "+ (switchResult==ON?"нельзя":"можно") +" говорить участникам чата о том, что им не хватило прав на использование определенной команды.",
+                    messageDto));
 
 
     }

@@ -5,6 +5,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.RoleDto;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.AssignMemberResult;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
@@ -12,6 +13,7 @@ import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.role.RoleException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.GlobalUserService;
@@ -41,6 +43,8 @@ public class AssignMemberCommand implements ChatCommand {
 
     private final GlobalUserService userService;
 
+    private final MessageMapper messageMapper;
+
 
 
 
@@ -49,13 +53,16 @@ public class AssignMemberCommand implements ChatCommand {
 
         long chatId = messageDto.getChatId();
         String[] args = messageDto.getFirstRowArguments();
-        long peerId = messageDto.getPeerId();
+
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
 
         if(args.length==0){
-            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
+            sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }if(isNumber(args[0])&&!isValidInteger(args[0])){
-            vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId, true);
+            sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }
         long userToAssign;
@@ -63,7 +70,8 @@ public class AssignMemberCommand implements ChatCommand {
         if(parseResult.getMemberId().isPresent()){
             userToAssign = parseResult.getMemberId().get();
         }else{
-            vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS,peerId, true);
+            sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
+            vkChatClient.sendText(sendMessage);
             return;
 
         }
@@ -77,7 +85,8 @@ public class AssignMemberCommand implements ChatCommand {
             assignResult = memberService.assignNewRoleToMember(chatId, userToAssign,args[0], messageDto.getFromId());
          }
         }catch(MemberException | RoleException | CommandException e){
-            vkChatClient.sendText(e.getMessage(), peerId,true);
+            sendMessage.setText(e.getMessage());
+            vkChatClient.sendText(sendMessage);
             return;
         }
         if(assignResult!=null){
@@ -87,10 +96,11 @@ public class AssignMemberCommand implements ChatCommand {
             String username = userService.getUserNameInRequiredCase(userToAssign, NameCase.GENITIVE)
                     .orElse("этого участника");
 
-            vkChatClient.sendText(String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,
-                    createMention(userToAssign),username,oldRole.getRoleName(), newRole.getRoleName()),
-                    peerId,
-                    false);
+            sendMessage.setText(
+                    String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,
+                    createMention(userToAssign),username,oldRole.getRoleName(), newRole.getRoleName())
+            );
+            vkChatClient.sendText(sendMessage);
 
         }else{
             log.warn("chat {} error: AssignMemberResult is null in AssignMemberCommand",chatId);

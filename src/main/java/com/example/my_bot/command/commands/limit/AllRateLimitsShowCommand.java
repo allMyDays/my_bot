@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.limit.RoleRateLimitDto;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.RoleRateLimitService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.utils.TimeUtils;
@@ -34,14 +35,13 @@ public class AllRateLimitsShowCommand implements ChatCommand {
 
     private final RoleService roleService;
 
+    private final MessageMapper messageMapper;
+
 
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
-        long fromId = messageDto.getFromId();
-        long peerId = messageDto.getPeerId();
 
         List<RoleRateLimitDto> roleLimits = roleRateLimitService.getRoleLimitsSortedByEntityId(chatId);
         Map<Integer, String> roleMap = roleService.getAllRolesWithNoSorting(chatId);
@@ -64,6 +64,6 @@ public class AllRateLimitsShowCommand implements ChatCommand {
             );
 
 
-        } vkChatClient.sendText(sb.toString(),peerId,true);
+        } vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),messageDto));
     }
 }

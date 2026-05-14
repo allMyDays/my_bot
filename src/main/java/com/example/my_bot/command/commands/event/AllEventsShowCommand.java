@@ -5,11 +5,13 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.enumeration.user.NameCase;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.service.chat.ChatService;
@@ -47,6 +49,8 @@ public class AllEventsShowCommand implements ChatCommand {
 
     private final GlobalUserService globalUserService;
 
+    private final MessageMapper messageMapper;
+
     private VkChatClient vkChatClient;
 
     private RoleService roleService;
@@ -69,6 +73,8 @@ public class AllEventsShowCommand implements ChatCommand {
         String[] args = messageDto.getFirstRowArguments();
         StringBuilder sb = new StringBuilder();
 
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+
         if(args.length>=1&&args[0].equalsIgnoreCase("доступные")){
             sb.append("Вам доступно %d событий для создания:\n\n".formatted(MyEventType.values().length));
             int counter = 1;
@@ -77,7 +83,8 @@ public class AllEventsShowCommand implements ChatCommand {
                         counter++, myEventType.getCyrillicType(), myEventType.getDescription(),myEventType.getArgumentType()==EventArgumentType.NONE?"Аргумент не требуется":"Требуется аргумент")
                 );
             }
-            vkChatClient.sendText(sb.toString(), messageDto.getPeerId(), true);
+            sendMessage.setText(sb.toString());
+            vkChatClient.sendText(sendMessage);
             return;
         }
 
@@ -155,7 +162,8 @@ public class AllEventsShowCommand implements ChatCommand {
                         .append("\n");
             }
         }
-        vkChatClient.sendText(sb.toString(), messageDto.getPeerId(), true);
+        sendMessage.setText(sb.toString());
+        vkChatClient.sendText(sendMessage);
 
     }
 

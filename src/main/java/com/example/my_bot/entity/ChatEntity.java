@@ -28,6 +28,9 @@ public class ChatEntity {
     private boolean silentRestriction;
 
     @Column(nullable = false)
+    private boolean messageReplying;
+
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private TimeZoneType timeZoneType;
 

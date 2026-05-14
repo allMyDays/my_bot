@@ -3,10 +3,12 @@ package com.example.my_bot.command;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.dto.ChatDetailsDto;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.cooldown.CooldownResult;
 import com.example.my_bot.exception.command.ForbiddenCommandForCurrentModeException;
 import com.example.my_bot.exception.command.UnknownCommandException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.*;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.ChatUtils;
@@ -33,6 +35,7 @@ public class CommandDispatcher {
     private final CommandRegistry commandRegistry;
     private final CommandAccessService commandAccessService;
     private final GlobalUserService userService;
+    private final MessageMapper messageMapper;
 
 
 
@@ -50,12 +53,8 @@ public class CommandDispatcher {
              String commandName = commandOptional.get();
 
              long chatId = messageDto.getChatId();
-             long peerId = messageDto.getPeerId();
 
-
-             ChatDetailsDto chatDetails = chatService.getCachedChatDetails(chatId, true);
-
-             Optional<Character> chatPrefix = chatDetails.getOptionalPrefix();
+             Optional<Character> chatPrefix = chatService.getChatPrefix(chatId);
 
              if(!messageDto.isEventOrTimerMode()){   // в событиях/таймерах все команды обязаны быть без префикса
                  boolean mustCutPrefix=true;
@@ -91,23 +90,27 @@ public class CommandDispatcher {
             boolean canExecute = commandAccessService.checkCommandAuthorization(
                     chatId, cmdAnnotation.mainCommandName(),userRolePriority,fromId);
 
+            SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
             if(canExecute){
                 CooldownResult cooldownResult = commandAccessService.checkCommandRateLimit(
                         chatId, cmdAnnotation.mainCommandName(),userRolePriority,fromId);
                 if(!cooldownResult.canExecuteCommand()){
                   if(cooldownResult.canSendCDMessageToUser()){
-                    String message = "Нельзя так часто использовать эту команду. Она станет вновь доступна %s(Вам) через %s"
-                            .formatted(createMention(fromId), formatDurationFromSeconds(cooldownResult.getLeftCDSeconds(), true));
-                    vkChatClient.sendText(message, peerId, true);
+                    sendMessage.setText(
+                            "Нельзя так часто использовать эту команду. Она станет вновь доступна %s(Вам) через %s"
+                            .formatted(createMention(fromId), formatDurationFromSeconds(cooldownResult.getLeftCDSeconds(), true))
+                    );
+                    vkChatClient.sendText(sendMessage);
                   }return;
                 }
                 mainCommand.execute(messageDto);
             }else{
-                if(!chatDetails.isSilentRestriction()){
-                vkChatClient.sendText(
-                        "Команда «%s» недоступна %s(Вам) для использования.".formatted(cmdAnnotation.mainCommandName(),createMention(fromId)),
-                        peerId,
-                        false);
+                if(!chatService.isSilentRestriction(chatId)){
+                sendMessage.setText(
+                        "Команда «%s» недоступна %s(Вам) для использования."
+                                .formatted(cmdAnnotation.mainCommandName(),createMention(fromId))
+                );
+                vkChatClient.sendText(sendMessage);
                 }
             }
         }

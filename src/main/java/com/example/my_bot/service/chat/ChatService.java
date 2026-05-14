@@ -109,9 +109,29 @@ public class ChatService {
             chat.setSilentRestriction(true);
             resultToReturn = SwitchChatSettingResult.ON;
         }
-        putChatToCache( chatRepository.save(chat));
+        putChatToCache(chatRepository.save(chat));
         return resultToReturn;
 
+    }
+    @Transactional
+    public SwitchChatSettingResult switchMessageReplying(long chatId){
+
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+
+        SwitchChatSettingResult resultToReturn;
+        if(chat.isMessageReplying()){
+            chat.setMessageReplying(false);
+            resultToReturn = SwitchChatSettingResult.OFF;
+        }else{
+            chat.setMessageReplying(true);
+            resultToReturn = SwitchChatSettingResult.ON;
+        }
+        putChatToCache(chatRepository.save(chat));
+        return resultToReturn;
+    }
+
+    public boolean isSilentRestriction(long chatId){
+        return getCachedChatDetails(chatId, false).isSilentRestriction();
     }
 
 

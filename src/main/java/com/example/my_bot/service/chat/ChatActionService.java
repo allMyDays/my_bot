@@ -7,6 +7,7 @@ import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.ban.MemberBanStatus;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.member.MemberPresenceType;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
@@ -42,6 +43,8 @@ public class ChatActionService {
     private final VkChatClient vkChatClient;
 
     private final CommandAccessService commandAccessService;
+
+    private final MessageMapper messageMapper;
 
     private static final long AUTO_SYNC_INTERVAL_MINUTES = 60;
 
@@ -79,14 +82,19 @@ public class ChatActionService {
 
         }
 
-    public void checkLastChatSynchronizationAndExecute(long chatId) throws ClientException, ApiException {
+    public void checkLastChatSynchronizationAndExecute(long chatId) {
 
         ChatDetailsDto chatDto = chatService.getCachedChatDetails(chatId, true);
 
         Optional<Instant> lastSync = chatDto.getOptionalLastSyncTime();
 
         if(lastSync.isEmpty()||Duration.between(lastSync.get(),Instant.now()).toMinutes()>=AUTO_SYNC_INTERVAL_MINUTES){
-            memberService.synchronizeChatMembers(chatId);
+            try {
+                memberService.synchronizeChatMembers(chatId);
+            }catch (Exception e){
+                log.warn("chat {} error while auto synchronization",chatDto,e);
+                chatService.setLastSyncToNow(chatId);
+            }
         }
     }
 
@@ -131,7 +139,7 @@ public class ChatActionService {
                 }
             }
             try {
-                vkChatClient.sendText(message, ChatUtils.convertToPeerId(chatId), true);
+                vkChatClient.sendText(messageMapper.toSendMessageDto(message,ChatUtils.convertToPeerId(chatId)));
             } catch (ClientException | ApiException e) {
                 log.warn("chat {} error: cannot send info about banned member {} that just has been linked. ",chatId, memberId, e);
             }

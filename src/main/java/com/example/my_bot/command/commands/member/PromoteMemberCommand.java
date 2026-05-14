@@ -5,6 +5,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.RoleDto;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.AssignMemberResult;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
@@ -12,6 +13,7 @@ import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.role.RoleException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
@@ -44,6 +46,8 @@ public class PromoteMemberCommand implements ChatCommand {
 
     private final GlobalUserService userService;
 
+    private final MessageMapper messageMapper;
+
 
 
 
@@ -51,14 +55,16 @@ public class PromoteMemberCommand implements ChatCommand {
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         long chatId = messageDto.getChatId();
-        long peerId = messageDto.getPeerId();
+
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
 
         long userToAssign;
         ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(messageDto,0);
         if(parseResult.getMemberId().isPresent()){
             userToAssign = parseResult.getMemberId().get();
         }else{
-            vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS,peerId, true);
+            sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
+            vkChatClient.sendText(sendMessage);
             return;
         }
         AssignMemberResult assignResult;
@@ -68,17 +74,19 @@ public class PromoteMemberCommand implements ChatCommand {
             assignResult = memberService.assignNewRoleToMember(chatId,userToAssign,newRoleToAssign.getRolePriority(),messageDto.getFromId());
 
         }catch(RoleException | MemberException | CommandException e){
-            vkChatClient.sendText(e.getMessage(), peerId,true);
+            sendMessage.setText(e.getMessage());
+            vkChatClient.sendText(sendMessage);
             return;
         }
         if(assignResult!=null){
             String username = userService.getUserNameInRequiredCase(userToAssign, NameCase.GENITIVE)
                     .orElse("этого участника");
 
-            vkChatClient.sendText(String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,
-                    createMention(userToAssign),username,assignResult.getPreviousRole().getRoleName(), assignResult.getNewRole().getRoleName()),
-                    peerId,
-                    false);
+            sendMessage.setText(
+                    String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,
+                            createMention(userToAssign),username,assignResult.getPreviousRole().getRoleName(), assignResult.getNewRole().getRoleName())
+            );
+            vkChatClient.sendText(sendMessage);
 
         }else{
             log.warn("chat {} error: AssignMemberResult is null in PromoteMemberCommand",chatId);

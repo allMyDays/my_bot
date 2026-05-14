@@ -5,10 +5,12 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.ban.BanException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.GlobalUserService;
@@ -43,6 +45,8 @@ public class UnbanCommand implements ChatCommand {
 
     private final GlobalUserService globalUserService;
 
+    private final MessageMapper messageMapper;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -55,32 +59,34 @@ public class UnbanCommand implements ChatCommand {
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         long chatId = messageDto.getChatId();
-        long peerId = messageDto.getPeerId();
-        long fromId = messageDto.getFromId();
 
         long memberToUnban;
+
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", messageDto);
 
         ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(messageDto, 0);
         if(inputResult.getMemberId().isPresent()){
             memberToUnban = inputResult.getMemberId().get();
         }else{
-            vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS, peerId,true);
+            sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
+            vkChatClient.sendText(sendMessage);
             return;
         }
 
        try{
            banService.deleteMemberBan(chatId, memberToUnban);
        }catch (BanException e){
-           vkChatClient.sendText(e.getMessage(),peerId, true);
+           sendMessage.setText(e.getMessage());
+           vkChatClient.sendText(sendMessage);
            return;
        }
 
-       String message="✅С %s(%s) был успешно снят бан. Теперь вам нужно самостоятельно пригласить этого пользователя в чат.".formatted(
+       sendMessage.setText("✅С %s(%s) был успешно снят бан. Теперь вам нужно самостоятельно пригласить этого пользователя в чат.".formatted(
                createMention(memberToUnban),
                globalUserService.getUserNameInRequiredCase(memberToUnban, NameCase.GENITIVE).orElse("данного участника")
-       );
+       ));
 
-       vkChatClient.sendText(message,peerId, true);
+       vkChatClient.sendText(sendMessage);
 
     }
 }

@@ -4,9 +4,11 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.RoleEntity;
 import com.example.my_bot.exception.role.RoleException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -32,37 +34,44 @@ public class RoleCreateCommand implements ChatCommand {
 
     private final RoleService roleService;
 
+    private final MessageMapper messageMapper;
+
 
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         long chatId = messageDto.getChatId();
         String[] args = messageDto.getFirstRowArguments();
-        long peerId = messageDto.getPeerId();
+
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
 
         if(args.length<2){
-            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
+            sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }
 
         if(!isValidInteger(args[0])){
-            vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE, peerId,true);
+            sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }
 
-        RoleEntity createdRole=null;
+        RoleEntity createdRole;
         try{
             createdRole =  roleService.createRole(chatId, messageDto.getFromId(), Integer.parseInt(args[0]),
                    String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
 
         }catch (RoleException e){
-            vkChatClient.sendText(e.getMessage(), peerId,true);
+            sendMessage.setText(e.getMessage());
+            vkChatClient.sendText(sendMessage);
             return;
         }
-            vkChatClient.sendText("✅Вы успешно создали новую роль «%s» с приоритетом %d."
-                    .formatted(createdRole.getRoleName(), createdRole.getRolePriority()),
-                    peerId,
-                    true);
+        sendMessage.setText(
+                "✅Вы успешно создали новую роль «%s» с приоритетом %d."
+                        .formatted(createdRole.getRoleName(), createdRole.getRolePriority())
+        );
+            vkChatClient.sendText(sendMessage);
 
     }
 }

@@ -5,7 +5,9 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -33,6 +35,8 @@ public class BindListShowCommand implements ChatCommand {
 
     private final GlobalUserService userService;
 
+    private final MessageMapper messageMapper;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -44,9 +48,6 @@ public class BindListShowCommand implements ChatCommand {
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-        long peerId = messageDto.getPeerId();
-        long fromId = messageDto.getFromId();;
-
         List<Long> users = userService.findUserIdsByBoundChat(messageDto.getChatId());
 
         StringBuilder sb = new StringBuilder();
@@ -55,7 +56,7 @@ public class BindListShowCommand implements ChatCommand {
         AtomicInteger counter = new AtomicInteger(1);
         users.forEach(userId->sb.append(counter.getAndIncrement()).append(". %s\n".formatted(createMention(userId))));
 
-        vkChatClient.sendText(sb.toString(), messageDto.getPeerId(), true);
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),messageDto));
 
     }
 }

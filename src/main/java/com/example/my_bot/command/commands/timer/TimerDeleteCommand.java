@@ -4,9 +4,11 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.TimerEntity;
 import com.example.my_bot.exception.timer.TimerException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.timer.TimerService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -33,6 +35,8 @@ public class TimerDeleteCommand implements ChatCommand {
 
     private final TimerService timerService;
 
+    private final MessageMapper messageMapper;
+
 
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
@@ -41,11 +45,15 @@ public class TimerDeleteCommand implements ChatCommand {
         String[] args = messageDto.getFirstRowArguments();
         long peerId = messageDto.getPeerId();
 
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+
         if(args.length<1){
-            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId,true);
+            sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }if(!isValidInteger(args[0])){
-            vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId,true);
+            sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
 
         } List<TimerEntity> timers;
@@ -53,14 +61,19 @@ public class TimerDeleteCommand implements ChatCommand {
         int outerTimerId = Integer.parseInt(args[0]);
 
         if(outerTimerId<1||outerTimerId>(timers = timerService.getChatTimersSortedByIdAsc(chatId)).size()){
-            vkChatClient.sendText("Не найдено таймера с таким ID.",peerId,true);
+            sendMessage.setText("Не найдено таймера с таким ID.");
+            vkChatClient.sendText(sendMessage);
             return;
         }
         try{
             timerService.deleteTimerById(timers.get(outerTimerId-1).getId());
         }catch (TimerException e){
-          vkChatClient.sendText(e.getMessage(), peerId,true);
-          return;
-        } vkChatClient.sendText("✅Таймер с ID %d был успешно удалён.".formatted(outerTimerId),peerId, true);
+            sendMessage.setText(e.getMessage());
+            vkChatClient.sendText(sendMessage);
+            return;
+        }
+        sendMessage.setText("✅Таймер с ID %d был успешно удалён.".formatted(outerTimerId));
+
+        vkChatClient.sendText(sendMessage);
     }
 }

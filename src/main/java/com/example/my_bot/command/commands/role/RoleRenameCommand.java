@@ -5,8 +5,10 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.RoleDto;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.exception.role.RoleException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -33,22 +35,27 @@ public class RoleRenameCommand implements ChatCommand {
 
     private final RoleService roleService;
 
+    private final MessageMapper messageMapper;
+
 
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         String[] args = messageDto.getFirstRowArguments();
         long chatId = messageDto.getChatId();
-        long peerId = messageDto.getPeerId();
+
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
 
         if(args.length<2){
-            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
+            sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }
-        RoleDto editedRole=null;
+        RoleDto editedRole;
 
         if(isNumber(args[0])&&!isValidInteger(args[0])){
-            vkChatClient.sendText(NOT_VALID_INTEGER_MESSAGE,peerId, true);
+            sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }
         try{
@@ -59,15 +66,16 @@ public class RoleRenameCommand implements ChatCommand {
                 editedRole = roleService.renameRole(chatId, messageDto.getFromId(), args[0], newRoleName);
             }
 
-        } catch (RoleException e) {
-            vkChatClient.sendText(e.getMessage(),peerId, true);
+        } catch (RoleException e){
+            sendMessage.setText(e.getMessage());
+            vkChatClient.sendText(sendMessage);
             return;
         }
 
-        vkChatClient.sendText("✅Вы успешно переименовали указанную роль с приоритетом %d в «%s»."
-                        .formatted(editedRole.getRolePriority(), editedRole.getRoleName()),
-                peerId,
-                true);
+        sendMessage.setText("✅Вы успешно переименовали указанную роль с приоритетом %d в «%s»."
+                .formatted(editedRole.getRolePriority(), editedRole.getRoleName()));
+
+        vkChatClient.sendText(sendMessage);
 
     }
 

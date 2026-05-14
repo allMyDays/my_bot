@@ -1,28 +1,29 @@
 package com.example.my_bot.mapper;
 
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.utils.ChatUtils;
-import com.example.my_bot.utils.TextUtils;
 import com.example.my_bot.vk.VkMessage;
 import com.vk.api.sdk.objects.messages.ForeignMessage;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
-public abstract class CommandMapper {
+public abstract class MessageMapper {
 
 
 
-    public CommandMessageDto toCommandMessageDto(long chatId, @NonNull VkMessage message){
+    public CommandMessageDto toCommandMessageDto(long chatId, @NonNull VkMessage message, boolean replyToMessageId){
 
-        CommandMessageDto commandMessageDto = toCommandMessageDto(chatId, message.getFromId(), message.getText(),false);
+        CommandMessageDto commandMessageDto = toCommandMessageDto(chatId, message.getFromId(), message.getText(), message.getConversationMessageId(),replyToMessageId,false);
         commandMessageDto.setPeerId(message.getPeerId());
         if(message.getReplyMessage()!=null){
-            commandMessageDto.setReplyMessageFromId(message.getReplyMessage().getFromId());
+            commandMessageDto.setReplyMessageOwnerId(message.getReplyMessage().getFromId());
         }if(message.getFwdMessages()!=null){
-            commandMessageDto.setFwdMessagesFromIds(
+            commandMessageDto.setFwdMessagesOwnerIds(
                     message.getFwdMessages().stream()
                      .map(ForeignMessage::getFromId)
                      .toList()
@@ -30,14 +31,16 @@ public abstract class CommandMapper {
         } return commandMessageDto;
 
     }
-    public CommandMessageDto toCommandMessageDto(long chatId, long fromId, @Nullable String fullMessage, boolean eventOrTimerMode){
+    public CommandMessageDto toCommandMessageDto(long chatId, long fromId, @Nullable String fullMessage, int conversationMessageId, boolean replyToMessageId, boolean eventOrTimerMode){
 
         CommandMessageDto commandMessageDto = new CommandMessageDto();
-        commandMessageDto.setUserMessage(fullMessage);
+        commandMessageDto.setUserText(fullMessage);
         commandMessageDto.setFromId(fromId);
         commandMessageDto.setChatId(chatId);
         commandMessageDto.setPeerId(ChatUtils.convertToPeerId(chatId));
         commandMessageDto.setEventOrTimerMode(eventOrTimerMode);
+        commandMessageDto.setConversationMessageId(conversationMessageId);
+        commandMessageDto.setReplyToMessageId(replyToMessageId);
 
         if(fullMessage!=null){
             fullMessage = fullMessage.trim();
@@ -52,6 +55,21 @@ public abstract class CommandMapper {
         return commandMessageDto;
 
     }
+
+    @Mapping(target = "text", source = "text")
+    public abstract SendMessageDto toSendMessageDto(String text, @NonNull CommandMessageDto commandMessageDto);
+
+    @Mapping(target = "ableMentions", source = "ableMentions")
+    @Mapping(target = "text", source = "text")
+    public abstract SendMessageDto toSendMessageDto(String text, boolean ableMentions, @NonNull CommandMessageDto commandMessageDto);
+
+    @Mapping(target = "text", source = "text")
+    @Mapping(target = "peerId", source = "peerId")
+    public abstract SendMessageDto toSendMessageDto(String text, long peerId);
+
+
+
+
 
 
 

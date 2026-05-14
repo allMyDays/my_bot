@@ -2,12 +2,14 @@ package com.example.my_bot.handler;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
-import com.example.my_bot.mapper.CommandMapper;
+import com.example.my_bot.dto.ChatDetailsDto;
+import com.example.my_bot.dto.SendMessageDto;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.chat.ChatActionService;
+import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.event.EventExecutionService;
 import com.example.my_bot.utils.ChatUtils;
-import com.example.my_bot.utils.TextUtils;
 import com.example.my_bot.vk.VkAction;
 import com.example.my_bot.vk.VkMessage;
 import com.example.my_bot.vk.VkMessageNew;
@@ -36,7 +38,7 @@ public class AsyncEventHandler {
 
     private final VkChatClient vkChatClient;
 
-    private final CommandMapper commandMapper;
+    private final MessageMapper messageMapper;
 
     private final GlobalUserService userService;
 
@@ -44,21 +46,25 @@ public class AsyncEventHandler {
 
     private final EventExecutionService eventExecutionService;
 
+    private final ChatService chatService;
+
     private final long groupId;
 
     public AsyncEventHandler(CommandDispatcher commandDispatcher,
                              VkChatClient vkChatClient,
-                             CommandMapper commandMapper,
+                             MessageMapper messageMapper,
                              GlobalUserService userService,
                              ChatActionService chatActionService,
                              EventExecutionService eventExecutionService,
+                             ChatService chatService,
                              @Value("${vk.group.id}") long groupId) {
         this.commandDispatcher = commandDispatcher;
         this.vkChatClient = vkChatClient;
-        this.commandMapper = commandMapper;
+        this.messageMapper = messageMapper;
         this.userService = userService;
         this.chatActionService = chatActionService;
         this.eventExecutionService = eventExecutionService;
+        this.chatService = chatService;
         this.groupId = groupId;
     }
 
@@ -78,15 +84,16 @@ public class AsyncEventHandler {
             chatId = extractConversationId(peerId);
             if (hasTheBotJustBeenAdded(message.getAction())){
                 try {
-                    vkChatClient.sendText(WELCOME_MESSAGE, ChatUtils.convertToPeerId(chatId), true);
+                    vkChatClient.sendText(messageMapper.toSendMessageDto(WELCOME_MESSAGE, ChatUtils.convertToPeerId(chatId)));
                 } catch (ClientException |ApiException e) {
                     log.warn("chat {} error: couldn't send welcome message after the bot's just been added", chatId);
                 } return;
             }
         }
 
-        try {
-            commandDispatcher.dispatch(commandMapper.toCommandMessageDto(chatId, message));
+        try{
+            ChatDetailsDto chatDetails = chatService.getCachedChatDetails(chatId, true);
+            commandDispatcher.dispatch(messageMapper.toCommandMessageDto(chatId, message, chatDetails.isMessageReplying()));
 
             if(!isPersonalChat(peerId)){
                 chatActionService.handleChatAction(chatId,fromId,message.getAction());
@@ -95,8 +102,8 @@ public class AsyncEventHandler {
 
         }catch (Exception e) {
             log.error("Произошла ошибка: ",e);
-            try {
-                vkChatClient.sendText(UNKNOWN_ERROR_MESSAGE, peerId,true);
+            try {;
+                vkChatClient.sendText(messageMapper.toSendMessageDto(UNKNOWN_ERROR_MESSAGE, ChatUtils.convertToPeerId(chatId)));
             } catch (ClientException | ApiException e2) {
                 log.error("Ошибка при попытке отправить сообщение об ошибке в диалог c peerId {}: ",peerId,e2);
 

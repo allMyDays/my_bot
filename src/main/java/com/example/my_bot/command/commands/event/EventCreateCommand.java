@@ -5,6 +5,7 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.EventEntity;
 import com.example.my_bot.enumeration.event.EventArgumentType;
@@ -12,6 +13,7 @@ import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.event.EventException;
 import com.example.my_bot.exception.role.RoleException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.service.event.EventService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -41,6 +43,8 @@ public class EventCreateCommand implements ChatCommand {
 
     private final EventService eventService;
 
+    private final MessageMapper messageMapper;
+
     private VkChatClient vkChatClient;
 
     private RoleService roleService;
@@ -62,16 +66,19 @@ public class EventCreateCommand implements ChatCommand {
 
         String[] args = messageDto.getFirstRowArguments();
         long chatId = messageDto.getChatId();
-        long peerId = messageDto.getPeerId();
         long fromId = messageDto.getFromId();
 
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+
         if(args.length<3) {    //самый минимум: "!ивент приглашение модератор бан" (тип, роль, команда)
-            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE, peerId, true);
+            sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }
         MyEventType foundEventType = MyEventType.findByCyrillicType(args[0]).orElse(null);
         if(foundEventType==null){
-            vkChatClient.sendText("Вы ввели несуществующий тип события.", peerId, true);
+            sendMessage.setText("Вы ввели несуществующий тип события.");
+            vkChatClient.sendText(sendMessage);
             return;
         }
         String eventRole;
@@ -81,7 +88,8 @@ public class EventCreateCommand implements ChatCommand {
         if(foundEventType.getArgumentType()!= EventArgumentType.NONE){
             // событие нуждается в обязательном аргументе, самый минимум: "!ивент эмоджи 50 модератор бан"
             if(args.length<4) {
-                vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE, peerId, true);
+                sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+                vkChatClient.sendText(sendMessage);
                 return;
             }
             eventArgument = args[1];
@@ -115,7 +123,8 @@ public class EventCreateCommand implements ChatCommand {
             }
 
         } catch (RoleException | EventException | CommandException e) {
-            vkChatClient.sendText(e.getMessage(), peerId, true);
+            sendMessage.setText(e.getMessage());
+            vkChatClient.sendText(sendMessage);
             return;
         }
 
@@ -137,8 +146,8 @@ public class EventCreateCommand implements ChatCommand {
 
                 }
 
-
-        vkChatClient.sendText(message, peerId, true);
+        sendMessage.setText(message);
+        vkChatClient.sendText(sendMessage);
 
 
     }

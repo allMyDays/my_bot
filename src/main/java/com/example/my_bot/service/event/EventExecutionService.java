@@ -11,7 +11,7 @@ import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.MyEventType;
-import com.example.my_bot.mapper.CommandMapper;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.chat.ChatService;
@@ -27,14 +27,11 @@ import com.example.my_bot.vk.enumeration.VkMessageAttachmentType;
 import com.github.benmanes.caffeine.cache.*;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.vk.api.sdk.exceptions.ApiException;
-import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.*;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.checkerframework.checker.units.qual.C;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -66,7 +63,7 @@ public class EventExecutionService {
    private final EventService eventService;
    private final MemberService memberService;
    private final BanService banService;
-   private final CommandMapper commandMapper;
+   private final MessageMapper messageMapper;
    private final VkChatClient vkChatClient;
    private final ChatService chatService;
    private CommandDispatcher commandDispatcher;
@@ -538,14 +535,14 @@ public class EventExecutionService {
            }
            try{
                commandDispatcher.dispatch(
-                       commandMapper.toCommandMessageDto(chatId, eventDto.getCreatorId(), fullCommand, true)
+                       messageMapper.toCommandMessageDto(chatId, eventDto.getCreatorId(), fullCommand, chatMessageId,true, true)
                );
            }catch (Exception e){
                log.warn("error while execution event {} in chat {}.", eventDto.getId(), chatId, e);
                try {
                    String message = "Ваше событие с командой «%s» завершилось с ошибкой. Возможно, вам следует его удалить."
                            .formatted(eventDto.getFullCommand());
-                   vkChatClient.sendText(message, convertToPeerId(chatId), true);
+                   vkChatClient.sendText(messageMapper.toSendMessageDto(message, convertToPeerId(chatId)));
                } catch (Exception ex) {
                    log.warn("chat {}: Failed to send notification about error while execution event {}", chatId, eventDto.getId(), ex);
                }

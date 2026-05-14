@@ -6,10 +6,12 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -22,6 +24,7 @@ import static com.example.my_bot.enumeration.DefaultRole.*;
 
 @Slf4j
 @Command(mainCommandName = "роли", alternativeCommandNames = {"roles"}, defaultRole = MODERATOR, eventable = true)
+@RequiredArgsConstructor
 public class AllRolesShowCommand implements ChatCommand {
 
     private VkChatClient vkChatClient;
@@ -30,6 +33,8 @@ public class AllRolesShowCommand implements ChatCommand {
 
     @Getter
     private final CommandCooldown cooldown = new CommandCooldown(3,60);
+
+    private final MessageMapper messageMapper;
 
     @Autowired
     @Lazy
@@ -56,7 +61,7 @@ public class AllRolesShowCommand implements ChatCommand {
 
         roles.forEach((key, value) -> sb.append("%s — %d\n".formatted(value, key)));
 
-        vkChatClient.sendText(sb.toString(),messageDto.getPeerId(),true);
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(), messageDto));
 
     }
 }

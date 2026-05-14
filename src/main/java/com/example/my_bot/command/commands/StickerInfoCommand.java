@@ -1,4 +1,4 @@
-package com.example.my_bot.command.commands.timer;
+package com.example.my_bot.command.commands;
 
 
 import com.example.my_bot.annotation.Command;
@@ -35,14 +35,6 @@ public class StickerInfoCommand implements ChatCommand {
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
-
-
-
-
-
-
-
-        vkChatClient.sendText("ПОНГ", messageDto.getPeerId(), true);
 
     }
 }

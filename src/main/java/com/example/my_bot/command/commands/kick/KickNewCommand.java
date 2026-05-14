@@ -5,10 +5,12 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.enumeration.TimeZoneType;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.TimeUtils;
@@ -45,6 +47,8 @@ public class KickNewCommand implements ChatCommand {
 
     private final int MAX_COMMAND_PERIOD_IN_SECONDS = 86_400;
 
+    private final MessageMapper messageMapper;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -59,23 +63,25 @@ public class KickNewCommand implements ChatCommand {
         long chatId = messageDto.getChatId();
         long peerId = messageDto.getPeerId();
 
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", messageDto);
+
         String[] args = messageDto.getFirstRowArguments();
         if(args.length<2){
-            vkChatClient.sendText(NOT_ENOUGH_ARGUMENTS_MESSAGE,peerId, true);
+            sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }
         Optional<Long> optionalPeriod = TimeUtils.toSecondsFromString(args[0], args[1]);
         if(optionalPeriod.isEmpty()){
-            vkChatClient.sendText(INVALID_TIME_PERIOD_MESSAGE,peerId, true);
+            sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
+            vkChatClient.sendText(sendMessage);
             return;
         }long periodInSeconds = optionalPeriod.get();
 
         if(periodInSeconds>MAX_COMMAND_PERIOD_IN_SECONDS){
-            vkChatClient.sendText(
-                    "Максимальный период, за который можно исключить новичков — %s"
-                            .formatted(TimeUtils.formatDurationFromSeconds(MAX_COMMAND_PERIOD_IN_SECONDS,false)),
-                    peerId,
-                    true);
+            sendMessage.setText("Максимальный период, за который можно исключить новичков — %s"
+                    .formatted(TimeUtils.formatDurationFromSeconds(MAX_COMMAND_PERIOD_IN_SECONDS,false)));
+            vkChatClient.sendText(sendMessage);
             return;
         }
 
@@ -94,8 +100,9 @@ public class KickNewCommand implements ChatCommand {
                         .map(MemberEntity::getUserId)
                         .toList());
 
-        vkChatClient.sendText("✅Было исключено %d из %d новичков с ролью ниже чем «%s», впервые появившихся в чате после %s"
-                .formatted(kickedCommunities.size(), allRequiredMembers.getTotalElements(), requiredRole.getRoleName(), dateToShow), messageDto.getPeerId(), true);
+        sendMessage.setText("✅Было исключено %d из %d новичков с ролью ниже чем «%s», впервые появившихся в чате после %s"
+                .formatted(kickedCommunities.size(), allRequiredMembers.getTotalElements(), requiredRole.getRoleName(), dateToShow));
+        vkChatClient.sendText(sendMessage);
 
 
 

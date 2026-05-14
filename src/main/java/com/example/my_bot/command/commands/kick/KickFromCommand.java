@@ -5,12 +5,14 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
+import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
@@ -46,6 +48,8 @@ public class KickFromCommand implements ChatCommand {
 
     private final GlobalUserService globalUserService;
 
+    private final MessageMapper messageMapper;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -59,17 +63,18 @@ public class KickFromCommand implements ChatCommand {
 
         long chatId = messageDto.getChatId();
 
-        long peerId = messageDto.getPeerId();
-
         DefaultRole requiredRole = MODERATOR;
 
         long inviterId;
+
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
 
         ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(messageDto, 0);
         if(inputResult.getMemberId().isPresent()){
             inviterId = inputResult.getMemberId().get();
         }else{
-            vkChatClient.sendText(MEMBER_ARGUMENT_ABSENTS,peerId, true);
+            sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
+            vkChatClient.sendText(sendMessage);
             return;
         }
 
@@ -78,7 +83,8 @@ public class KickFromCommand implements ChatCommand {
         try{
             memberService.checkMemberInteractionAbility(chatId, messageDto.getFromId(), inviterId);
         }catch (MemberException e){
-            vkChatClient.sendText(e.getMessage(),peerId, true);
+            sendMessage.setText(e.getMessage());
+            vkChatClient.sendText(sendMessage);
             return;
           }
         }
@@ -94,8 +100,10 @@ public class KickFromCommand implements ChatCommand {
         String memberName = globalUserService.getUserNameInRequiredCase(inviterId, NameCase.INSTRUMENTAL)
                 .orElse("этим участником");
 
-        vkChatClient.sendText("✅Было исключено %d из %d участников с ролью ниже чем «%s», которые были приглашены %s(%s)."
-                .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), requiredRole.getRoleName(),createMention(inviterId), memberName), messageDto.getPeerId(), true);
+        sendMessage.setText("✅Было исключено %d из %d участников с ролью ниже чем «%s», которые были приглашены %s(%s)."
+                .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), requiredRole.getRoleName(),createMention(inviterId), memberName));
+
+        vkChatClient.sendText(sendMessage);
 
 
 

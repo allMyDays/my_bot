@@ -12,9 +12,12 @@ import java.util.Optional;
 @AllArgsConstructor
 @NoArgsConstructor
 @Setter
-public class CommandMessageDto {
+public class CommandMessageDto{
 
-    private String userMessage;
+    private String userText;
+
+    @Getter
+    private int conversationMessageId;
 
     @Getter
     private long chatId;
@@ -22,9 +25,9 @@ public class CommandMessageDto {
     @Getter
     private long fromId;
 
-    private Long replyMessageFromId;
+    private Long replyMessageOwnerId;
 
-    private List<Long> fwdMessagesFromIds = new ArrayList<>();
+    private List<Long> fwdMessagesOwnerIds = new ArrayList<>();
 
     @Getter
     private String[] firstRowArguments = new String[0];
@@ -38,30 +41,35 @@ public class CommandMessageDto {
     private long peerId;
 
     @Getter
+    private boolean replyToMessageId;
+
+    @Getter
     private boolean eventOrTimerMode = false;
+    
+    
 
 
-    public Optional<Long> getReplyMessageFromId() {
-        return Optional.ofNullable(replyMessageFromId);
+    public Optional<Long> getReplyMessageOwnerId() {
+        return Optional.ofNullable(replyMessageOwnerId);
     }
 
-    public List<Long> getFwdMessageFromIds() {
-        return fwdMessagesFromIds;
+    public List<Long> getFwdMessageOwnerIds() {
+        return fwdMessagesOwnerIds;
     }
 
-    public Optional<String> getUserMessage() {
-        return Optional.ofNullable(userMessage);
+    public Optional<String> getUserText() {
+        return Optional.ofNullable(userText);
     }
 
     public boolean hasAnyText(){
-        return userMessage!=null&&!userMessage.trim().isEmpty();
+        return userText !=null&&!userText.trim().isEmpty();
     }
 
     public boolean hasReplyMessage(){
-        return replyMessageFromId!=null;
+        return replyMessageOwnerId !=null;
     }
     public boolean hasFwdMessages(){
-        return !fwdMessagesFromIds.isEmpty();
+        return !fwdMessagesOwnerIds.isEmpty();
     }
 
     public Optional<String> getCommand() {
