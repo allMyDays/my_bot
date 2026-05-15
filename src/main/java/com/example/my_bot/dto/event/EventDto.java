@@ -43,6 +43,8 @@ public class EventDto {
 
     private final boolean delete;
 
+    private final boolean reply;
+
     public EventDto(long id,
                     @NonNull MyEventType type,
                     @Nullable Integer rolePriority,
@@ -57,7 +59,8 @@ public class EventDto {
                     @Nullable Integer CDPeriodSec,
                     @Nullable Set<Long> exceptionalMembers,
                     @Nullable Integer newMembersPeriodSec,
-                    boolean delete) {
+                    boolean delete,
+                    boolean reply) {
         this.id = id;
         this.type = type;
         this.rolePriority = rolePriority;
@@ -72,6 +75,7 @@ public class EventDto {
         this.CDPeriodSec = CDPeriodSec;
         this.newMembersPeriodSec = newMembersPeriodSec;
         this.delete = delete;
+        this.reply = reply;
 
         ImmutableSet.Builder<Long> builder = new ImmutableSet.Builder<>();
         if(exceptionalMembers!=null){

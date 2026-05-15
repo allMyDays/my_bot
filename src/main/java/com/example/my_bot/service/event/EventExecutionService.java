@@ -164,8 +164,6 @@ public class EventExecutionService {
             })
             .build();
 
-
-
     @Autowired
     @Lazy
     public void setCommandDispatcher(CommandDispatcher commandDispatcher){
@@ -522,7 +520,7 @@ public class EventExecutionService {
                return;
            }
        }
-
+       ChatEventType vkType = eventDto.getType().getChatEventType();
        if(eventDto.getFullCommand()!=null){
            String fullCommand = USER_PARAMETER_PATTERN
                    .matcher(eventDto.getFullCommand())
@@ -534,8 +532,9 @@ public class EventExecutionService {
                        .replaceAll(createMemberLink(memberId));
            }
            try{
+               boolean reply = eventDto.isReply()&&vkType!=ACTION;
                commandDispatcher.dispatch(
-                       messageMapper.toCommandMessageDto(chatId, eventDto.getCreatorId(), fullCommand, chatMessageId,true, true)
+                       messageMapper.toCommandMessageDto(chatId, eventDto.getCreatorId(), fullCommand, chatMessageId,reply, true)
                );
            }catch (Exception e){
                log.warn("error while execution event {} in chat {}.", eventDto.getId(), chatId, e);
@@ -547,14 +546,12 @@ public class EventExecutionService {
                    log.warn("chat {}: Failed to send notification about error while execution event {}", chatId, eventDto.getId(), ex);
                }
            }
-       }if(eventDto.isDelete()){
-           if(!memberService.isChatAdmin(chatId,fromId)){
+       }if(eventDto.isDelete()&&vkType!=ACTION&&!memberService.isChatAdmin(chatId,fromId)){
                try {
                    vkChatClient.deleteOneMessage(convertToPeerId(chatId), chatMessageId);
                } catch (Exception e) {
                    log.warn("chat {} error: could not delete not-chat-admin message {}",chatId,chatMessageId, e);
                }
-           }
        }
    }
     private int countForwardedMessages(List<ForeignMessage> fwMessages){
@@ -582,8 +579,5 @@ public class EventExecutionService {
     private boolean isNewMember(@NonNull Instant now, @NonNull Instant memberJoinDate, int period){
         return !memberJoinDate.isBefore(now.minusSeconds(period));
     }
-
-
-
 
 }

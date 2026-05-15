@@ -97,7 +97,8 @@ public class EventService {
                                @Nullable String userArgument,
                                @Nullable String fullCommand,
                                long fromId,
-                               boolean delete){
+                               boolean delete,
+                               boolean reply){
 
         userArgument = validateEventArgument(eventType,userArgument);
 
@@ -138,7 +139,7 @@ public class EventService {
         }
 
         EventEntity savedEvent = eventRepository.save(
-                new EventEntity(chatId, eventType, rolePriority, null, userArgument, fromId, fullCommand, delete)
+                new EventEntity(chatId, eventType, rolePriority, null, userArgument, fromId, fullCommand, delete, reply)
         );
         invalidateEventsCache(chatId);
         return savedEvent;
@@ -151,11 +152,13 @@ public class EventService {
                                       @Nullable String userArgument,
                                       @Nullable String fullCommand,
                                       long fromId,
-                                      boolean delete){
+                                      boolean delete,
+                                      boolean reply
+    ){
         RoleDto foundRole = roleService.getRoleByNameIgnoreCase(chatId, roleName)
                 .orElseThrow(RoleNotFoundException::new);
 
-        return createNewEvent(chatId, eventType, foundRole.getRolePriority(), userArgument, fullCommand, fromId, delete);
+        return createNewEvent(chatId, eventType, foundRole.getRolePriority(), userArgument, fullCommand, fromId, delete,reply);
     }
 
     public List<EventDto> getEventsSortedByIdInIncreasingOrder(long chatId){

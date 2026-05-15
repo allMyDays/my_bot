@@ -70,7 +70,11 @@ public class EventEntity {
     @Column(name = "new_members_period_in_seconds", nullable = true)
     private Integer newMembersPeriodSec;
 
+    @Column(nullable = false)
     private boolean delete;
+
+    @Column(nullable = false)
+    private boolean reply;
 
 
 
@@ -81,7 +85,8 @@ public class EventEntity {
                        @Nullable String argument,
                        long creatorId,
                        @Nullable String fullCommand,
-                       boolean delete) {
+                       boolean delete,
+                       boolean reply) {
         this.chatId = chatId;
         this.type = type;
         this.rolePriority = rolePriority;
@@ -90,6 +95,6 @@ public class EventEntity {
         this.creatorId = creatorId;
         this.fullCommand = fullCommand;
         this.delete = delete;
-
+        this.reply = reply;
     }
 }

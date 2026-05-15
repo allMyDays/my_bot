@@ -52,14 +52,14 @@ public class BindCommand implements ChatCommand {
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
 
-
         if(ChatUtils.isPersonalChat(peerId)){
             sendMessage.setText(CANNOT_USE_THIS_COMMAND_IN_PERSONAL_DIALOGUE);
             vkChatClient.sendText(sendMessage);
             return;
         }
         if(!vkChatClient.canTheBotWriteToUser(fromId)){
-            sendMessage.setText("Для выполнения этой команды, %s(Вы) должны разрешить мне (группе) отправлять вам личные сообщения. Для этого напишите любой текст в личные сообщения сообщества."
+            sendMessage.setText(
+                    "Для выполнения этой команды, %s(Вы) должны разрешить мне (группе) отправлять вам личные сообщения. Для этого напишите любой текст в личные сообщения сообщества."
                     .formatted(createMention(fromId))
             );
             vkChatClient.sendText(sendMessage);
@@ -67,14 +67,18 @@ public class BindCommand implements ChatCommand {
         }
         userService.bindChatToUser(messageDto.getChatId(), fromId);
         try{
+            sendMessage.setPeerId(fromId);
+            sendMessage.setReplyToMessageId(false);
             sendMessage.setText("\uD83D\uDD17 Вы успешно привязали чат к своим личным сообщениям. " +
                     "Теперь вы можете писать команды и получать ответы на них прямо здесь. Команды продолжат выполняться в том чате."
             );
             vkChatClient.sendText(sendMessage);
         }catch (Exception e){
             log.error("chat {} error: user {} allowed personal messages, but I could not send it to him",messageDto.getChatId(), fromId, e);
+            sendMessage.setPeerId(messageDto.getPeerId());
+            sendMessage.setReplyToMessageId(true);
             sendMessage.setText(
-                    "%s(Вы) успешно привязали чат к своим личным сообщениям, однако мне не удалось отправить вам личное сообщение. " +
+                    "Вы успешно привязали чат к своим личным сообщениям, однако мне не удалось отправить вам личное сообщение. " +
                     "Убедитесь, что вы разрешили мне отправлять себе личные сообщения."
             );
             vkChatClient.sendText(sendMessage);

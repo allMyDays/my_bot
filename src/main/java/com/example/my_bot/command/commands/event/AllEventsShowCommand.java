@@ -56,9 +56,6 @@ public class AllEventsShowCommand implements ChatCommand {
     private RoleService roleService;
 
 
-
-
-
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -117,6 +114,7 @@ public class AllEventsShowCommand implements ChatCommand {
                     : "достижении лимита действия «%s» в %d за %s".formatted(desc,eventDto.getAEMaxUsage(),formatDurationFromSeconds(eventDto.getAEPeriodSec(), true));
 
             sb.append(eventDto.isDelete()?"\uD83D\uDDD1":"")
+                    .append(eventDto.isReply()?"↪":"")
                     .append("Выполнение команды «%s» при %s для %s."
                     .formatted(eventDto.getFullCommand()==null?"none":eventDto.getFullCommand(),simpleOrAdvancedEvent, forRoleOrMember));
 

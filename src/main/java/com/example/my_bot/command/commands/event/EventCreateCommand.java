@@ -52,6 +52,8 @@ public class EventCreateCommand implements ChatCommand {
     private final static String DELETE_PARAMETER = "&delete";
     private final static Pattern DELETE_PARAMETER_PATTERN =  Pattern.compile(DELETE_PARAMETER, Pattern.CASE_INSENSITIVE);
 
+    private final static String REPLY_PARAMETER = "&reply";
+    private final static Pattern REPLY_PARAMETER_PATTERN =  Pattern.compile(REPLY_PARAMETER, Pattern.CASE_INSENSITIVE);
 
     @Autowired
     @Lazy
@@ -105,21 +107,29 @@ public class EventCreateCommand implements ChatCommand {
         eventRole=eventRole.trim();
 
         boolean delete = false;
+        boolean reply = false;
 
         Matcher deleteMatcher = DELETE_PARAMETER_PATTERN.matcher(fullCommand);
         if(deleteMatcher.find()){
             delete = true;
             fullCommand = deleteMatcher.replaceAll("");
         }
+
+        Matcher replyMatcher = REPLY_PARAMETER_PATTERN.matcher(fullCommand);
+        if(replyMatcher.find()){
+            reply = true;
+            fullCommand = replyMatcher.replaceAll("");
+        }
+
         fullCommand=fullCommand.trim();
         fullCommand = fullCommand.isEmpty()?null:fullCommand;
 
         try{
             if(isValidInteger(eventRole)){
-                createdEvent = eventService.createNewEvent(chatId, foundEventType, Integer.parseInt(eventRole), eventArgument, fullCommand, fromId, delete);
+                createdEvent = eventService.createNewEvent(chatId, foundEventType, Integer.parseInt(eventRole), eventArgument, fullCommand, fromId, delete,reply);
             }else{
                 // предполагается что ввели название роли
-                createdEvent = eventService.createNewEvent(chatId, foundEventType, eventRole, eventArgument, fullCommand, fromId, delete);
+                createdEvent = eventService.createNewEvent(chatId, foundEventType, eventRole, eventArgument, fullCommand, fromId, delete,reply);
             }
 
         } catch (RoleException | EventException | CommandException e) {
