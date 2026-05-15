@@ -20,6 +20,8 @@ public class SendMessageDto {
 
     private boolean ableMentions;
 
+    private boolean doNotSendMessage;
+
 
     public SendMessageDto(@NonNull String text, long peerId, @Nullable Integer conversationMessageId, boolean replyToMessageId, boolean ableMentions) {
         this.text = text;

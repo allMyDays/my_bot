@@ -61,6 +61,7 @@ public class VkChatClient{
 
   public void sendText(@NonNull SendMessageDto sendMessageDto) throws ClientException, ApiException{
 
+     if(sendMessageDto.isDoNotSendMessage()) return;
      String text = sendMessageDto.getText();
 
       while (text.length()>MAX_MESSAGE_LENGTH){

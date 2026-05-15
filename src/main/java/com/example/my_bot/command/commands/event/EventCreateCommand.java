@@ -55,6 +55,11 @@ public class EventCreateCommand implements ChatCommand {
     private final static String REPLY_PARAMETER = "&reply";
     private final static Pattern REPLY_PARAMETER_PATTERN =  Pattern.compile(REPLY_PARAMETER, Pattern.CASE_INSENSITIVE);
 
+    private final static String SILENT_PARAMETER = "&silent";
+    private final static Pattern SILENT_PARAMETER_PATTERN =  Pattern.compile(SILENT_PARAMETER, Pattern.CASE_INSENSITIVE);
+
+
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -108,17 +113,22 @@ public class EventCreateCommand implements ChatCommand {
 
         boolean delete = false;
         boolean reply = false;
+        boolean silent = false;
 
         Matcher deleteMatcher = DELETE_PARAMETER_PATTERN.matcher(fullCommand);
         if(deleteMatcher.find()){
             delete = true;
             fullCommand = deleteMatcher.replaceAll("");
         }
-
         Matcher replyMatcher = REPLY_PARAMETER_PATTERN.matcher(fullCommand);
         if(replyMatcher.find()){
             reply = true;
             fullCommand = replyMatcher.replaceAll("");
+        }
+        Matcher silentMatcher = SILENT_PARAMETER_PATTERN.matcher(fullCommand);
+        if(silentMatcher.find()){
+            silent = true;
+            fullCommand = silentMatcher.replaceAll("");
         }
 
         fullCommand=fullCommand.trim();
@@ -126,12 +136,11 @@ public class EventCreateCommand implements ChatCommand {
 
         try{
             if(isValidInteger(eventRole)){
-                createdEvent = eventService.createNewEvent(chatId, foundEventType, Integer.parseInt(eventRole), eventArgument, fullCommand, fromId, delete,reply);
+                createdEvent = eventService.createNewEvent(chatId, foundEventType, Integer.parseInt(eventRole), eventArgument, fullCommand, fromId, delete,reply,silent);
             }else{
                 // предполагается что ввели название роли
-                createdEvent = eventService.createNewEvent(chatId, foundEventType, eventRole, eventArgument, fullCommand, fromId, delete,reply);
+                createdEvent = eventService.createNewEvent(chatId, foundEventType, eventRole, eventArgument, fullCommand, fromId, delete,reply,silent);
             }
-
         } catch (RoleException | EventException | CommandException e) {
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);

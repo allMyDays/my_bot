@@ -44,6 +44,9 @@ public class CommandMessageDto{
     private boolean replyToMessageId;
 
     @Getter
+    private boolean doNotSendMessage;
+
+    @Getter
     private boolean eventOrTimerMode = false;
     
     

@@ -25,6 +25,7 @@ import org.springframework.context.annotation.Lazy;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
@@ -70,52 +71,51 @@ public class TimerCreateCommand implements ChatCommand {
             return;
         }
         String type = args[0].toLowerCase();
-
         TimerEntity createdTimer;
-      try{
 
-        if(DAILY.getCyrillicType().equals(type)){
-            Optional<LocalTime> localTimeOptional = TimeUtils.parseTimeOfDay(args[1]);
-            if(localTimeOptional.isEmpty()){
-                sendMessage.setText(NOT_VALID_TIME);
-                vkChatClient.sendText(sendMessage);
-                return;
-            }createdTimer = timerService.createDailyTimer(
-                    chatId, localTimeOptional.get(), collectArgumentsSinceIndex(args, 2), fromId);
-        }
-        else if(EACH.getCyrillicType().equals(type)){
-            Optional<Long> intervalOptional = TimeUtils.parseManyHoursWithMinutes(args[1]);
-            if(intervalOptional.isEmpty()){
-                sendMessage.setText(NOT_VALID_TIME);
-                vkChatClient.sendText(sendMessage);
-                return;
-            }createdTimer = timerService.createEachTimer(
-                    chatId, intervalOptional.get(),collectArgumentsSinceIndex(args, 2),fromId);
+        try{
+            if(DAILY.getCyrillicType().equals(type)){
+                Optional<LocalTime> localTimeOptional = TimeUtils.parseTimeOfDay(args[1]);
+                if(localTimeOptional.isEmpty()){
+                    sendMessage.setText(NOT_VALID_TIME);
+                    vkChatClient.sendText(sendMessage);
+                    return;
+                }createdTimer = timerService.createDailyTimer(
+                        chatId, localTimeOptional.get(), collectArgumentsSinceIndex(args, 2), fromId);
+            }
+            else if(EACH.getCyrillicType().equals(type)){
+                Optional<Long> intervalOptional = TimeUtils.parseManyHoursWithMinutes(args[1]);
+                if(intervalOptional.isEmpty()){
+                    sendMessage.setText(NOT_VALID_TIME);
+                    vkChatClient.sendText(sendMessage);
+                    return;
+                }createdTimer = timerService.createEachTimer(
+                        chatId, intervalOptional.get(),collectArgumentsSinceIndex(args, 2),fromId);
 
-        }else if(ONCE.getCyrillicType().equals(type)){
-            if(args.length<4){
-                sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
-                vkChatClient.sendText(sendMessage);
-                return;
-            }Optional<LocalDateTime> localDateTimeOptional = TimeUtils.parseDateTime(args[1]+" "+args[2]);
-            if(localDateTimeOptional.isEmpty()){
-                sendMessage.setText(NOT_VALID_DATE_TIME);
-                vkChatClient.sendText(sendMessage);
-                return;
-            }createdTimer = timerService.createOnceTimer(
-                    chatId, localDateTimeOptional.get(), collectArgumentsSinceIndex(args, 3), fromId);
+            }else if(ONCE.getCyrillicType().equals(type)){
+                if(args.length<4){
+                    sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+                    vkChatClient.sendText(sendMessage);
+                    return;
+                }Optional<LocalDateTime> localDateTimeOptional = TimeUtils.parseDateTime(args[1]+" "+args[2]);
+                if(localDateTimeOptional.isEmpty()){
+                    sendMessage.setText(NOT_VALID_DATE_TIME);
+                    vkChatClient.sendText(sendMessage);
+                    return;
+                }createdTimer = timerService.createOnceTimer(
+                        chatId, localDateTimeOptional.get(), collectArgumentsSinceIndex(args, 3), fromId);
 
-        }else{
-            sendMessage.setText("Вы ввели несуществующий тип таймера.");
+            }else{
+                sendMessage.setText("Вы ввели несуществующий тип таймера.");
+                vkChatClient.sendText(sendMessage);
+                return;
+            }
+        }catch (TimerException | CommandException e){
+            sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return;
-        }
-      }catch (TimerException | CommandException e){
-          sendMessage.setText(e.getMessage());
-          vkChatClient.sendText(sendMessage);
-          return;
 
-      }
+        }
 
         String dateToShow = TimeUtils.getStringDateTimeWithTimeZone(
                 createdTimer.getNextExecution(), chatService.getChatTimeZone(chatId));

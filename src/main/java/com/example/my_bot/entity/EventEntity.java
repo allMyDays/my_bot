@@ -76,6 +76,9 @@ public class EventEntity {
     @Column(nullable = false)
     private boolean reply;
 
+    @Column(nullable = false)
+    private boolean silent;
+
 
 
     public EventEntity(long chatId,
@@ -86,7 +89,8 @@ public class EventEntity {
                        long creatorId,
                        @Nullable String fullCommand,
                        boolean delete,
-                       boolean reply) {
+                       boolean reply,
+                       boolean silent) {
         this.chatId = chatId;
         this.type = type;
         this.rolePriority = rolePriority;
@@ -96,5 +100,6 @@ public class EventEntity {
         this.fullCommand = fullCommand;
         this.delete = delete;
         this.reply = reply;
+        this.silent = silent;
     }
 }

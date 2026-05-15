@@ -7,6 +7,7 @@ import com.example.my_bot.cache.value.MessageCounter;
 import com.example.my_bot.cache.value.TimePeriodAndCallQuantity;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
+import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.event.ChatEventType;
@@ -533,9 +534,9 @@ public class EventExecutionService {
            }
            try{
                boolean reply = eventDto.isReply()&&vkType!=ACTION;
-               commandDispatcher.dispatch(
-                       messageMapper.toCommandMessageDto(chatId, eventDto.getCreatorId(), fullCommand, chatMessageId,reply, true)
-               );
+               CommandMessageDto commandDto = messageMapper.toCommandMessageDto(chatId, eventDto.getCreatorId(), fullCommand, chatMessageId,reply, true);
+               commandDto.setDoNotSendMessage(eventDto.isSilent());
+               commandDispatcher.dispatch(commandDto);
            }catch (Exception e){
                log.warn("error while execution event {} in chat {}.", eventDto.getId(), chatId, e);
                try {
