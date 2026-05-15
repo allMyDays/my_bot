@@ -74,7 +74,6 @@ public class EventEditCommand implements ChatCommand {
     private final static Pattern WORK_TIME_PATTERN = Pattern.compile("(([01][0-9]|2[0-3]):[0-5][0-9])-(([01][0-9]|2[0-3]):[0-5][0-9])");
 
 
-
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
@@ -84,29 +83,20 @@ public class EventEditCommand implements ChatCommand {
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
 
-        if(args.length<3){
-            sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
-            vkChatClient.sendText(sendMessage);
-            return;
-        }
-        if(!isValidInteger(args[0])){
-            sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
-            vkChatClient.sendText(sendMessage);
-            return;
-        }
-        int outerEventId = Integer.parseInt(args[0]);
+        if(notEnoughArgs(args,3,sendMessage)) return;
+
+        Integer outerEventId = parseInt(args[0], sendMessage);
+        if(outerEventId == null) return;
+
         List<EventDto> events = eventService.getEventsSortedByIdInIncreasingOrder(chatId);
 
         if(outerEventId<1||outerEventId>events.size()){
-            sendMessage.setText("Не найдено события с таким ID.");
-            vkChatClient.sendText(sendMessage);
+            send(sendMessage, "Не найдено события с таким ID.");
             return;
         }
         long eventEntityId = events.get(outerEventId-1).getId();
 
-
         EventDto editedEvent;
-        String message;
 
         switch(args[1].toLowerCase()){
             case WORK_TIME_ARGUMENT -> {  // !редивент 1 времяработы 23:00-08:00
@@ -117,165 +107,155 @@ public class EventEditCommand implements ChatCommand {
                     try{
                         editedEvent = eventService.setDailyWorkTime(eventEntityId, start, end,fromId);
                     }catch (EventException | RoleException | MemberException e){
-                        sendMessage.setText(e.getMessage());
-                        vkChatClient.sendText(sendMessage);
+                        send(sendMessage, e.getMessage());
                         return;
                     }
-                    sendMessage.setText("✅Теперь событие №%d («%s») будет работать каждый день с %s до %s %s."
-                            .formatted(outerEventId,editedEvent.getType().getDescription(), editedEvent.getStartDayTime(),editedEvent.getEndDayTime(),chatService.getChatTimeZone(chatId).getStringType())
+                    send(sendMessage, "✅Теперь событие №%d («%s») будет работать каждый день с %s до %s %s."
+                                    .formatted(outerEventId,editedEvent.getType().getDescription(), editedEvent.getStartDayTime(),editedEvent.getEndDayTime(),chatService.getChatTimeZone(chatId).getStringType())
                     );
-
-                    vkChatClient.sendText(sendMessage);
                 }else{
-                    sendMessage.setText("Вы ввели некорректный аргумент диапазона, пример: 23:00-08:00");
-                    vkChatClient.sendText(sendMessage);
+                    send(sendMessage, "Вы ввели некорректный аргумент диапазона, пример: 23:00-08:00");
                 }
             }
             case EXCEPTIONAL_ARGUMENT -> {
                 // !редивент 1 исключение @durov
                 // !редивент 1 исключение удалить @durov
 
-                boolean remove = false;
-                if(args[2].equalsIgnoreCase(REMOVE_ARGUMENT)){
-                    if(args.length<4){
-                        sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
-                        vkChatClient.sendText(sendMessage);
-                        return;
-                    } remove = true;
-                }
-                Optional<Long> memberId = userInputResolver.getMemberIdByStringInput(args[remove?3:2]);
-                if(memberId.isEmpty()){
-                    sendMessage.setText(MEMBER_LINK_IS_NOT_CORRECT);
-                    vkChatClient.sendText(sendMessage);
-                    return;
-                }
+                boolean remove = args[2].equalsIgnoreCase(REMOVE_ARGUMENT);
+                if(remove&&notEnoughArgs(args,4,sendMessage)) return;
+
+                Long memberId = parseMember(args[remove?3:2],sendMessage);
+                if(memberId==null) return;
                 try{
                     if(remove){
-                        editedEvent = eventService.removeMemberFromExceptional(eventEntityId, memberId.get(),fromId);
+                        editedEvent = eventService.removeMemberFromExceptional(eventEntityId, memberId,fromId);
                     }else{
-                        editedEvent = eventService.addMemberToExceptional(eventEntityId, memberId.get(),fromId);
+                        editedEvent = eventService.addMemberToExceptional(eventEntityId, memberId,fromId);
                     }
                 }catch (EventException | RoleException | CommandException | MemberException e){
-                    sendMessage.setText(e.getMessage());
-                    vkChatClient.sendText(sendMessage);
+                    send(sendMessage, e.getMessage());
                     return;
                 }
-                message = "✅Вы успешно "+(remove
-                        ? "удалили данного участника из исключения события  №%d («%s»)"
-                        : "добавили данного участника в исключения для события  №%d («%s»). Теперь событие не будет на него активироваться ни при каком условии. "
+                send(sendMessage,
+                        ("✅Вы успешно "+(remove
+                                ? "удалили данного участника из исключения события  №%d («%s»)"
+                                : "добавили данного участника в исключения для события  №%d («%s»). Теперь событие не будет на него активироваться ни при каком условии. "
+                        )).formatted(outerEventId, editedEvent.getType().getDescription())
                 );
-                sendMessage.setText(message.formatted(outerEventId, editedEvent.getType().getDescription()));
-                vkChatClient.sendText(sendMessage);
             }
             case PERSONAL_EVENT_ARGUMENT -> {     // !редивент 1 толькодля @durov
-                Optional<Long> memberId = userInputResolver.getMemberIdByStringInput(args[2]);
-                if(memberId.isEmpty()){
-                    sendMessage.setText(MEMBER_LINK_IS_NOT_CORRECT);
-                    vkChatClient.sendText(sendMessage);
-                    return;
-                }
+
+                Long memberId = parseMember(args[2],sendMessage);
+                if(memberId==null) return;
                 try{
-                    editedEvent = eventService.makeEventPersonal(eventEntityId, memberId.get(), fromId);
+                    editedEvent = eventService.makeEventPersonal(eventEntityId, memberId, fromId);
                 }catch (EventException | RoleException | CommandException | MemberException e){
-                    sendMessage.setText(e.getMessage());
-                    vkChatClient.sendText(sendMessage);
+                    send(sendMessage, e.getMessage());
                     return;
                 }
                 Long memberToTrigger = editedEvent.getMemberToTrigger();
-                sendMessage.setText("✅Вы успешно сделали событие №%d («%s») персональным для %s(%s). \n❓Теперь событие будет реагировать только на этого участника."
-                 .formatted(outerEventId, editedEvent.getType().getDescription(),createMention(memberToTrigger),globalUserService.getUserNameInRequiredCase(memberToTrigger, NameCase.GENITIVE).orElse("этого участника"))
-                );
-                vkChatClient.sendText(sendMessage);
+                send(sendMessage,
+                        "✅Вы успешно сделали событие №%d («%s») персональным для %s(%s). \n❓Теперь событие будет реагировать только на этого участника."
+                        .formatted(outerEventId, editedEvent.getType().getDescription(),createMention(memberToTrigger),globalUserService.getUserNameInRequiredCase(memberToTrigger, NameCase.GENITIVE).orElse("этого участника")));
             }
             case ACTION_LIMIT_ARGUMENT -> {      // !редивент 1 лимитдействия 100 2 часа
-                if(args.length<5){
-                    sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
-                    vkChatClient.sendText(sendMessage);
-                    return;
-                }if(!isValidInteger(args[2])){
-                    sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
-                    vkChatClient.sendText(sendMessage);
-                    return;
-                }
-                Optional<Long> timePeriodInSeconds =  TimeUtils.toSecondsFromString(args[3],args[4]);
-                if(timePeriodInSeconds.isEmpty()){
-                    sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
-                    vkChatClient.sendText(sendMessage);
-                    return;
-                }
+                if(notEnoughArgs(args,5,sendMessage)) return;
+                Integer maxUsage = parseInt(args[2], sendMessage);
+                if(maxUsage == null) return;
+                Long timePeriod = parsePeriod(args[3],args[4], sendMessage);
+                if (timePeriod==null) return;
                 try{
-                    editedEvent = eventService.setAETimePeriodAndMaxUsage(eventEntityId,timePeriodInSeconds.get(),Integer.parseInt(args[2]),fromId);
+                    editedEvent = eventService.setAETimePeriodAndMaxUsage(eventEntityId,timePeriod,maxUsage,fromId);
                 }catch (EventException | RoleException | MemberException e){
-                    sendMessage.setText(e.getMessage());
-                    vkChatClient.sendText(sendMessage);
+                    send(sendMessage, e.getMessage());
                     return;
                 }
-                sendMessage.setText("✅Вы успешно добавили событию №%d («%s») лимит действия в %d за %s\n❓Теперь команда, указанная в этом событии, будет активироваться только по достижении участником данного лимита за данный период времени (для события «%s»)."
-                        .formatted(outerEventId,editedEvent.getType().getDescription(), editedEvent.getAEMaxUsage(),formatDurationFromSeconds(editedEvent.getAEPeriodSec(),true),editedEvent.getType().getDescription())
+                send(sendMessage,
+                        "✅Вы успешно добавили событию №%d («%s») лимит действия в %d за %s\n❓Теперь команда, указанная в этом событии, будет активироваться только по достижении участником данного лимита за данный период времени (для события «%s»)."
+                         .formatted(outerEventId,editedEvent.getType().getDescription(), editedEvent.getAEMaxUsage(),formatDurationFromSeconds(editedEvent.getAEPeriodSec(),true),editedEvent.getType().getDescription())
                 );
-
-                vkChatClient.sendText(sendMessage);
 
             }
             case COOLDOWN_ARGUMENT -> {  // !редивент 1 кулдаун 1 час
-                if(args.length<4){
-                    sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
-                    vkChatClient.sendText(sendMessage);
-                    return;
-                }
-                Optional<Long> timePeriodInSeconds =  TimeUtils.toSecondsFromString(args[2],args[3]);
-                if(timePeriodInSeconds.isEmpty()){
-                    sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
-                    vkChatClient.sendText(sendMessage);
-                    return;
-                }
+                if(notEnoughArgs(args,4,sendMessage)) return;
+                Long timePeriod = parsePeriod(args[2],args[3], sendMessage);
+                if(timePeriod==null) return;
+
                 try{
-                    editedEvent = eventService.setCDTimePeriod(eventEntityId,timePeriodInSeconds.get(),fromId);
+                    editedEvent = eventService.setCDTimePeriod(eventEntityId,timePeriod,fromId);
                 }catch (EventException | RoleException | MemberException e){
-                    sendMessage.setText(e.getMessage());
-                    vkChatClient.sendText(sendMessage);
+                    send(sendMessage, e.getMessage());
                     return;
                 }
                 int cdPeriod = editedEvent.getCDPeriodSec();
                 String eventDesc = editedEvent.getType().getDescription();
-                if(cdPeriod==0){
-                    sendMessage.setText("✅Вы успешно отключили кулдаун срабатывания для события №%d («%s»)."
-                            .formatted(outerEventId,eventDesc)
-                    );
-                }else{
-                    sendMessage.setText("✅Вы успешно добавили событию №%d («%s») кулдаун срабатывания.\n❓Теперь команда, указанная в событии, будет активироваться на одного участника максимум один раз в %s"
-                            .formatted(outerEventId,eventDesc,formatDurationFromSeconds(editedEvent.getCDPeriodSec(),true))
-                    );
-                }
-                vkChatClient.sendText(sendMessage);
+
+                send(sendMessage,"✅Вы успешно "+
+                        (cdPeriod==0
+                                ? "отключили кулдаун срабатывания для события №%d («%s»).".formatted(outerEventId,eventDesc)
+                                : "добавили событию №%d («%s») кулдаун срабатывания.\n❓Теперь команда, указанная в событии, будет активироваться на одного участника максимум один раз в %s".formatted(outerEventId,eventDesc,formatDurationFromSeconds(editedEvent.getCDPeriodSec(),true)
+                        ))
+                );
             }
             case NEW_MEMBERS_ARGUMENT -> {  // !редивент 1 дляновичков 26 часов
-                if(args.length<4){
-                    sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
-                    vkChatClient.sendText(sendMessage);
-                    return;
-                }
-                Optional<Long> timePeriodInSeconds =TimeUtils.toSecondsFromString(args[2],args[3]);
-                if(timePeriodInSeconds.isEmpty()){
-                    sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
-                    vkChatClient.sendText(sendMessage);
-                    return;
-                }
+
+                if(notEnoughArgs(args,4,sendMessage)) return;
+                Long timePeriod = parsePeriod(args[2],args[3], sendMessage);
+                if(timePeriod==null) return;
                 try{
-                    editedEvent = eventService.setNewMembersTimePeriod(eventEntityId,timePeriodInSeconds.get(),fromId);
+                    editedEvent = eventService.setNewMembersTimePeriod(eventEntityId,timePeriod,fromId);
                 }catch (EventException | RoleException e){
-                    sendMessage.setText(e.getMessage());
-                    vkChatClient.sendText(sendMessage);
+                    send(sendMessage, e.getMessage());
                     return;
                 }
-                sendMessage.setText("✅Теперь событие №%d («%s») будет срабатывать только на новых участников, впервые появившихся в чате менее чем %s назад."
-                            .formatted(outerEventId,editedEvent.getType().getDescription(),formatDurationFromSeconds(editedEvent.getNewMembersPeriodSec(),true)));
-                vkChatClient.sendText(sendMessage);
+                send(sendMessage,
+                        "✅Теперь событие №%d («%s») будет срабатывать только на новых участников, впервые появившихся в чате менее чем %s назад."
+                                .formatted(outerEventId,editedEvent.getType().getDescription(),formatDurationFromSeconds(editedEvent.getNewMembersPeriodSec(),true)));
             }
             default -> {
-                sendMessage.setText("Вы ввели несуществующий тип для редактирования.");
-                vkChatClient.sendText(sendMessage);
+                send(sendMessage, "Вы ввели несуществующий тип для редактирования.");
             }
         }
     }
+
+    private void send(SendMessageDto dto, String text) throws ClientException, ApiException{
+        dto.setText(text);
+        vkChatClient.sendText(dto);
+    }
+
+    private boolean notEnoughArgs(String[] args, int required, SendMessageDto dto) throws ClientException, ApiException{
+        if(args.length<required){
+            send(dto, NOT_ENOUGH_ARGUMENTS_MESSAGE);
+            return true;
+        }
+        return false;
+    }
+    private Integer parseInt(String value, SendMessageDto dto) throws ClientException, ApiException{
+        if(!isValidInteger(value)){
+            send(dto, NOT_VALID_INTEGER_MESSAGE);
+            return null;
+        }
+        return Integer.parseInt(value);
+    }
+
+    private Long parsePeriod(String value, String type, SendMessageDto dto) throws ClientException, ApiException {
+        Optional<Long> period = TimeUtils.toSecondsFromString(value, type);
+        if(period.isEmpty()){
+            send(dto, INVALID_TIME_PERIOD_MESSAGE);
+            return null;
+        }
+        return period.get();
+    }
+
+    private Long parseMember(String input, SendMessageDto dto) throws ClientException, ApiException{
+        Optional<Long> member = userInputResolver.getMemberIdByStringInput(input);
+        if(member.isEmpty()){
+            send(dto, MEMBER_LINK_IS_NOT_CORRECT);
+            return null;
+        }
+        return member.get();
+    }
+
 }
+
+
