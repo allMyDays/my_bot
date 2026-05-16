@@ -7,6 +7,8 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.event.EventDto;
+import com.example.my_bot.entity.EventEntity;
+import com.example.my_bot.enumeration.event.EditEventArgType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.event.EventException;
@@ -15,7 +17,7 @@ import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.GlobalUserService;
-import com.example.my_bot.service.MemberService;
+import com.example.my_bot.service.RoleService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.event.EventService;
 import com.example.my_bot.utils.TimeUtils;
@@ -49,6 +51,8 @@ public class EventEditCommand implements ChatCommand {
 
     private final EventService eventService;
 
+    private final RoleService roleService;
+
     private final ChatService chatService;
 
     private final UserInputResolver userInputResolver;
@@ -57,19 +61,11 @@ public class EventEditCommand implements ChatCommand {
 
     private final MessageMapper messageMapper;
 
+
+
     private final static String REMOVE_ARGUMENT = "удалить";
 
-    private final static String ACTION_LIMIT_ARGUMENT = "лимитдействия";
 
-    private final static String WORK_TIME_ARGUMENT = "времяработы";
-
-    private final static String COOLDOWN_ARGUMENT = "кулдаун";
-
-    private final static String EXCEPTIONAL_ARGUMENT = "исключение";
-
-    private final static String NEW_MEMBERS_ARGUMENT = "дляновичков";
-
-    private final static String PERSONAL_EVENT_ARGUMENT = "толькодля";
 
     private final static Pattern WORK_TIME_PATTERN = Pattern.compile("(([01][0-9]|2[0-3]):[0-5][0-9])-(([01][0-9]|2[0-3]):[0-5][0-9])");
 
@@ -83,7 +79,7 @@ public class EventEditCommand implements ChatCommand {
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
 
-        if(notEnoughArgs(args,3,sendMessage)) return;
+        if(notEnoughArgs(args,3,sendMessage)) return;  // самый минимум: <номер события> <тип для редактирования> <аргумент>
 
         Integer outerEventId = parseInt(args[0], sendMessage);
         if(outerEventId == null) return;
@@ -96,28 +92,47 @@ public class EventEditCommand implements ChatCommand {
         }
         long eventEntityId = events.get(outerEventId-1).getId();
 
-        EventDto editedEvent;
+        EventEntity editedEvent;
 
-        switch(args[1].toLowerCase()){
-            case WORK_TIME_ARGUMENT -> {  // !редивент 1 времяработы 23:00-08:00
+        Optional<EditEventArgType> foundType = EditEventArgType.findByCyrillicType(args[1]);
+        if(foundType.isEmpty()){
+            send(sendMessage, "Вы ввели несуществующий тип для редактирования.");
+            return;
+        }
+
+        switch(foundType.get()){
+            case DAILY_WORK_TIME -> {
+                // !редивент 1 времяработы 23:00-08:00
+                // !редивент 1 времяработы удалить
+
                 Matcher matcher = WORK_TIME_PATTERN.matcher(args[2]);
-                if(matcher.find()){
-                    LocalTime start = TimeUtils.parseTimeOfDay(matcher.group(1)).orElse(null);
-                    LocalTime end = TimeUtils.parseTimeOfDay(matcher.group(3)).orElse(null);
+                boolean delete = args[2].equalsIgnoreCase(REMOVE_ARGUMENT);
+                if(delete||matcher.find()){
+                    LocalTime start=null;
+                    LocalTime end=null;
+                    if(!delete){
+                        start = TimeUtils.parseTimeOfDay(matcher.group(1)).orElse(null);
+                        end = TimeUtils.parseTimeOfDay(matcher.group(3)).orElse(null);
+                    }
                     try{
-                        editedEvent = eventService.setDailyWorkTime(eventEntityId, start, end,fromId);
+                        editedEvent = delete
+                                      ? eventService.removeDailyWorkTime(eventEntityId,fromId)
+                                      : eventService.setDailyWorkTime(eventEntityId, start, end,fromId);
                     }catch (EventException | RoleException | MemberException e){
                         send(sendMessage, e.getMessage());
                         return;
-                    }
-                    send(sendMessage, "✅Теперь событие №%d («%s») будет работать каждый день с %s до %s %s."
-                                    .formatted(outerEventId,editedEvent.getType().getDescription(), editedEvent.getStartDayTime(),editedEvent.getEndDayTime(),chatService.getChatTimeZone(chatId).getStringType())
+                    };
+                    send(sendMessage, "✅Теперь событие №%d («%s») будет работать ".formatted(outerEventId,editedEvent.getType().getDescription())+
+                            (delete
+                                    ?"24/7 независимо от времени дня."
+                                    :"каждый день с %s до %s %s.".formatted(editedEvent.getStartDayTime(),editedEvent.getEndDayTime(),chatService.getChatTimeZone(chatId).getStringType())
+                            )
                     );
                 }else{
                     send(sendMessage, "Вы ввели некорректный аргумент диапазона, пример: 23:00-08:00");
                 }
             }
-            case EXCEPTIONAL_ARGUMENT -> {
+            case EXCEPTIONAL_MEMBER -> {
                 // !редивент 1 исключение @durov
                 // !редивент 1 исключение удалить @durov
 
@@ -143,12 +158,13 @@ public class EventEditCommand implements ChatCommand {
                         )).formatted(outerEventId, editedEvent.getType().getDescription())
                 );
             }
-            case PERSONAL_EVENT_ARGUMENT -> {     // !редивент 1 толькодля @durov
+            case PERSONAL_EVENT -> {
+                // !редивент 1 толькодля @durov
 
                 Long memberId = parseMember(args[2],sendMessage);
                 if(memberId==null) return;
                 try{
-                    editedEvent = eventService.makeEventPersonal(eventEntityId, memberId, fromId);
+                    editedEvent = eventService.setMemberToTrigger(eventEntityId, memberId, fromId);
                 }catch (EventException | RoleException | CommandException | MemberException e){
                     send(sendMessage, e.getMessage());
                     return;
@@ -158,7 +174,9 @@ public class EventEditCommand implements ChatCommand {
                         "✅Вы успешно сделали событие №%d («%s») персональным для %s(%s). \n❓Теперь событие будет реагировать только на этого участника."
                         .formatted(outerEventId, editedEvent.getType().getDescription(),createMention(memberToTrigger),globalUserService.getUserNameInRequiredCase(memberToTrigger, NameCase.GENITIVE).orElse("этого участника")));
             }
-            case ACTION_LIMIT_ARGUMENT -> {      // !редивент 1 лимитдействия 100 2 часа
+            case ACTION_LIMIT -> {
+                // !редивент 1 лимитдействия 100 2 часа
+
                 if(notEnoughArgs(args,5,sendMessage)) return;
                 Integer maxUsage = parseInt(args[2], sendMessage);
                 if(maxUsage == null) return;
@@ -176,7 +194,9 @@ public class EventEditCommand implements ChatCommand {
                 );
 
             }
-            case COOLDOWN_ARGUMENT -> {  // !редивент 1 кулдаун 1 час
+            case COOLDOWN -> {
+                // !редивент 1 кулдаун 1 час
+
                 if(notEnoughArgs(args,4,sendMessage)) return;
                 Long timePeriod = parsePeriod(args[2],args[3], sendMessage);
                 if(timePeriod==null) return;
@@ -197,23 +217,48 @@ public class EventEditCommand implements ChatCommand {
                         ))
                 );
             }
-            case NEW_MEMBERS_ARGUMENT -> {  // !редивент 1 дляновичков 26 часов
+            case NEW_MEMBERS-> {
+                // !редивент 1 новички 26 часов
+                // !редивент 1 новички удалить
 
-                if(notEnoughArgs(args,4,sendMessage)) return;
-                Long timePeriod = parsePeriod(args[2],args[3], sendMessage);
-                if(timePeriod==null) return;
+                boolean remove = args[2].equalsIgnoreCase(REMOVE_ARGUMENT);
+
+                Long timePeriod =null;
+                if(!remove){
+                    if(notEnoughArgs(args,4,sendMessage)) return;
+                    timePeriod = parsePeriod(args[2],args[3], sendMessage);
+                    if(timePeriod==null) return;
+                }
                 try{
-                    editedEvent = eventService.setNewMembersTimePeriod(eventEntityId,timePeriod,fromId);
+                    editedEvent = remove
+                            ? eventService.removeNewMembersTimePeriod(eventEntityId,fromId)
+                            : eventService.setNewMembersTimePeriod(eventEntityId,timePeriod,fromId);
                 }catch (EventException | RoleException e){
                     send(sendMessage, e.getMessage());
                     return;
                 }
-                send(sendMessage,
-                        "✅Теперь событие №%d («%s») будет срабатывать только на новых участников, впервые появившихся в чате менее чем %s назад."
-                                .formatted(outerEventId,editedEvent.getType().getDescription(),formatDurationFromSeconds(editedEvent.getNewMembersPeriodSec(),true)));
+                send(sendMessage,"✅Теперь событие №%d («%s») будет срабатывать ".formatted(outerEventId,editedEvent.getType().getDescription())+
+                        (remove
+                        ?"на участников независимо от того, являются они новичками или нет."
+                        :"только на новых участников, впервые появившихся в чате менее чем %s назад."
+                                .formatted(formatDurationFromSeconds(editedEvent.getNewMembersPeriodSec(),true)))
+                );
             }
-            default -> {
-                send(sendMessage, "Вы ввели несуществующий тип для редактирования.");
+            case ROLE ->{
+                // !редивент 1 роль 80
+                // !редивент 1 роль администратор
+                try{
+                  editedEvent = isValidInteger(args[2])
+                          ? eventService.setNewRole(eventEntityId,Integer.parseInt(args[2]),fromId)
+                          : eventService.setNewRole(eventEntityId,args[2],fromId);
+
+                }catch(EventException | RoleException | MemberException e){
+                    send(sendMessage, e.getMessage());
+                    return;
+                }
+                send(sendMessage,
+                        "✅Теперь событие №%d («%s») будет срабатывать на роль «%s» и ниже."
+                                .formatted(outerEventId,editedEvent.getType().getDescription(),roleService.getRoleName(chatId,editedEvent.getRolePriority()).orElse("???")));
             }
         }
     }

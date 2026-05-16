@@ -54,7 +54,7 @@ public class RoleService {
         if(EmojiManager.containsEmoji(roleName)){
             throw new RoleNameCannotContainEmojiException();
         }
-        checkRoleInteractionAbility(rolePriority, memberService.getMemberRolePriority(chatId, fromId));
+        checkRoleInteractionAbility(chatId, rolePriority,fromId);
 
         if(isDefaultRole(rolePriority)){
             throw new DuplicateRolePriorityException(rolePriority);
@@ -93,7 +93,7 @@ public class RoleService {
         if(EmojiManager.containsEmoji(newRoleName)){
             throw new RoleNameCannotContainEmojiException();
         }
-        checkRoleInteractionAbility(existingRolePriority, memberService.getMemberRolePriority(chatId, fromId));
+        checkRoleInteractionAbility(chatId, existingRolePriority,fromId);
 
         Map<Integer, String> allRoles = getAllRolesWithNoSorting(chatId);
 
@@ -151,8 +151,7 @@ public class RoleService {
         if(!getCreatedOrModifiedRoles(chatId).containsKey(rolePriority)){
             throw new RoleNotFoundException();
         }
-
-        checkRoleInteractionAbility(rolePriority, memberService.getMemberRolePriority(chatId, fromId));
+        checkRoleInteractionAbility(chatId, rolePriority, fromId);
 
         RoleDto roleToReAssign = findTheNearestLowestRole(chatId, rolePriority, true);
 
@@ -270,6 +269,11 @@ public class RoleService {
             throw new RoleAccessDeniedException();
         }
     }
+    public void checkRoleInteractionAbility(long chatId, int roleToEdit, long fromId){
+        int callerRole = memberService.getMemberRolePriority(chatId, fromId);
+        checkRoleInteractionAbility(roleToEdit, callerRole);
+    }
+
     public ImmutableMap<Integer, String> getCreatedOrModifiedRoles(long chatId){
 
         return cacheManager.getDbRoleCache().get(chatId,

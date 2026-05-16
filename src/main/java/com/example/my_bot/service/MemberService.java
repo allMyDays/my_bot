@@ -282,8 +282,7 @@ public class MemberService {
 
         checkMemberInteractionAbility(chatId, fromId, userToAssign);
 
-        roleService.checkRoleInteractionAbility(newRolePriority, getMemberRolePriority(chatId, fromId));
-
+        roleService.checkRoleInteractionAbility(chatId, newRolePriority,fromId);
 
         RoleDto roleToChange = roleService.getRoleByPriority(chatId, memberToAssign.getRolePriority())
                 .orElseThrow(RoleNotFoundException::new);

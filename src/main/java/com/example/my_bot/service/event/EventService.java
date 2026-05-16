@@ -167,7 +167,7 @@ public class EventService {
     }
 
     @Transactional
-    public EventDto setAETimePeriodAndMaxUsage(long eventId, long periodInSeconds, int maxUsage, long fromId){
+    public EventEntity setAETimePeriodAndMaxUsage(long eventId, long periodInSeconds, int maxUsage, long fromId){
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
@@ -196,12 +196,12 @@ public class EventService {
             event.setArgument(null);
         }
         invalidateEventsCache(event.getChatId());
-        return eventMapper.toEventDto(event);
+        return event;
 
     }
 
     @Transactional
-    public EventDto setDailyWorkTime(long eventId, @NonNull LocalTime start, @NonNull LocalTime end, long fromId){
+    public EventEntity setDailyWorkTime(long eventId, @NonNull LocalTime start, @NonNull LocalTime end, long fromId){
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
@@ -215,11 +215,21 @@ public class EventService {
         event.setStartDayTime(start);
         event.setEndDayTime(end);
         invalidateEventsCache(event.getChatId());
-        return eventMapper.toEventDto(event);
+        return event;
+    }
+    @Transactional
+    public EventEntity removeDailyWorkTime(long eventId, long fromId){
+        EventEntity event = eventRepository.findById(eventId)
+                .orElseThrow(()->new EventNotFoundException(eventId));
+        checkEventAuthorization(event, fromId);
+        event.setStartDayTime(null);
+        event.setEndDayTime(null);
+        invalidateEventsCache(event.getChatId());
+        return event;
     }
 
     @Transactional
-    public EventDto setCDTimePeriod(long eventId, long periodInSeconds, long fromId){
+    public EventEntity setCDTimePeriod(long eventId, long periodInSeconds, long fromId){
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
@@ -236,11 +246,11 @@ public class EventService {
         }
         event.setCDPeriodSec((int)periodInSeconds);
         invalidateEventsCache(event.getChatId());
-        return eventMapper.toEventDto(event);
+        return event;
     }
 
     @Transactional
-    public EventDto setNewMembersTimePeriod(long eventId, long periodInSeconds, long fromId){
+    public EventEntity setNewMembersTimePeriod(long eventId, long periodInSeconds, long fromId){
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
@@ -256,12 +266,23 @@ public class EventService {
         }
         event.setNewMembersPeriodSec((int)periodInSeconds);
         invalidateEventsCache(event.getChatId());
-        return eventMapper.toEventDto(event);
+        return event;
+    }
+    @Transactional
+    public EventEntity removeNewMembersTimePeriod(long eventId, long fromId){
+
+        EventEntity event = eventRepository.findById(eventId)
+                .orElseThrow(()->new EventNotFoundException(eventId));
+        checkEventAuthorization(event,fromId);
+
+        event.setNewMembersPeriodSec(null);
+        invalidateEventsCache(event.getChatId());
+        return event;
     }
 
 
     @Transactional
-    public EventDto addMemberToExceptional(long eventId, long memberToAdd, long fromId){
+    public EventEntity addMemberToExceptional(long eventId, long memberToAdd, long fromId){
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
@@ -290,11 +311,11 @@ public class EventService {
         }
         exceptionalSet.add(memberToAdd);
         invalidateEventsCache(event.getChatId());
-        return eventMapper.toEventDto(event);
+        return event;
     }
 
     @Transactional
-    public EventDto removeMemberFromExceptional(long eventId, long memberToRemove, long fromId){
+    public EventEntity removeMemberFromExceptional(long eventId, long memberToRemove, long fromId){
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
@@ -312,11 +333,11 @@ public class EventService {
         }
         event.getExceptionalMembers().remove(memberToRemove);
         invalidateEventsCache(event.getChatId());
-        return eventMapper.toEventDto(event);
+        return event;
     }
 
     @Transactional
-    public EventDto makeEventPersonal(long eventId, long memberToTrigger, long fromId){
+    public EventEntity setMemberToTrigger(long eventId, long memberToTrigger, long fromId){
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
@@ -336,8 +357,53 @@ public class EventService {
         event.getExceptionalMembers().clear(); // у личного события не должно быть этих параметров
 
         invalidateEventsCache(event.getChatId());
-        return eventMapper.toEventDto(event);
+        return event;
     }
+
+    @Transactional
+    public EventEntity setNewRole(long eventId, int newRolePriority, long fromId){
+
+        EventEntity event = eventRepository.findById(eventId)
+                .orElseThrow(()->new EventNotFoundException(eventId));
+
+        if(Objects.equals(event.getRolePriority(),newRolePriority)){
+            throw new ThisEventAlreadyHasSuchRoleException();
+        }
+        if(!roleService.roleExistsByPriority(event.getChatId(), newRolePriority)){
+            throw new RoleNotFoundException();
+        }
+        roleService.checkRoleInteractionAbility(event.getChatId(), newRolePriority, fromId);
+        checkEventAuthorization(event, fromId);
+
+        event.setRolePriority(newRolePriority);
+        event.setMemberToTrigger(null);
+
+        invalidateEventsCache(event.getChatId());
+        return event;
+    }
+    @Transactional
+    public EventEntity setNewRole(long eventId, @NonNull String newRoleName, long fromId){
+
+        EventEntity event = eventRepository.findById(eventId)
+                .orElseThrow(()->new EventNotFoundException(eventId));
+        RoleDto newRole = roleService.getRoleByNameIgnoreCase(event.getChatId(), newRoleName)
+                .orElseThrow(RoleNotFoundException::new);
+
+        if(Objects.equals(event.getRolePriority(),newRole.getRolePriority())){
+            throw new ThisEventAlreadyHasSuchRoleException();
+        }
+        roleService.checkRoleInteractionAbility(event.getChatId(), newRole.getRolePriority(), fromId);
+        checkEventAuthorization(event, fromId);
+
+        event.setRolePriority(newRole.getRolePriority());
+        event.setMemberToTrigger(null);
+
+        invalidateEventsCache(event.getChatId());
+        return event;
+    }
+
+
+
 
     public int countChatEvents(long chatId){
        return Math.toIntExact(getCachedChatEvents(chatId).values().stream().mapToLong(Set::size).sum());
@@ -456,13 +522,14 @@ public class EventService {
 
     private void checkEventAuthorization(@NonNull EventEntity eventEntity, long fromId){
         long chatId = eventEntity.getChatId();
-
         if(eventEntity.getMemberToTrigger()!=null){  // личное событие
             memberService.checkMemberInteractionAbility(chatId, fromId, eventEntity.getMemberToTrigger());
         }else{
-            roleService.checkRoleInteractionAbility(eventEntity.getRolePriority(), memberService.getMemberRolePriority(chatId, fromId));
+            roleService.checkRoleInteractionAbility(chatId, eventEntity.getRolePriority(),fromId);
 
         }
     }
+
+
 
 }
