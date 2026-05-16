@@ -112,31 +112,17 @@ public class EventService {
         if(!roleService.roleExistsByPriority(chatId, rolePriority)){
             throw new RoleNotFoundException();
         }
-        int callerRole = memberService.getMemberRolePriority(chatId, fromId);
-        roleService.checkRoleInteractionAbility(rolePriority, callerRole);
+        roleService.checkRoleInteractionAbility(chatId, rolePriority, fromId);
 
         fullCommand = TextUtils.cutDefaultPrefix(fullCommand);
         fullCommand = fullCommand!=null&&fullCommand.isEmpty()?null:fullCommand;
 
         if(fullCommand!=null){
-            String userCommand = UserInputResolver.splitFullCommand(fullCommand)[0];
-            if(fullCommand.length()-userCommand.length()>EVENT_COMMAND_ARGUMENT_MAX_LENGTH){
-                throw new CommandArgumentTooLongException(EVENT_COMMAND_ARGUMENT_MAX_LENGTH);
-            }
-            Command annotation = commandRegistry.getCommandAnnotation(userCommand).orElseThrow(()->
-                    new UserCommandNotFoundException(userCommand));
-            if(!annotation.eventable()){
-                throw new CannotUseThisCommandForEventException(annotation.mainCommandName());
-            }
-            boolean accessToCmd = commandAccessService.checkCommandAuthorization(chatId, userCommand, callerRole, fromId);
-            if(!accessToCmd){
-                throw new CommandAccessDeniedException(fromId,userCommand);
-            }
+            checkUserFullCommand(chatId, fromId, fullCommand);
         }else if(eventType.getChatEventType()==ACTION||!delete){
             throw new EventCommandCannotBeNullForThisCaseException(
                     "Команду событию можно не устанавливать только если указан параметр удаления сообщения, вызвавшего событие, и тип события не относится к системному действию (выход, приглашение и т.д.).");
         }
-
         EventEntity savedEvent = eventRepository.save(
                 new EventEntity(chatId, eventType, rolePriority, null, userArgument, fromId, fullCommand, delete, reply,silent)
         );
@@ -366,9 +352,6 @@ public class EventService {
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
 
-        if(Objects.equals(event.getRolePriority(),newRolePriority)){
-            throw new ThisEventAlreadyHasSuchRoleException();
-        }
         if(!roleService.roleExistsByPriority(event.getChatId(), newRolePriority)){
             throw new RoleNotFoundException();
         }
@@ -389,9 +372,6 @@ public class EventService {
         RoleDto newRole = roleService.getRoleByNameIgnoreCase(event.getChatId(), newRoleName)
                 .orElseThrow(RoleNotFoundException::new);
 
-        if(Objects.equals(event.getRolePriority(),newRole.getRolePriority())){
-            throw new ThisEventAlreadyHasSuchRoleException();
-        }
         roleService.checkRoleInteractionAbility(event.getChatId(), newRole.getRolePriority(), fromId);
         checkEventAuthorization(event, fromId);
 
@@ -402,8 +382,20 @@ public class EventService {
         return event;
     }
 
+    @Transactional
+    public EventEntity setNewCommand(long eventId, @NonNull String fullCommand, long fromId){
 
+        EventEntity event = eventRepository.findById(eventId)
+                .orElseThrow(()->new EventNotFoundException(eventId));
+        checkEventAuthorization(event, fromId);
 
+        fullCommand = TextUtils.cutDefaultPrefix(fullCommand);
+        checkUserFullCommand(event.getChatId(), fromId, fullCommand);
+        event.setFullCommand(fullCommand);
+
+        invalidateEventsCache(event.getChatId());
+        return event;
+    }
 
     public int countChatEvents(long chatId){
        return Math.toIntExact(getCachedChatEvents(chatId).values().stream().mapToLong(Set::size).sum());
@@ -528,6 +520,24 @@ public class EventService {
             roleService.checkRoleInteractionAbility(chatId, eventEntity.getRolePriority(),fromId);
 
         }
+    }
+    private void checkUserFullCommand(long chatId, long fromId, @NonNull String fullCommand){
+
+        String userCommand = UserInputResolver.splitFullCommand(fullCommand)[0];
+        if(fullCommand.length()-userCommand.length()-1>EVENT_COMMAND_ARGUMENT_MAX_LENGTH){
+            throw new CommandArgumentTooLongException(EVENT_COMMAND_ARGUMENT_MAX_LENGTH);
+        }
+        Command annotation = commandRegistry.getCommandAnnotation(userCommand).orElseThrow(()->
+                new UserCommandNotFoundException(userCommand));
+        if(!annotation.eventable()){
+            throw new CannotUseThisCommandForEventException(annotation.mainCommandName());
+        }
+        int callerRole = memberService.getMemberRolePriority(chatId, fromId);
+        boolean accessToCmd = commandAccessService.checkCommandAuthorization(chatId, userCommand, callerRole, fromId);
+        if(!accessToCmd){
+            throw new CommandAccessDeniedException(fromId,userCommand);
+        }
+
     }
 
 

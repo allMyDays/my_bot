@@ -35,8 +35,7 @@ import java.util.regex.Pattern;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
-import static com.example.my_bot.utils.TextUtils.createMention;
-import static com.example.my_bot.utils.TextUtils.isValidInteger;
+import static com.example.my_bot.utils.TextUtils.*;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
 @Slf4j
@@ -259,6 +258,21 @@ public class EventEditCommand implements ChatCommand {
                 send(sendMessage,
                         "✅Теперь событие №%d («%s») будет срабатывать на роль «%s» и ниже."
                                 .formatted(outerEventId,editedEvent.getType().getDescription(),roleService.getRoleName(chatId,editedEvent.getRolePriority()).orElse("???")));
+            }
+            case COMMAND -> {
+                // !редивент 1 команда !кик %user%
+
+                try{
+                    editedEvent = eventService.setNewCommand(eventEntityId,collectArgumentsSinceIndex(args, 2),fromId);
+                }catch (EventException | CommandException | RoleException | MemberException e){
+                    send(sendMessage, e.getMessage());
+                    return;
+                }
+                send(sendMessage,
+                        "✅Новая команда для события №%d («%s») была успешно установлена."
+                                .formatted(outerEventId,editedEvent.getType().getDescription())
+                );
+
             }
         }
     }
