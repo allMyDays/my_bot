@@ -12,7 +12,10 @@ import java.util.Optional;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "chat")
+@Table(name = "chat"
+        ,uniqueConstraints = @UniqueConstraint(name = "uk_chat_chat_code", columnNames = "chat_code")
+        ,indexes = @Index(name = "idx_bound_log_chat", columnList = "bound_log_chat")
+)
 public class ChatEntity {
 
     @Id
@@ -39,6 +42,12 @@ public class ChatEntity {
 
     @Column(nullable = false)
     private boolean autoUnban;
+
+    @Column(name = "chat_code", nullable = false)
+    private String chatCode;
+
+    @Column(name = "bound_log_chat", nullable = true)
+    Long boundLogChat;
 
 
 }

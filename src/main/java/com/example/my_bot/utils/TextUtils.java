@@ -10,9 +10,6 @@ import java.text.BreakIterator;
 
 public class TextUtils {
 
-    public final static char DEFAULT_CHAT_PREFIX = '!';
-
-
      public static String createMention(long memberId){
 
         if(memberId<0) {
@@ -68,7 +65,7 @@ public class TextUtils {
         if (command==null) return null;
         command = command.trim();
         if(!command.isEmpty()){
-            if(command.charAt(0)==DEFAULT_CHAT_PREFIX){
+            if(command.charAt(0)==ChatUtils.DEFAULT_CHAT_PREFIX){
                 return command.substring(1);
             }
         }

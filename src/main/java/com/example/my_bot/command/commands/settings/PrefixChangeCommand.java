@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Lazy;
 import java.util.Optional;
 
 import static com.example.my_bot.enumeration.DefaultRole.*;
-import static com.example.my_bot.utils.TextUtils.DEFAULT_CHAT_PREFIX;
+import static com.example.my_bot.utils.ChatUtils.DEFAULT_CHAT_PREFIX;
 
 @Command(mainCommandName = "префикс",alternativeCommandNames = {"prefix"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
 @RequiredArgsConstructor

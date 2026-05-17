@@ -17,6 +17,7 @@ import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.permission.MemberPermissionService;
 import com.example.my_bot.service.GlobalUserService;
+import com.example.my_bot.utils.ChatUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -101,7 +102,7 @@ public class MemberPermissionCreateCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
-        char chatPrefix = chatService.getChatPrefix(chatId).orElse(DEFAULT_CHAT_PREFIX);
+        char chatPrefix = chatService.getChatPrefix(chatId).orElse(ChatUtils.DEFAULT_CHAT_PREFIX);
 
         StringBuilder result = new StringBuilder();
         String cmdPrefix = "⚙ " + chatPrefix;

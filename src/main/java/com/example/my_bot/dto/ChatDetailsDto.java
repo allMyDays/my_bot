@@ -1,5 +1,6 @@
 package com.example.my_bot.dto;
 
+import com.example.my_bot.entity.ChatEntity;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
@@ -14,6 +15,8 @@ import java.util.Optional;
 @NoArgsConstructor
 public class ChatDetailsDto {
 
+    private Long chatId;
+
     private Character prefix;
 
     private Instant lastSyncTime;
@@ -27,6 +30,10 @@ public class ChatDetailsDto {
     private Long banPeriodSeconds;
 
     private boolean autoUnban;
+
+    private String chatCode;
+
+    Long boundLogChat;
 
     @JsonIgnore
     public Optional<Character> getOptionalPrefix() {

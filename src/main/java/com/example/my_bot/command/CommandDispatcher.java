@@ -61,7 +61,7 @@ public class CommandDispatcher {
                  if(chatPrefix.isPresent()){
                    if(commandName.charAt(0)!=chatPrefix.get()) return;
                  }else{
-                    if(commandName.charAt(0)!=DEFAULT_CHAT_PREFIX){
+                    if(commandName.charAt(0)!=ChatUtils.DEFAULT_CHAT_PREFIX){
                      mustCutPrefix=false;
                     }
                  }

@@ -13,6 +13,7 @@ import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.permission.RolePermissionService;
+import com.example.my_bot.utils.ChatUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -86,7 +87,7 @@ public class RolePermissionCreateCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
-        char chatPrefix = chatService.getChatPrefix(chatId).orElse(DEFAULT_CHAT_PREFIX);
+        char chatPrefix = chatService.getChatPrefix(chatId).orElse(ChatUtils.DEFAULT_CHAT_PREFIX);
 
         StringBuilder result = new StringBuilder();
         String roleName = permissionResult.getRoleDto().getRoleName();

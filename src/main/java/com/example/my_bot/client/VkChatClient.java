@@ -88,13 +88,15 @@ public class VkChatClient{
                 .randomId((int) System.currentTimeMillis());
 
         if(sendMessageDto.isReplyToMessageId()&&sendMessageDto.getConversationMessageId()!=null){
-
             Forward forward = new Forward();
             forward.setConversationMessageIds(List.of(sendMessageDto.getConversationMessageId()));
             forward.setPeerId(sendMessageDto.getPeerId());
             forward.setIsReply(true);
 
             query.forward(forward);
+        }
+        if(sendMessageDto.getForward()!=null){
+            query.forward(sendMessageDto.getForward());
         }
         query.execute();
 

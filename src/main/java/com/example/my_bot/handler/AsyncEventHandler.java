@@ -16,6 +16,7 @@ import com.example.my_bot.vk.VkMessageNew;
 import com.example.my_bot.vk.enumeration.VkActionType;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import com.vk.api.sdk.objects.messages.Forward;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -23,12 +24,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.UNKNOWN_ERROR_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.WELCOME_MESSAGE;
-import static com.example.my_bot.utils.ChatUtils.extractConversationId;
-import static com.example.my_bot.utils.ChatUtils.isPersonalChat;
+import static com.example.my_bot.utils.ChatUtils.*;
 
 @Component
 @Slf4j
@@ -84,7 +85,7 @@ public class AsyncEventHandler {
             chatId = extractConversationId(peerId);
             if (hasTheBotJustBeenAdded(message.getAction())){
                 try {
-                    vkChatClient.sendText(messageMapper.toSendMessageDto(WELCOME_MESSAGE, ChatUtils.convertToPeerId(chatId)));
+                    vkChatClient.sendText(messageMapper.toSendMessageDto(WELCOME_MESSAGE, convertToPeerId(chatId)));
                 } catch (ClientException |ApiException e) {
                     log.warn("chat {} error: couldn't send welcome message after the bot's just been added", chatId);
                 } return;
@@ -92,18 +93,31 @@ public class AsyncEventHandler {
         }
 
         try{
-            ChatDetailsDto chatDetails = chatService.getCachedChatDetails(chatId, true);
-            commandDispatcher.dispatch(messageMapper.toCommandMessageDto(chatId, message, chatDetails.isMessageReplying()));
+            ChatDetailsDto currentChat = chatService.getCachedChatDetails(chatId, true);
+            commandDispatcher.dispatch(messageMapper.toCommandMessageDto(chatId, message, currentChat.isMessageReplying()));
 
             if(!isPersonalChat(peerId)){
                 chatActionService.handleChatAction(chatId,fromId,message.getAction());
                 eventExecutionService.executeRequiredChatEvents(message);
+
+                if(currentChat.getBoundLogChat()!=null&&message.getAction()==null){
+                    SendMessageDto sendMessage = messageMapper.toSendMessageDto(
+                            "Из чата "+currentChat.getChatCode(),
+                            convertToPeerId(currentChat.getBoundLogChat())
+                    );
+                    Forward forward = new Forward();
+                    forward.setConversationMessageIds(List.of(message.getConversationMessageId()));
+                    forward.setPeerId(convertToPeerId(currentChat.getChatId()));
+                    sendMessage.setForward(forward);
+                    vkChatClient.sendText(sendMessage);
+                }
+
             } chatActionService.checkLastChatSynchronizationAndExecute(chatId);
 
         }catch (Exception e) {
             log.error("Произошла ошибка: ",e);
             try {;
-                vkChatClient.sendText(messageMapper.toSendMessageDto(UNKNOWN_ERROR_MESSAGE, ChatUtils.convertToPeerId(chatId)));
+                vkChatClient.sendText(messageMapper.toSendMessageDto(UNKNOWN_ERROR_MESSAGE, convertToPeerId(chatId)));
             } catch (ClientException | ApiException e2) {
                 log.error("Ошибка при попытке отправить сообщение об ошибке в диалог c peerId {}: ",peerId,e2);
 

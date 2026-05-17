@@ -1,9 +1,6 @@
 package com.example.my_bot.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,7 +13,9 @@ import java.time.Instant;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "all_users")
+@Table(name = "all_users",
+        indexes = @Index(name = "idx_bound_chat", columnList = "bound_chat")
+)
 public class GlobalUserEntity {
     @Id
     private Long userId;
@@ -24,6 +23,7 @@ public class GlobalUserEntity {
     @Column(nullable = false)
     private boolean isBanned;
 
+    @Column(name = "bound_chat", nullable = true)
     private Long boundChat;
 
     private String fullNameInNom;

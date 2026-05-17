@@ -59,6 +59,8 @@ public class ChatSettingsShowCommand implements ChatCommand {
                 "\n ⌚ Дефолтный срок бана: " + details.getOptionalBanPeriod().map(p -> TimeUtils.formatDurationFromSeconds(p, true)).orElse(off) +
                 "\n \uD83D\uDD27 Авторазбан приглашенных: " + (details.isAutoUnban() ? on : off);
 
+        sb+="\n\n\uD83D\uDDD3 Код чата: "+details.getChatCode();
+
         vkChatClient.sendText(messageMapper.toSendMessageDto(sb,messageDto));
 
     }

@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.service.permission.MemberPermissionService.getMaxCustomMemberPermissionsCount;
 import static com.example.my_bot.service.permission.RolePermissionService.getMaxCustomRolePermissionsCount;
-import static com.example.my_bot.utils.TextUtils.DEFAULT_CHAT_PREFIX;
+import static com.example.my_bot.utils.ChatUtils.DEFAULT_CHAT_PREFIX;
 
 @Slf4j
 @Command(mainCommandName = "права", alternativeCommandNames = {"разрешения"}, defaultRole = MODERATOR, eventable = true)
