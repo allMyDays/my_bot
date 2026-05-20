@@ -43,7 +43,6 @@ public class TimerDeleteCommand implements ChatCommand {
 
         long chatId = messageDto.getChatId();
         String[] args = messageDto.getFirstRowArguments();
-        long peerId = messageDto.getPeerId();
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
 

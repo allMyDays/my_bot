@@ -21,4 +21,6 @@ public enum VkEventType {
         this.value = value;
     }
 
+
+
 }

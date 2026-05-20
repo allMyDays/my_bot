@@ -37,8 +37,6 @@ public class UnbanCommand implements ChatCommand {
 
     private VkChatClient vkChatClient;
 
-    private final ChatService chatService;
-
     private final BanService banService;
 
     private final UserInputResolver userInputResolver;

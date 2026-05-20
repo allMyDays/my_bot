@@ -56,33 +56,49 @@ public class AssignMemberCommand implements ChatCommand {
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
 
+        // варианты:
+        // !назначить @durov администратор
+        // !назначить администратор (пересланное смс)
+
         if(args.length==0){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
             return;
-        }if(isNumber(args[0])&&!isValidInteger(args[0])){
-            sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
-            vkChatClient.sendText(sendMessage);
-            return;
         }
         long userToAssign;
-        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(messageDto,1);
+        String roleToGive;
+
+        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(messageDto,0);
         if(parseResult.getMemberId().isPresent()){
             userToAssign = parseResult.getMemberId().get();
         }else{
             sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
             vkChatClient.sendText(sendMessage);
             return;
-
         }
-
+        if(!parseResult.isFwdMessage()){
+            // !назначить @durov администратор
+            if(args.length<2){
+                sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
+                vkChatClient.sendText(sendMessage);
+                return;
+            } roleToGive=args[1];
+        }else{
+            // !назначить администратор (пересланное смс)
+            roleToGive=args[0];
+        }
+        if(isNumber(roleToGive)&&!isValidInteger(roleToGive)){
+            sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
+            vkChatClient.sendText(sendMessage);
+            return;
+        }
 
         AssignMemberResult assignResult;
         try{
-         if(isNumber(args[0])){
-            assignResult= memberService.assignNewRoleToMember(chatId, userToAssign,Integer.parseInt(args[0]), messageDto.getFromId());
+         if(isNumber(roleToGive)){
+            assignResult= memberService.assignNewRoleToMember(chatId, userToAssign,Integer.parseInt(roleToGive), messageDto.getFromId());
          }else{
-            assignResult = memberService.assignNewRoleToMember(chatId, userToAssign,args[0], messageDto.getFromId());
+            assignResult = memberService.assignNewRoleToMember(chatId, userToAssign,roleToGive, messageDto.getFromId());
          }
         }catch(MemberException | RoleException | CommandException e){
             sendMessage.setText(e.getMessage());

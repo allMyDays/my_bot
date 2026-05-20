@@ -2,12 +2,15 @@ package com.example.my_bot.longpoll;
 
 import com.example.my_bot.handler.AsyncEventHandler;
 import com.example.my_bot.vk.VkMessageNew;
+import com.example.my_bot.vk.VkMessageReactionEvent;
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.vk.api.sdk.client.VkApiClient;
 import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import com.vk.api.sdk.objects.callback.MessageNew;
 import com.vk.api.sdk.objects.callback.longpoll.responses.GetLongPollEventsResponse;
 import com.vk.api.sdk.objects.groups.LongPollServer;
 import jakarta.annotation.PreDestroy;
@@ -15,9 +18,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import static com.example.my_bot.vk.enumeration.VkEventType.MESSAGE_NEW;
+import static com.example.my_bot.vk.enumeration.VkEventType.MESSAGE_REACTION_EVENT;
 
 @Service
 @Slf4j
@@ -88,17 +93,23 @@ public class VkLongPollBot {
                 if(response.getUpdates()== null){
                     continue;
                 }
-                for (JsonObject update:response.getUpdates()){
+                for(JsonObject update:response.getUpdates()){
+                    JsonElement typeElement = update.get("type");
+                    if(typeElement == null) continue;
+                    String type= typeElement.getAsString();
 
-                    VkMessageNew event = GSON.fromJson(update, VkMessageNew.class);
-
-                    if(event==null||event.getType()==null){
-                        continue;
+                    if(MESSAGE_NEW.getValue().equals(type)){
+                        VkMessageNew event = GSON.fromJson(update, VkMessageNew.class);
+                        if(event!=null){
+                            asyncEventHandler.handleNewMessageEvent(event);
+                        }
+                    } else if (MESSAGE_REACTION_EVENT.getValue().equals(type)){
+                        VkMessageReactionEvent event = GSON.fromJson(update, VkMessageReactionEvent.class);
+                        if(event!=null){
+                            asyncEventHandler.handleNewReactionEvent(event);
+                        }
                     }
 
-                    if(MESSAGE_NEW.equals(event.getType())){
-                        asyncEventHandler.handleMessageNew(event);
-                    }
                 }
 
             }catch (ApiException e){

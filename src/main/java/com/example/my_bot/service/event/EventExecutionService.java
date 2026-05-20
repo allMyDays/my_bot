@@ -12,6 +12,7 @@ import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.MyEventType;
+import com.example.my_bot.enumeration.event.ReactionType;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.MemberService;
@@ -42,6 +43,7 @@ import java.time.LocalTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -171,98 +173,78 @@ public class EventExecutionService {
         this.commandDispatcher = commandDispatcher;
     }
 
-    public void executeRequiredChatEvents(VkMessage message){
-        long chatId = ChatUtils.extractConversationId(message.getPeerId());
-        long fromId = message.getFromId();
-        int chatMessageId = message.getConversationMessageId();
+    public void executeRequiredChatEvents(long chatId,
+                                          long fromId,
+                                          int conversationMessageId,
+                                          @Nullable VkAction action,
+                                          @Nullable List<VkMessageAttachment> attachments,
+                                          @Nullable String userText,
+                                          @Nullable List<ForeignMessage> fwMessages,
+                                          @Nullable ReactionType userReaction,
+                                          boolean isSelfDestructing){
 
         int callerRole = memberService.getMemberRolePriority(chatId, fromId);
         ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventsCache = eventService.getCachedChatEvents(chatId);
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
-        LocalTime nowInTheChat = LocalTime.now(chatTimeZone.getZoneOffset());
+        LocalTime currentDailyTime = LocalTime.now(chatTimeZone.getZoneOffset());
         Instant nowInstant = Instant.now();
 
-        VkAction action = message.getAction();
-        List<VkMessageAttachment> attachments = message.getAttachments();
-        String userText = Optional.ofNullable(message.getText()).orElse("").trim();
-        List<ForeignMessage> fwMessages = message.getFwdMessages();
-
-        Map<VkMessageAttachmentType, List<VkMessageAttachment>> attachmentMap=Collections.emptyMap();
-
         ImmutableSet<EventDto> requiredEvents;
+        Consumer<EventDto> eventExecutor=null;
 
         for(ChatEventType chatEventType: ChatEventType.values()){
             switch (chatEventType){
                 case ACTION -> {
                     if(action==null) continue;
+                    eventExecutor = (newEvent) -> {
+                        handleActionEvent(newEvent, action, fromId, chatId, conversationMessageId);
+                    };
                 }case TEXT -> {
-                    if(userText.isEmpty()) continue;
+                    if(userText==null||userText.isEmpty()) continue;
+                    eventExecutor = (newEvent) -> {
+                        handleTextEvent(newEvent, userText.trim(), attachments, fromId, chatId,conversationMessageId, isSelfDestructing, newEvent.getAEMaxUsage()!=null);
+                    };
+
                 }case ATTACHMENTS -> {
-                    if(attachments.isEmpty()) continue;
-                    attachmentMap = attachments
+                    if(attachments==null||attachments.isEmpty()) continue;
+                    var attachmentMap = attachments
                             .stream()
                             .collect(Collectors.groupingBy(VkMessageAttachment::getType));
-                }case FWD_MESSAGES -> {
-                    if(fwMessages.isEmpty()) continue;
+                    eventExecutor = (newEvent) -> {
+                        handleAttachmentEvent(newEvent, attachments, attachmentMap, fromId, chatId, conversationMessageId, newEvent.getAEMaxUsage()!=null);
+                    };
+
+                }case FORWARDS -> {
+                    if(fwMessages==null||fwMessages.isEmpty()) continue;
+                    eventExecutor = (newEvent) -> {
+                        handleFwdEvent(newEvent, fwMessages, fromId, chatId, conversationMessageId, newEvent.getAEMaxUsage()!=null);
+                    };
+                }case REACTION -> {
+                    if(userReaction==null) continue;
+                    eventExecutor = (newEvent) -> {
+                        handleReactionEvent(newEvent, userReaction, fromId, chatId, conversationMessageId);
+                    };
                 }
             }
             requiredEvents = eventsCache.get(chatEventType);
             if(requiredEvents!=null){
                 for(EventDto currentEvent: requiredEvents){
 
-                    Long memberToTrigger = currentEvent.getMemberToTrigger();
-                    if(memberToTrigger!=null){  // личное событие
-                        if(memberToTrigger!=fromId) continue;
-
-                    }else if(!eventService.isEventRoleHighEnough(currentEvent.getRolePriority(), callerRole)){
+                    if(!areEventConditionsAppropriate(currentEvent,chatId,fromId, callerRole, currentDailyTime, nowInstant)){
                         continue;
                     }
-                    if(currentEvent.getExceptionalMembers().contains(fromId)){  // не личное событие, но есть участники-исключения
-                        continue;
+                    if(currentEvent.getType()==ANY_MESSAGE){
+                        if(action==null){
+                            executeEvent(chatId, fromId, null, currentEvent, 1, conversationMessageId);
+                        }continue;
                     }
-                    Integer CDPeriod = currentEvent.getCDPeriodSec();
-                    if(CDPeriod!=null&&CDPeriod>0){
-                        if(eventCoolDownCalls.getIfPresent(new EventIdAndMemberIdKey(currentEvent.getId(), fromId))!=null){
-                            continue;
-                        }
-                    }
-                    if(currentEvent.getStartDayTime()!=null){
-                        if(!isNowInDailyRange(currentEvent.getStartDayTime(), currentEvent.getEndDayTime(), nowInTheChat)){
-                         continue;
-                        }
-                    }
-                    Integer newMembersPeriod = currentEvent.getNewMembersPeriodSec();
-                    if(newMembersPeriod!=null&&newMembersPeriod>0){
-                        if(!isNewMember(nowInstant, memberService.getFirstAppearance(chatId,fromId).orElse(nowInstant),newMembersPeriod)){
-                            continue;
-                        }
-                    }
-                    boolean isAdvancedEvent = currentEvent.getAEPeriodSec()!=null;
-                    switch (currentEvent.getType()){
-                        case ANY_MESSAGE -> {
-                            if(action==null){
-                                executeEvent(chatId, fromId, null, currentEvent,1, chatMessageId);
-                            } continue;
-                        }case FWD_QUANTITY -> {
-                            int fwdQuantity = countForwardedMessages(message.getFwdMessages());
-                            if(!isAdvancedEvent&&fwdQuantity<Integer.parseInt(currentEvent.getArgument())) continue;
-                            executeEvent(chatId, fromId, null, currentEvent, fwdQuantity, chatMessageId);
-                            continue;
-                        }
-                    }
-                    switch (chatEventType){
-                        case ACTION -> {
-                            handleActionEvent(currentEvent, action, fromId, chatId, chatMessageId);
-                        }case TEXT -> {
-                            handleTextEvent(currentEvent, userText, attachments.size(), fromId, chatId,  chatMessageId, message.getExpireTTL()!=null, isAdvancedEvent);
-                        }case ATTACHMENTS -> {
-                            handleAttachmentEvent(currentEvent, attachments, attachmentMap, fromId, chatId, chatMessageId, isAdvancedEvent);
-                        }
+                    if(eventExecutor!=null){
+                        eventExecutor.accept(currentEvent);
                     }
                 }
             }
-            if(chatEventType== ACTION){
-                return; // если текущее событие - action, то не может быть text, attachment
+            if(chatEventType==ACTION||chatEventType==REACTION){
+                return; // если текущее событие action или reaction, то не может быть text, attachment и т.д.
 
               }
         }
@@ -373,7 +355,7 @@ public class EventExecutionService {
         executeEvent(chatId, fromId, null, eventDto, currentTypeAttachments.size(), chatMessageId);
     }
 
-    private void handleTextEvent(@NonNull EventDto eventDto, @NonNull String userText, int attachmentsSize, long fromId, long chatId, int chatMessageId, boolean isSelfDestructing, boolean isAdvancedEvent){
+    private void handleTextEvent(@NonNull EventDto eventDto, @NonNull String userText, @Nullable List<VkMessageAttachment> attachments, long fromId, long chatId, int chatMessageId, boolean isSelfDestructing, boolean isAdvancedEvent){
         MyEventType eventType = eventDto.getType();
         if(eventType.getChatEventType()!=TEXT) return;
 
@@ -381,6 +363,9 @@ public class EventExecutionService {
         Integer intArg = arg!=null&&eventType.getArgumentType()==INTEGER?Integer.parseInt(arg):null;
 
         int callQuantity = 0;
+        if(attachments==null){
+            attachments=Collections.emptyList();
+        }
 
         switch (eventType){
             case WORD_FILTER -> {
@@ -404,7 +389,7 @@ public class EventExecutionService {
                 }
 
             }case SHORT_MESSAGE ->{
-                if(attachmentsSize>0||userText.length()>=intArg) return;
+                if(!attachments.isEmpty()||userText.length()>=intArg) return;
                 callQuantity = 1;
 
             }case MAXIMUM_SYMBOLS -> {
@@ -494,6 +479,27 @@ public class EventExecutionService {
         executeEvent(chatId, fromId, null, eventDto,callQuantity, chatMessageId);
     }
 
+    private void handleFwdEvent(@NonNull EventDto eventDto,@NonNull List<ForeignMessage> fwdMessages, long fromId, long chatId, int chatMessageId, boolean isAdvancedEvent){
+        MyEventType eventType = eventDto.getType();
+        if(eventType.getChatEventType()!= FORWARDS) return;
+
+        if(eventType==FWD_QUANTITY){
+            int fwdQuantity = countForwardedMessages(fwdMessages);
+            if(!isAdvancedEvent&&fwdQuantity<Integer.parseInt(eventDto.getArgument())) return;
+            executeEvent(chatId, fromId, null, eventDto, fwdQuantity, chatMessageId);
+            return;
+        }
+    }
+    private void handleReactionEvent(@NonNull EventDto eventDto, ReactionType userReaction,long fromId, long chatId, int chatMessageId){
+        MyEventType eventType = eventDto.getType();
+        if(eventType.getChatEventType()!= REACTION||userReaction==null) return;
+
+        if(eventType==REACTION_FILTER){
+            if(userReaction.getReactionId()!=Integer.parseInt(eventDto.getArgument())) return;
+        }
+        executeEvent(chatId, fromId, null, eventDto, 1, chatMessageId);
+    }
+
    private void executeEvent(long chatId, long fromId, @Nullable Long memberId, @NonNull EventDto eventDto, int callQuantity, int chatMessageId){
        if(callQuantity<=0) return;
        EventIdAndMemberIdKey eventKey=null;
@@ -507,7 +513,6 @@ public class EventExecutionService {
                    new TimePeriodAndCallQuantity(eventDto.getAEPeriodSec(),callQuantity)
            );
            if(allEventCalls<eventDto.getAEMaxUsage()){
-
                return;
            }
        }
@@ -567,7 +572,40 @@ public class EventExecutionService {
         return count;
     }
 
-    private boolean isNowInDailyRange(@NonNull LocalTime start, @NonNull LocalTime end,@NonNull LocalTime now){
+    private boolean areEventConditionsAppropriate(@NonNull EventDto currentEvent, long chatId, long fromId, int callerRole, @NonNull LocalTime currentDailyTime, @NonNull Instant nowInstant){
+
+        Long memberToTrigger = currentEvent.getMemberToTrigger();
+        if(memberToTrigger!=null){  // личное событие
+            if(memberToTrigger!=fromId) return false;
+
+        }else if(!eventService.isEventRoleHighEnough(currentEvent.getRolePriority(), callerRole)){
+            return false;
+        }
+        if(currentEvent.getExceptionalMembers().contains(fromId)){  // не личное событие, но есть участники-исключения
+            return false;
+        }
+        Integer CDPeriod = currentEvent.getCDPeriodSec();
+        if(CDPeriod!=null&&CDPeriod>0){
+            if(eventCoolDownCalls.getIfPresent(new EventIdAndMemberIdKey(currentEvent.getId(), fromId))!=null){
+                return false;
+            }
+        }
+        if(currentEvent.getStartDayTime()!=null){
+            if(!isCurrentTimeInRequiredDailyRange(currentEvent.getStartDayTime(), currentEvent.getEndDayTime(), currentDailyTime)){
+                return false;
+            }
+        }
+        Integer newMembersPeriod = currentEvent.getNewMembersPeriodSec();
+        if(newMembersPeriod!=null&&newMembersPeriod>0){
+            if(!isNewMember(nowInstant, memberService.getFirstAppearance(chatId,fromId).orElse(nowInstant),newMembersPeriod)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+    private boolean isCurrentTimeInRequiredDailyRange(@NonNull LocalTime start, @NonNull LocalTime end, @NonNull LocalTime now){
         if(start.equals(end)){
             return true;
         }

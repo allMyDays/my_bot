@@ -127,10 +127,13 @@ public class AllEventsShowCommand implements ChatCommand {
                         argView = createMention(Long.parseLong(argView));
                     }
                     case SHORT_MESSAGE -> {
-                        argView = argView+" (символов)";
+                        argView +=" (символов)";
                     }
                     case SHORT_VOICE_MESSAGE, LONG_VOICE_MESSAGE -> {
-                        argView = argView+" (длительность в сек.)";
+                        argView +=" (длительность в сек.)";
+                    }
+                    case REACTION_FILTER -> {
+                        argView +=" (ID реакции)";
                     }
                 }
                 sb.append(" Аргумент: ").append(argView);

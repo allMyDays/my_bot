@@ -2,8 +2,11 @@ package com.example.my_bot.controller;
 
 import com.example.my_bot.handler.AsyncEventHandler;
 import com.example.my_bot.vk.VkMessageNew;
+import com.example.my_bot.vk.VkMessageReactionEvent;
 import com.example.my_bot.vk.enumeration.VkEventType;
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -12,8 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import static com.example.my_bot.vk.enumeration.VkEventType.CONFIRMATION;
-import static com.example.my_bot.vk.enumeration.VkEventType.MESSAGE_NEW;
+import static com.example.my_bot.vk.enumeration.VkEventType.*;
 
 
 @RestController
@@ -40,23 +42,28 @@ public class VkCallbackController {
 
     @PostMapping("/callback")
     public ResponseEntity<String> handle(@RequestBody String body){
-
-        try {
-            VkMessageNew event = GSON.fromJson(body, VkMessageNew.class);
-
-            if(event==null||event.getType()==null){
-                return ResponseEntity.badRequest().body("invalid event");
+        try{
+            JsonObject update = GSON.fromJson(body, JsonObject.class);
+            JsonElement typeElement = update.get("type");
+            if(typeElement == null){
+                return ResponseEntity.badRequest()
+                        .body("Missing type field");
             }
+            String type= typeElement.getAsString();
 
-            VkEventType type = event.getType();
-
-            if(CONFIRMATION.equals(type)){
+            if(MESSAGE_NEW.getValue().equals(type)){
+                VkMessageNew event = GSON.fromJson(update, VkMessageNew.class);
+                if(event!=null){
+                    asyncEventHandler.handleNewMessageEvent(event);
+                }
+            }else if(MESSAGE_REACTION_EVENT.getValue().equals(type)){
+                VkMessageReactionEvent event = GSON.fromJson(update, VkMessageReactionEvent.class);
+                if(event!=null){
+                    asyncEventHandler.handleNewReactionEvent(event);
+                }
+            }else if(CONFIRMATION.getValue().equals(type)){
                 log.info("confirmation event came");
                 return ResponseEntity.ok(confirmationCode);
-
-            }
-            if(MESSAGE_NEW.equals(type)){
-                asyncEventHandler.handleMessageNew(event);
             }
             return ResponseEntity.ok("ok");
 

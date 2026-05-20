@@ -48,8 +48,6 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
     private final MessageMapper messageMapper;
 
 
-
-
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 

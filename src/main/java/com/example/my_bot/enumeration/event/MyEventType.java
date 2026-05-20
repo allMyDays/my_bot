@@ -5,7 +5,6 @@ import static com.example.my_bot.utils.ChatUtils.MAX_MESSAGE_LENGTH;
 import static com.example.my_bot.vk.enumeration.VkActionType.*;
 
 import com.example.my_bot.config.AdvancedEventConfig;
-import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.vk.enumeration.VkActionType;
 import com.example.my_bot.vk.enumeration.VkMessageAttachmentType;
 import lombok.Getter;
@@ -36,7 +35,7 @@ public enum MyEventType {
     WITHOUT_SUBSCRIPTION("нетподписки", "Отсутствие подписки на сообщество", ACTION, Set.of(CHAT_INVITE_USER, CHAT_INVITE_USER_BY_LINK),  INTEGER, 1, 9,  new AdvancedEventConfig(false, false)),
 
 
-    FWD_QUANTITY("пересланные","Количество пересланных", FWD_MESSAGES, INTEGER, 1, 100,  new AdvancedEventConfig(true, false, 10_000)),
+    FWD_QUANTITY("пересланные","Количество пересланных", FORWARDS, INTEGER, 1, 100,  new AdvancedEventConfig(true, false, 10_000)),
 
 
     ATTACHMENT_QUANTITY("вложения","Количество вложений", ATTACHMENTS, INTEGER, 1, 10,  new AdvancedEventConfig(true, false, 2_000)),
@@ -75,7 +74,12 @@ public enum MyEventType {
     SELF_DESTRUCTING_MESSAGE("исчезающее", "Исчезающее сообщение", TEXT,  new AdvancedEventConfig(true, false,5_000)),
     ANY_PUSH_QUANTITY("пуши","Количество пушей", TEXT, INTEGER, 1, 1000,  new AdvancedEventConfig(true, false,10_000)),
     SAME_MESSAGES("одинаковые", "Одинаковые сообщения подряд", TEXT, INTEGER, 2, 100,  new AdvancedEventConfig(false, false)),
-    SHORT_MESSAGE("короткоесмс","Сообщение с минимальным количеством символов", TEXT, INTEGER, 1, MAX_MESSAGE_LENGTH, new AdvancedEventConfig(true, true,7_000));
+    SHORT_MESSAGE("короткоесмс","Сообщение с минимальным количеством символов", TEXT, INTEGER, 1, MAX_MESSAGE_LENGTH, new AdvancedEventConfig(true, true,7_000)),
+
+
+
+    ANY_REACTION("реакция","Любая реакция",REACTION, new AdvancedEventConfig(true, false)),
+    REACTION_FILTER("реакцияфильтр","Конкретная реакция",REACTION, INTEGER,1,500,  new AdvancedEventConfig(true, true));
 
 
     @Getter

@@ -25,6 +25,12 @@ public class MessageConstant {
 
     public static final String MEMBER_ROLE_HAS_BEEN_CHANGED = "✅Роль %s(%s) изменена: «%s» ➜ «%s».";
 
+    public static final String THE_BOT_IS_RESTRICTED_TO_WRITE_ERROR = "Ошибка: мне запретили писать сообщения в этот чат.";
+
+    public static final String THE_BOT_IS_NOT_CHAT_ADMIN_ERROR = "Ошибка: я не являюсь администратором этого чата.";
+
+    public static final String THE_BOT_HAS_NO_CHAT_ACCESS_ERROR = "Ошибка: не удалось получить доступ к чату. Скорее всего у меня нет прав администратора. Выдайте мне права.";
+
 
 
 

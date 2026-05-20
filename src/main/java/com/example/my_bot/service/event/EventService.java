@@ -16,6 +16,7 @@ import com.example.my_bot.entity.EventEntity;
 import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
+import com.example.my_bot.enumeration.event.ReactionType;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.CommandArgumentTooLongException;
@@ -34,6 +35,7 @@ import com.example.my_bot.utils.TextUtils;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.vdurmont.emoji.EmojiManager;
 import jakarta.annotation.Nullable;
 import jakarta.transaction.Transactional;
 import lombok.NonNull;
@@ -416,7 +418,7 @@ public class EventService {
             int argMax = eventType.getArgMax();
             int argMin = eventType.getArgMin();
 
-            if(eventArgType == INTEGER){
+            if(eventArgType==INTEGER){
                 switch (eventType){
                     case WITH_SUBSCRIPTION, WITHOUT_SUBSCRIPTION -> {
                         Long groupId = userInputResolver.getMemberIdByStringInput(userArgument).orElse(null);
@@ -424,6 +426,10 @@ public class EventService {
                             throw new IncorrectEventArgumentException("Для данного типа события, аргумент обязан быть ссылкой или упоминанием сообщества.");
                         }
                         return groupId.toString();
+                    }case REACTION_FILTER ->{
+                        ReactionType foundReaction = ReactionType.findByEmojiOrReactionId(userArgument)
+                                .orElseThrow(()-> new IncorrectEventArgumentException("Для данного типа события, аргумент должен быть порядковым номером реакции либо эмоджи, отображающий реакцию."));
+                        return String.valueOf(foundReaction.getReactionId());
                     }
                 }
                 int intArg;

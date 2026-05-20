@@ -19,6 +19,7 @@ import com.vk.api.sdk.objects.base.responses.BoolResponse;
 import com.vk.api.sdk.objects.messages.ConversationMember;
 import com.vk.api.sdk.objects.messages.Forward;
 import com.vk.api.sdk.objects.messages.responses.DeleteFullResponse;
+import com.vk.api.sdk.objects.messages.responses.GetByConversationMessageIdResponse;
 import com.vk.api.sdk.objects.messages.responses.GetConversationMembersResponse;
 import com.vk.api.sdk.objects.messages.responses.IsMessagesFromGroupAllowedResponse;
 import com.vk.api.sdk.objects.utils.DomainResolvedType;
@@ -36,6 +37,7 @@ import java.util.*;
 
 import static com.example.my_bot.enumeration.member.MemberPresenceType.KICKED;
 import static com.example.my_bot.utils.ChatUtils.*;
+import static com.example.my_bot.vk.enumeration.CommunityErrorCode.NO_GROUP_MEMBERS_ACCESS;
 
 @Component
 @Slf4j
@@ -144,22 +146,20 @@ public class VkChatClient{
     }
 
 
-    public void kickOneChatMember(long chatId, long memberId) throws ClientException, ApiException {
+    public void kickOneChatMember(long chatId, long memberId) throws ClientException, ApiException{
 
-        if (memberId==-groupId){
+        if(memberId==-groupId){
             return;
         }
-
         vkApiClient.messages().removeChatUser(groupActor)
                 .chatId((int)chatId)
                 .memberId(memberId)
                 .execute();
 
         memberService.setPresenceTypeToMember(chatId, memberId, KICKED, true);
-
     }
 
-    public Set<Long> kickManyChatMembers(long chatId, @NonNull List<Long> allMemberIds) throws ClientException, ApiException {
+    public Set<Long> kickManyChatMembers(long chatId, @NonNull List<Long> allMemberIds) throws ClientException, ApiException{
 
         final int maxBatchSize = 25;
         List<AbstractQueryBuilder> batchQueries = new ArrayList<>();
@@ -285,7 +285,8 @@ public class VkChatClient{
 
         }catch(ApiExtendedException ex){
             int errorCode = ex.getErrorRaw().getErrorCode();
-            if(errorCode==203||errorCode==15){ // доступ к списку участников закрыт или группа заблокирована
+            if(NO_GROUP_MEMBERS_ACCESS.getCodes().contains(errorCode)){
+                // доступ к списку участников закрыт или группа заблокирована
                 return false;
             }
             return false;
@@ -304,7 +305,12 @@ public class VkChatClient{
             }
         }
 
+     public void getFullConversationMessage(long chatId, int conversationMessageId) throws ClientException, ApiException {
+       GetByConversationMessageIdResponse response = vkApiClient.messages().getByConversationMessageId(groupActor)
+                .peerId(convertToPeerId(chatId))
+                .conversationMessageIds(conversationMessageId)
+                .execute();
 
-
+     }
 
 }

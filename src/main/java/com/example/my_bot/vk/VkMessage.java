@@ -8,6 +8,7 @@ import com.vk.api.sdk.objects.messages.MessageAttachment;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Collections;
 import java.util.List;
 
 @Getter
@@ -15,16 +16,16 @@ import java.util.List;
 public class VkMessage {
 
     @SerializedName("conversation_message_id")
-    private Integer conversationMessageId;
+    private int conversationMessageId;
 
     @SerializedName("date")
     private Integer date;
 
     @SerializedName("from_id")
-    private Long fromId;
+    private long fromId;
 
     @SerializedName("peer_id")
-    private Long peerId;
+    private long peerId;
 
     @SerializedName("text")
     private String text;
@@ -36,14 +37,15 @@ public class VkMessage {
     private VkAction action;
 
     @SerializedName("attachments")
-    private List<VkMessageAttachment> attachments;
+    private List<VkMessageAttachment> attachments= Collections.emptyList();
 
     @SerializedName("fwd_messages")
-    private List<ForeignMessage> fwdMessages;
+    private List<ForeignMessage> fwdMessages= Collections.emptyList();
 
     @SerializedName("reply_message")
     private ForeignMessage replyMessage;
 
-
+    @SerializedName("is_cropped")
+    private boolean isCropped;
 
 }
