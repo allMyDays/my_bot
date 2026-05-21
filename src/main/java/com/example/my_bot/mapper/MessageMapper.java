@@ -45,7 +45,7 @@ public abstract class MessageMapper {
         if(fullMessage!=null){
             fullMessage = fullMessage.trim();
             String[] rows = fullMessage.split("\\n+");
-            String[] commandAndArgs = UserInputResolver.splitFullCommand(rows[0]);
+            String[] commandAndArgs = UserInputResolver.splitFullCommandIntoTwoElements(rows[0]);
             commandMessageDto.setCommand(commandAndArgs[0].toLowerCase().trim());
             if(commandAndArgs.length==2){
                commandMessageDto.setFirstRowArguments(commandAndArgs[1].split(" +"));

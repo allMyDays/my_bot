@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.*;
 import static com.example.my_bot.enumeration.member.MemberPresenceType.IN_CHAT;
+import static com.example.my_bot.utils.ChatUtils.CHAT_MANAGER_ROLE_PRIORITY;
 
 @Service
 @Slf4j
@@ -122,7 +123,7 @@ public class MemberService {
             } else {
                 entity.setChatAdmin(false);
             } if(memberId==(groupId*-1)){
-                entity.setRolePriority(CHAT_CREATOR.getRolePriority()*10);
+                entity.setRolePriority(CHAT_MANAGER_ROLE_PRIORITY);
                 // даю боту роль выше чем у создателя, чтобы его никто не мог наказывать
             }
 

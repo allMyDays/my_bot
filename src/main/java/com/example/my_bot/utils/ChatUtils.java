@@ -13,6 +13,8 @@ public class ChatUtils {
 
     public final static char DEFAULT_CHAT_PREFIX = '!';
 
+    public final static int CHAT_MANAGER_ROLE_PRIORITY = 1_000;
+
     private static final String CHAT_CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final int CHAT_CODE_LENGTH = 10;
     private static final SecureRandom RANDOM = new SecureRandom();

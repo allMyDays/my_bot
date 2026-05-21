@@ -31,6 +31,21 @@ public class MessageLogService{
         });
     }
 
+    public Optional<Long> getMessageOwnerId(long chatId, int conversationMessageId){
+        Set<MessageLogEntity> freshChatMessages = temporaryMessagesCache.get(chatId);
+        MessageLogEntity found;
+        if(freshChatMessages!=null){
+                     found = freshChatMessages.stream()
+                    .filter(c->c.getConversationMessageId()==conversationMessageId)
+                    .findFirst()
+                             .orElse(null);
+            if(found!=null) return Optional.of(found.getFromId());
+        }
+        found = messageRepository.findByChatIdAndConversationMessageId(chatId, conversationMessageId)
+                .orElse(null);
+        if(found!=null) return Optional.of(found.getFromId());
+        return  Optional.empty();
+    }
 
     @Scheduled(fixedRate = 100_000)
     protected void loadMessagesIntoTheDatabase(){

@@ -104,7 +104,7 @@ public class AsyncEventHandler {
 
             if(!isPersonalChat(peerId)){
                 chatActionService.handleChatAction(chatId,fromId,action);
-                eventExecutionService.executeRequiredChatEvents(chatId,fromId,conversationMessageId,action,message.getAttachments(),message.getText(),message.getFwdMessages(),null,message.getExpireTTL()!=null);
+                eventExecutionService.executeRequiredChatEvents(chatId,fromId,conversationMessageId,action,message.getAttachments(),message.getText(),message.getFwdMessages(),message.getReplyMessage(),null,message.getExpireTTL()!=null);
                 handleMessageForLogChat(currentChat, message);
                 messageLogService.saveNewMessageLog(chatId, fromId, conversationMessageId);
             }
@@ -122,7 +122,7 @@ public class AsyncEventHandler {
     }
     public void handleNewReactionEvent(@NonNull VkMessageReactionEvent event){
         VkReactionObject object = event.getObject();
-        if(object==null) return;
+        if(object==null||object.getReactionId()<=0) return;
 
         if(!isPersonalChat(object.getPeerId())){
             long chatId = extractConversationId(object.getPeerId());
@@ -131,7 +131,7 @@ public class AsyncEventHandler {
                 log.info("vk sent reaction event with unknown reaction ID {}", object.getReactionId());
                 return;
             }
-            eventExecutionService.executeRequiredChatEvents(chatId,object.getReactedId(),object.getConversationMessageId(),null,null,null,null,foundReaction.get(),false);
+            eventExecutionService.executeRequiredChatEvents(chatId,object.getReactedId(),object.getConversationMessageId(),null,null,null,null,null,foundReaction.get(),false);
         }
     }
 

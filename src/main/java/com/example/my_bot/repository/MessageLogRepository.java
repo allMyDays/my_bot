@@ -15,5 +15,9 @@ import java.util.Optional;
 @Repository
 public interface MessageLogRepository extends JpaRepository<MessageLogEntity, Long> {
 
+    Optional<MessageLogEntity> findByChatIdAndConversationMessageId(long chatId, int conversationMessageId);
+
+
+
 
 }

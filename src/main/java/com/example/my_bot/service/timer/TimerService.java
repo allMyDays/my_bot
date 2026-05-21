@@ -217,7 +217,7 @@ public class TimerService {
         if(timerRepository.countByChatId(chatId)>=MAX_TIMERS){
             throw new TooManyTimersException();
         }
-        String userCommand = UserInputResolver.splitFullCommand(fullCommand)[0];
+        String userCommand = UserInputResolver.splitFullCommandIntoTwoElements(fullCommand)[0];
         if(fullCommand.length()-userCommand.length()>TIMER_COMMAND_ARGUMENT_MAX_LENGTH){
             throw new CommandArgumentTooLongException(TIMER_COMMAND_ARGUMENT_MAX_LENGTH);
         }

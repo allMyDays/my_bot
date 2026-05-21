@@ -91,9 +91,54 @@ public class UserInputResolver {
      *
      * возвращает String[] с двумя ячейками: команду + все остальные аргументы
      */
-    public static String[] splitFullCommand(@NonNull String fullCommand){
+    public static String[] splitFullCommandIntoTwoElements(@NonNull String fullCommand){
         return fullCommand.trim().split(" +", 2);
     }
+
+    /**
+     *
+     * возвращает String[] с командой и со всеми аргументами которые пришли через пробел
+     */
+    public static String[] splitFullCommandIntoAllElements(@NonNull String fullCommand){
+        return fullCommand.trim().split("\\s");
+    }
+
+    /**
+     *
+     * ищет нужный аргумент в команде под нужным порядковым числом
+     */
+    public static Optional<String> getRequiredCommandArgument(@NonNull String userCommand, int argNum) {
+        if(argNum < 1) return Optional.empty();
+
+        int len= userCommand.length();
+        int wordCount= 0;
+        int start= -1;
+        int end= -1;
+
+        for(int i = 0; i < len; i++){
+            while(i < len && Character.isWhitespace(userCommand.charAt(i))){
+                i++;
+            }
+            if(i >= len) break;
+            wordCount++;
+            if(wordCount== argNum){
+                start= i;
+                while(i < len && !Character.isWhitespace(userCommand.charAt(i))) {
+                    i++;
+                }
+                end= i;
+                return Optional.of(userCommand.substring(start, end));
+            }
+            while(i < len && !Character.isWhitespace(userCommand.charAt(i))) {
+                i++;
+            }
+        }
+        return Optional.empty();
+    }
+
+
+    
+    
 
 
 

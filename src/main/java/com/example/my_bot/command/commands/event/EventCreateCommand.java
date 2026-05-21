@@ -31,6 +31,7 @@ import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
 import static com.example.my_bot.enumeration.event.MyEventType.WITH_SUBSCRIPTION;
+import static com.example.my_bot.utils.ChatUtils.CHAT_MANAGER_ROLE_PRIORITY;
 import static com.example.my_bot.utils.TextUtils.*;
 
 @Slf4j
@@ -150,21 +151,29 @@ public class EventCreateCommand implements ChatCommand {
         String roleName = roleService.getRoleName(chatId, createdEvent.getRolePriority()).orElse("unknown role");
         MyEventType type = createdEvent.getType();
 
-        String message = "✅ %s(Вы) успешно создали новое событие.\n".formatted(createMention(fromId)) +
+        boolean isEventCommand = createdEvent.getRolePriority()==CHAT_MANAGER_ROLE_PRIORITY;
+
+        String message = "✅ %s(Вы) успешно создали %s.\n"
+                .formatted(createMention(fromId), isEventCommand?"новую команду-событие":"новое событие") +
                 "&#128218; Тип: %s (%s).\n".formatted(type.getCyrillicType(), type.getDescription());
                 if(createdEvent.getArgument()!=null){
                     String arg = createdEvent.getArgument();
                     message+="&#128204; Аргумент: %s\n".formatted((type==WITH_SUBSCRIPTION||type==WITHOUT_SUBSCRIPTION)?createMention(Long.parseLong(arg)):arg);
                 }
-                message+="&#128081; Воздействует на роль «%s» и ниже.\n".formatted(roleName);
+                if(!isEventCommand){
+                    message+="&#128081; Воздействует на роль «%s» и ниже.\n".formatted(roleName);
+                }
                 if(createdEvent.getFullCommand()!=null){
                     message+="&#8618; Применяется команда: %s".formatted(createdEvent.getFullCommand());
                 }
-                if(type.getAdvancedEventConfig().isCanBeAdvancedEvent()){
-                    message+="\n\n❓Событие реагирует только на одно сообщение от участника. Если хотите больше сообщений, событие нужно расширить.";
+                if(!isEventCommand){
+                    if(type.getAdvancedEventConfig().isCanBeAdvancedEvent()){
+                        message+="\n\n❓Событие реагирует только на одно сообщение от участника. Если хотите больше сообщений, событие нужно расширить.";
+                    }
+                }else{
+                    message+="\n\n❓Команда, которую вы указали, будет активироваться от имени того, кто спровоцировал событие, а не от имени создателя события (как в обычном событии).";
 
                 }
-
         sendMessage.setText(message);
         vkChatClient.sendText(sendMessage);
 

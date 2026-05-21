@@ -7,6 +7,6 @@ public class CannotUseThisCommandForEventException extends EventException {
 
 
     public CannotUseThisCommandForEventException(@NonNull String command) {
-        super("Команду «%s» нельзя использовать при создании события.".formatted(command));
+        super("Команду «%s» нельзя использовать в событиях.".formatted(command));
     }
 }

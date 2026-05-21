@@ -20,18 +20,19 @@ import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import java.sql.Time;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
+import static com.example.my_bot.utils.ChatUtils.CHAT_MANAGER_ROLE_PRIORITY;
 import static com.example.my_bot.utils.TextUtils.*;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
@@ -93,34 +94,40 @@ public class AllEventsShowCommand implements ChatCommand {
                 .formatted(events.size(), eventService.getMaxEvents())
         );
 
-        int counter=1;
-        for(EventDto eventDto: events){
-            MyEventType type = eventDto.getType();
-            sb.append("%s(%d). ".formatted(createMention(eventDto.getCreatorId()), counter++));
+        Map<Integer, EventDto> eventCommandsMap = new HashMap<>();
+        int counter=0;
+        for(EventDto currentEvent: events){
+            counter++;
+            if(eventService.isEventBeingACommandEvent(currentEvent)){
+                // созданная команда-событие
+                eventCommandsMap.put(counter, currentEvent);
+                continue;
+            }
+
+            MyEventType type = currentEvent.getType();
+            sb.append("%s(%d). ".formatted(createMention(currentEvent.getCreatorId()), counter));
 
             String forRoleOrMember;
-            Long memberToTrigger = eventDto.getMemberToTrigger();
+            Long memberToTrigger = currentEvent.getMemberToTrigger();
             if(memberToTrigger!=null){  // личное событие
                 forRoleOrMember = "%s(%s)"
                         .formatted(createMention(memberToTrigger), globalUserService.getUserNameInRequiredCase(memberToTrigger, NameCase.GENITIVE).orElse("этого участника"));
             }else{
-                String roleName = roleService.getRoleName(chatId, eventDto.getRolePriority()).orElse(null);
-                forRoleOrMember = "роли %s и ниже".formatted(roleName!=null?"«"+roleName+"»":"с приоритетом "+eventDto.getRolePriority());
+                String roleName = roleService.getRoleName(chatId, currentEvent.getRolePriority()).orElse(null);
+                forRoleOrMember = "роли %s и ниже".formatted(roleName!=null?"«"+roleName+"»":"с приоритетом "+currentEvent.getRolePriority());
             }
 
-            String desc = eventDto.getType().getDescription();
-            String simpleOrAdvancedEvent = eventDto.getAEMaxUsage()==null
+            String desc = currentEvent.getType().getDescription();
+            String simpleOrAdvancedEvent = currentEvent.getAEMaxUsage()==null
                     ? "событии «%s»".formatted(desc)
-                    : "достижении лимита действия «%s» в %d за %s".formatted(desc,eventDto.getAEMaxUsage(),formatDurationFromSeconds(eventDto.getAEPeriodSec(), true));
+                    : "достижении лимита действия «%s» в %d за %s".formatted(desc,currentEvent.getAEMaxUsage(),formatDurationFromSeconds(currentEvent.getAEPeriodSec(), true));
 
-            sb.append(eventDto.isDelete()?"\uD83D\uDDD1":"")
-                    .append(eventDto.isReply()?"↪":"")
-                    .append(eventDto.isSilent()?"\uD83D\uDD15":"")
-                    .append("Выполнение команды «%s» при %s для %s."
-                    .formatted(eventDto.getFullCommand()==null?"none":eventDto.getFullCommand(),simpleOrAdvancedEvent, forRoleOrMember));
+            sb.append(addRequiredActionEmojis(currentEvent));
+            sb.append("Выполнение команды «%s» при %s для %s."
+                    .formatted(currentEvent.getFullCommand()==null?"none":currentEvent.getFullCommand(),simpleOrAdvancedEvent, forRoleOrMember));
 
-            if(eventDto.getArgument()!=null){
-                String argView = eventDto.getArgument();
+            if(currentEvent.getArgument()!=null){
+                String argView = currentEvent.getArgument();
 
                 switch (type){
                     case WITH_SUBSCRIPTION, WITHOUT_SUBSCRIPTION->{
@@ -138,35 +145,57 @@ public class AllEventsShowCommand implements ChatCommand {
                 }
                 sb.append(" Аргумент: ").append(argView);
             } sb.append("\n");
-            if(eventDto.getStartDayTime()!=null){
+            if(currentEvent.getStartDayTime()!=null){
                 sb.append("\uD83D\uDD57Работает ежедневно с %s до %s %s.\n"
-                        .formatted(eventDto.getStartDayTime(), eventDto.getEndDayTime(), chatTimeZone)
+                        .formatted(currentEvent.getStartDayTime(), currentEvent.getEndDayTime(), chatTimeZone)
                 );
             }
-            Integer cd = eventDto.getCDPeriodSec();
+            Integer cd = currentEvent.getCDPeriodSec();
             if(cd!=null){
                 sb.append("⏳Кулдаун: ").append(cd == 0
                         ? "отключён"
                         : "наказывает участника максимум 1 раз в %s".formatted(formatDurationFromSeconds(cd, true))
                 ).append("\n");
             }
-            if(!eventDto.getExceptionalMembers().isEmpty()){
+            if(!currentEvent.getExceptionalMembers().isEmpty()){
                 AtomicInteger atomicInteger = new AtomicInteger();
-                String members = eventDto.getExceptionalMembers().stream()
+                String members = currentEvent.getExceptionalMembers().stream()
                         .map(m->"%s(%s)".formatted(createMention(m), atomicInteger.incrementAndGet()))
                         .collect(Collectors.joining(", "));
 
                 sb.append("❌Не реагирует на: ").append(members).append("\n");
             }
-            if(eventDto.getNewMembersPeriodSec()!=null){
+            if(currentEvent.getNewMembersPeriodSec()!=null){
                 sb.append("⌚Только для новичков, находившихся в чате менее чем ")
-                        .append(TimeUtils.formatDurationFromSeconds(eventDto.getNewMembersPeriodSec(), true))
+                        .append(TimeUtils.formatDurationFromSeconds(currentEvent.getNewMembersPeriodSec(), true))
                         .append("\n");
             }
+        }
+
+        if(!eventCommandsMap.isEmpty()){
+            sb.append("\n\nВ чате установлено (%d) специальных команд-событий:\n".formatted(eventCommandsMap.size()));
+            eventCommandsMap.forEach((key,event)->{
+                String command = event.getFullCommand();
+                String arg = event.getArgument();
+                sb.append("%d. %sВыполнение системной команды «%s» %s для события «%s».\n"
+                        .formatted(
+                                key,
+                                addRequiredActionEmojis(event),
+                                command==null?"none":command,
+                                arg==null?"":"при аргументе «%s»".formatted(arg),
+                                event.getType().getDescription()
+                        )
+                );
+            });
         }
         sendMessage.setText(sb.toString());
         vkChatClient.sendText(sendMessage);
 
+    }
+    private String addRequiredActionEmojis(@NonNull EventDto eventDto){
+        return (eventDto.isDelete()?"\uD83D\uDDD1":"")+
+                (eventDto.isReply()?"↪":"")+
+                (eventDto.isSilent()?"\uD83D\uDD15":"");
     }
 
     @Autowired
