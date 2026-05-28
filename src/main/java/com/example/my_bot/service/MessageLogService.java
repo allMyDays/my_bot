@@ -85,7 +85,7 @@ public class MessageLogService{
         }
     }
 
-    public List<InactiveMemberResult> findCurrentInactiveChatMembers(long chatId, long timePeriodSec){
+    public List<InactiveMemberResult> findCurrentInactiveChatMembers(long chatId, long timePeriodSec, boolean sort){
 
         if(timePeriodSec<INACTIVE_MEMBERS_MIN_PERIOD_SEC||timePeriodSec>INACTIVE_MEMBERS_MAX_PERIOD_SEC){
             throw new InactiveMembersIntervalOutOfBoundsException(INACTIVE_MEMBERS_MIN_PERIOD_SEC, INACTIVE_MEMBERS_MAX_PERIOD_SEC);
@@ -95,6 +95,9 @@ public class MessageLogService{
         Instant thresholdDate = Instant.now().minusSeconds(timePeriodSec);
 
         Set<Long> requiredMembers = memberService.getAllCurrentChatMemberWithFirstAppearanceBeforeThan(chatId, thresholdDate);
+
+        List<MessageLogRepository.MemberLastMessageProjection> lastMessagesList =
+                messageRepository.findLastMessageOfRequiredMembers(chatId, requiredMembers);
 
         Map<Long, MessageLogRepository.MemberLastMessageProjection> lastMessagesMap =
                 messageRepository.findLastMessageOfRequiredMembers(chatId, requiredMembers).stream()
@@ -111,6 +114,12 @@ public class MessageLogService{
             inactiveMemberResult.setLastMessage(lastMessage==null?null:lastMessage.getLastMessageAt());
 
             result.add(inactiveMemberResult);
+        }
+        if(sort){
+            result.sort(Comparator.comparing(
+                    (InactiveMemberResult r) -> r.getLastMessage().orElse(null),
+                    Comparator.nullsLast(Comparator.reverseOrder())
+            ));
         }
         return result;
     }

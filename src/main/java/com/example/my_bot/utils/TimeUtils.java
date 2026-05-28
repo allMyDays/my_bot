@@ -18,6 +18,10 @@ public class TimeUtils {
 
     private static final DateTimeFormatter RUSSIAN_DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("dd MMMM yyyy, HH:mm", new Locale("ru"));
+
+    private static final DateTimeFormatter DATE_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm", new Locale("ru"));
+
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     @Getter

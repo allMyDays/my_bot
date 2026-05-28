@@ -151,7 +151,7 @@ public class GlobalUserService {
         if(!missing.isEmpty()){
             Map<Long, ConcurrentHashMap<NameCase, String>> loaded = new HashMap<>();
             for(GlobalUserEntity user : globalUserRepository.findAllById(missing)){
-                if(isItTimeToUpdateUserFullName(user.getLastFullNameUpdate())){
+                if(userIds.size()==1&&isItTimeToUpdateUserFullName(user.getLastFullNameUpdate())){
                     selfLink.updateUserNameCases(user);
                 }
                 ConcurrentHashMap<NameCase, String> cases = new ConcurrentHashMap<>();

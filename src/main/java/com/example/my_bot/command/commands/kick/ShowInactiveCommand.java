@@ -25,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -33,8 +34,7 @@ import java.util.stream.Collectors;
 import static com.example.my_bot.constant.MessageConstant.INVALID_TIME_PERIOD_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.utils.TextUtils.createMention;
-import static com.example.my_bot.utils.TimeUtils.getFormattedStringDateTime;
-import static com.example.my_bot.utils.TimeUtils.getFormattedStringDateTimeWithTimeZone;
+import static com.example.my_bot.utils.TimeUtils.*;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -86,7 +86,7 @@ public class ShowInactiveCommand implements ChatCommand {
         List<InactiveMemberResult> resultList;
 
         try{
-            resultList= messageLogService.findCurrentInactiveChatMembers(chatId, optionalPeriodSec.get());
+            resultList= messageLogService.findCurrentInactiveChatMembers(chatId, optionalPeriodSec.get(),true);
         }catch(MemberException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
@@ -94,16 +94,18 @@ public class ShowInactiveCommand implements ChatCommand {
         }
 
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
-        String dateToShow = getFormattedStringDateTimeWithTimeZone(
-                Instant.now().minusSeconds(optionalPeriodSec.get()),
-                chatTimeZone
-        );
+        Instant now = Instant.now();
+
         StringBuilder sb = new StringBuilder(
-                "Было найдено %d участников, которые не писали сообщения после %s\nУчастники и время их последнего сообщения по %s:\n\n"
-                        .formatted(resultList.size(), dateToShow, chatTimeZone.getStringType())
+                "&#128270; Было найдено %d участников, которые не писали сообщения %s (то есть после %s)\nУчастники и время их последнего сообщения по %s:\n\n"
+                        .formatted(
+                                resultList.size(),
+                                formatDurationFromSeconds(optionalPeriodSec.get(),false),
+                                getFormattedStringDateTimeWithTimeZone(now.minusSeconds(optionalPeriodSec.get()), chatTimeZone),
+                                chatTimeZone.getStringType()
+                        )
         );
         AtomicInteger atomicInteger = new AtomicInteger();
-        List<InactiveMemberResult> membersWithNoAnyMessage = new ArrayList<>();
 
         Map<Long, Optional<String>> memberNamesMap = globalUserService.getUserNamesInRequiredCase(
                 resultList.stream()
@@ -111,29 +113,20 @@ public class ShowInactiveCommand implements ChatCommand {
                         .collect(Collectors.toSet()),
                 NameCase.NOMINATIVE
         );
+        for(InactiveMemberResult memberResult: resultList){
+            Optional<Instant> lastMessage = memberResult.getLastMessage();
+            sb.append("%d. ".formatted(atomicInteger.incrementAndGet()))
+                    .append(createMention(memberResult.getUserId()))
+                    .append("(%s)".formatted(memberNamesMap.get(memberResult.getUserId()).orElse("Этот участник")))
+                    .append(" — ");
 
-        for(int y=0;y<2;y++){
-            for(InactiveMemberResult memberResult: resultList){
-                Optional<Instant> lastMessage = memberResult.getLastMessage();
-                if(y==0&&lastMessage.isEmpty()){
-                    membersWithNoAnyMessage.add(memberResult);
-                    continue;
-                }
-                sb.append("%d. ".formatted(atomicInteger.incrementAndGet()))
-                        .append(createMention(memberResult.getUserId()))
-                        .append("(%s)".formatted(memberNamesMap.get(memberResult.getUserId()).orElse("Этот участник")))
-                        .append(" — ");
-
-                if(lastMessage.isEmpty()){
-                    sb.append("ни одного сообщения за срок.");
-                }else{
-                    sb.append(getFormattedStringDateTime(lastMessage.get(), chatTimeZone));
-                }
-                sb.append("\n");
-
+            if(lastMessage.isEmpty()){
+                sb.append("ни одного сообщения за срок.");
+            }else{
+                sb.append(" %s ".formatted(formatDurationFromSeconds(Duration.between(lastMessage.get(), now).getSeconds(),false)));
+                sb.append(" [%s]".formatted(getFormattedStringDateTime(lastMessage.get(), chatTimeZone)));
             }
-            if(membersWithNoAnyMessage.isEmpty()) break;
-            resultList = membersWithNoAnyMessage;
+            sb.append("\n");
         }
 
         sendMessage.setText(sb.toString());
