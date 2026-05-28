@@ -28,6 +28,7 @@ import org.springframework.context.annotation.Lazy;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.MessageConstant.INVALID_TIME_PERIOD_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
@@ -97,26 +98,30 @@ public class ShowInactiveCommand implements ChatCommand {
                 Instant.now().minusSeconds(optionalPeriodSec.get()),
                 chatTimeZone
         );
-
         StringBuilder sb = new StringBuilder(
                 "Было найдено %d участников, которые не писали сообщения после %s\nУчастники и время их последнего сообщения по %s:\n\n"
                         .formatted(resultList.size(), dateToShow, chatTimeZone.getStringType())
         );
         AtomicInteger atomicInteger = new AtomicInteger();
-        List<InactiveMemberResult> membersWithNoMessage = new ArrayList<>();
+        List<InactiveMemberResult> membersWithNoAnyMessage = new ArrayList<>();
+
+        Map<Long, Optional<String>> memberNamesMap = globalUserService.getUserNamesInRequiredCase(
+                resultList.stream()
+                        .map(InactiveMemberResult::getUserId)
+                        .collect(Collectors.toSet()),
+                NameCase.NOMINATIVE
+        );
 
         for(int y=0;y<2;y++){
             for(InactiveMemberResult memberResult: resultList){
                 Optional<Instant> lastMessage = memberResult.getLastMessage();
                 if(y==0&&lastMessage.isEmpty()){
-                    membersWithNoMessage.add(memberResult);
+                    membersWithNoAnyMessage.add(memberResult);
                     continue;
                 }
-
                 sb.append("%d. ".formatted(atomicInteger.incrementAndGet()))
                         .append(createMention(memberResult.getUserId()))
-                        .append("(%s)".formatted(globalUserService.getUserNameInRequiredCase(memberResult.getUserId(), NameCase.NOMINATIVE)
-                                .orElse("Этот участник")))
+                        .append("(%s)".formatted(memberNamesMap.get(memberResult.getUserId()).orElse("Этот участник")))
                         .append(" — ");
 
                 if(lastMessage.isEmpty()){
@@ -127,8 +132,8 @@ public class ShowInactiveCommand implements ChatCommand {
                 sb.append("\n");
 
             }
-            if(membersWithNoMessage.isEmpty()) break;
-            resultList = membersWithNoMessage;
+            if(membersWithNoAnyMessage.isEmpty()) break;
+            resultList = membersWithNoAnyMessage;
         }
 
         sendMessage.setText(sb.toString());

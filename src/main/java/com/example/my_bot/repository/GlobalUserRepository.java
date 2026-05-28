@@ -12,5 +12,4 @@ public interface GlobalUserRepository extends JpaRepository<GlobalUserEntity, Lo
 
     @Query("SELECT u.userId FROM GlobalUserEntity u WHERE u.boundChat = :boundChat")
     List<Long> findUserIdsByBoundChat(Long boundChat);
-
 }

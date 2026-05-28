@@ -104,9 +104,9 @@ public class AsyncEventHandler {
 
             if(!isPersonalChat(peerId)){
                 chatActionService.handleChatAction(chatId,fromId,action);
+                messageLogService.saveNewMessageLog(message);
                 handleMessageForLogChat(currentChat, message);
                 eventExecutionService.executeRequiredChatEvents(chatId,fromId,conversationMessageId,action,message.getAttachments(),message.getText(),message.getFwdMessages(),message.getReplyMessage(),null,message.getExpireTTL()!=null);
-                messageLogService.saveNewMessageLog(message);
             }
             chatActionService.checkLastChatSynchronizationAndExecute(chatId);
 

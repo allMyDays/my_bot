@@ -59,23 +59,25 @@ public class StaffShowCommand implements ChatCommand {
         StringBuilder sb = new StringBuilder();
 
         long exitedStaffMembers = 0;
-        long allStaffMembers = 0;
+        Set<Long> allStaffMembers = new HashSet<>();
 
         TreeMap<Integer, List<MemberEntity>> staffMap =  new TreeMap<>(Comparator.reverseOrder());
         Collection<MemberEntity> membersWithPositiveRole = memberService.getMembersWithPositiveRole(chatId);
 
-        for (MemberEntity memberEntity : membersWithPositiveRole) {
+        for (MemberEntity memberEntity : membersWithPositiveRole){
             if(memberEntity.getUserId()==-groupId){
                 // отсеиваю самого бота
                 continue;
             }
             staffMap.computeIfAbsent(memberEntity.getRolePriority(), k -> new ArrayList<>()).add(memberEntity);
-            if (!memberEntity.getPresenceType().equals(IN_CHAT)) {
+            if (!memberEntity.getPresenceType().equals(IN_CHAT)){
                 exitedStaffMembers++;
-            }allStaffMembers++;
+            } allStaffMembers.add(memberEntity.getUserId());
         }
 
-        sb.append("В чате %d управляющих (из них %d сейчас отсутствует).\n\n".formatted(allStaffMembers, exitedStaffMembers));
+        Map<Long, Optional<String>> memberNamesMap = globalUserService.getUserNamesInRequiredCase(allStaffMembers, NameCase.NOMINATIVE);
+
+        sb.append("В чате %d управляющих (из них %d сейчас отсутствует).\n\n".formatted(allStaffMembers.size(), exitedStaffMembers));
 
         Map<Integer, String> roleMap = roleService.getAllRolesWithNoSorting(chatId);
 
@@ -88,7 +90,7 @@ public class StaffShowCommand implements ChatCommand {
             if(member.isChatAdmin()){
                 sb.append("\uD83D\uDCA0 ");
             }
-            sb.append("%s(%s)".formatted(createMention(member.getUserId()),globalUserService.getUserNameInRequiredCase(member.getUserId(), NameCase.NOMINATIVE).orElse("Этот участник")));
+            sb.append("%s(%s)".formatted(createMention(member.getUserId()),memberNamesMap.get(member.getUserId()).orElse("Этот участник")));
 
             if(!member.getPresenceType().equals(IN_CHAT)){
                 sb.append(" \uD83D\uDEAA");

@@ -15,6 +15,7 @@ import com.vk.api.sdk.exceptions.ClientException;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
@@ -24,8 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -135,34 +135,49 @@ public class GlobalUserService {
     }
 
     public Optional<String> getUserNameInRequiredCase(long userId, @NonNull NameCase requiredNameCase){
+        return getUserNamesInRequiredCase(Set.of(userId),requiredNameCase).get(userId);
+    }
 
-        ConcurrentMap<NameCase, String> userCases = cacheManager.getFullNameCache().get(userId,k->{
-            Optional<GlobalUserEntity> userEntityOptional = globalUserRepository.findById(userId);
-            ConcurrentHashMap<NameCase, String> result = new ConcurrentHashMap<>();
-            if(userEntityOptional.isEmpty()){
-                return result;
-            }
-            GlobalUserEntity user = userEntityOptional.get();
-            if(isItTimeToUpdateUserFullName(user.getLastFullNameUpdate())){
-                selfLink.updateUserNameCases(user);
-            }
-            for(NameCase currentNc: NameCase.values()){
-                String foundCase =  switch (currentNc){
-                    case NOMINATIVE -> user.getFullNameInNom();
-                    case GENITIVE -> user.getFullNameInGen();
-                    case DATIVE -> user.getFullNameInDat();
-                    case ACCUSATIVE -> user.getFullNameInAcc();
-                    case INSTRUMENTAL -> user.getFullNameInIns();
-                    case PREPOSITIONAL -> user.getFullNameInAbl();
-                };
-                if(foundCase!=null){
-                   result.put(currentNc, foundCase);
+    public Map<Long, Optional<String>> getUserNamesInRequiredCase(@NonNull Set<Long> userIds, @NonNull NameCase requiredCase){
+
+        Map<Long, Optional<String>> existing = new HashMap<>();
+        Set<Long> missing = new HashSet<>();
+
+        for(long userId: userIds){
+            ConcurrentHashMap<NameCase, String> fullName = cacheManager.getFullNameCache().getIfPresent(userId);
+            if(fullName==null) missing.add(userId);
+            else existing.put(userId, Optional.ofNullable(fullName.get(requiredCase)));
+        }
+        if(!missing.isEmpty()){
+            Map<Long, ConcurrentHashMap<NameCase, String>> loaded = new HashMap<>();
+            for(GlobalUserEntity user : globalUserRepository.findAllById(missing)){
+                if(isItTimeToUpdateUserFullName(user.getLastFullNameUpdate())){
+                    selfLink.updateUserNameCases(user);
                 }
-            } return result;
-        });
+                ConcurrentHashMap<NameCase, String> cases = new ConcurrentHashMap<>();
+                for (NameCase nc : NameCase.values()){
+                    String gottenName = switch (nc) {
+                        case NOMINATIVE -> user.getFullNameInNom();
+                        case GENITIVE -> user.getFullNameInGen();
+                        case DATIVE -> user.getFullNameInDat();
+                        case ACCUSATIVE -> user.getFullNameInAcc();
+                        case INSTRUMENTAL -> user.getFullNameInIns();
+                        case PREPOSITIONAL -> user.getFullNameInAbl();
+                    };
+                    if(gottenName!=null) cases.put(nc, gottenName);
+                }
+                loaded.put(user.getUserId(), cases);
+                missing.remove(user.getUserId());
+            }
 
-        return Optional.ofNullable(userCases.get(requiredNameCase));
+            missing.forEach(userId -> loaded.computeIfAbsent(userId, k -> new ConcurrentHashMap<>()));
+            cacheManager.getFullNameCache().putAll(loaded);
 
+            loaded.forEach((key, value) ->
+                    existing.put(key, Optional.ofNullable(value.get(requiredCase)))
+            );
+        }
+        return existing;
     }
 
     private boolean isItTimeToUpdateUserFullName(Instant lastNameUpdate){
