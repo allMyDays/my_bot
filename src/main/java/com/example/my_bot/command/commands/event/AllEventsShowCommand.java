@@ -154,7 +154,7 @@ public class AllEventsShowCommand implements ChatCommand {
             if(cd!=null){
                 sb.append("⏳Кулдаун: ").append(cd == 0
                         ? "отключён"
-                        : "наказывает участника максимум 1 раз в %s".formatted(formatDurationFromSeconds(cd, true))
+                        : "реагирует на участника максимум 1 раз в %s".formatted(formatDurationFromSeconds(cd, true))
                 ).append("\n");
             }
             if(!currentEvent.getExceptionalMembers().isEmpty()){

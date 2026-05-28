@@ -61,7 +61,6 @@ public class KickNewCommand implements ChatCommand {
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         long chatId = messageDto.getChatId();
-        long peerId = messageDto.getPeerId();
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto("", messageDto);
 
@@ -91,8 +90,8 @@ public class KickNewCommand implements ChatCommand {
 
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
 
-        String dateToShow = TimeUtils.getStringDateTimeWithTimeZone(kickAfter, chatTimeZone);
-        Page<MemberEntity> allRequiredMembers = memberService.findNotKickedNewMembersWithRoleLessThan(chatId,kickAfter,requiredRole.getRolePriority(), 100);
+        String dateToShow = TimeUtils.getFormattedStringDateTimeWithTimeZone(kickAfter, chatTimeZone);
+        Page<MemberEntity> allRequiredMembers = memberService.getNotKickedNewMembersWithRoleLessThan(chatId,kickAfter,requiredRole.getRolePriority(), 100);
 
         Set<Long> kickedCommunities = vkChatClient.kickManyChatMembers(chatId,
                 allRequiredMembers.getContent().stream()

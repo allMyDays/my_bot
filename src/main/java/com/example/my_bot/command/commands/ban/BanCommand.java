@@ -127,7 +127,7 @@ public class BanCommand implements ChatCommand {
 
        TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
        String message = createMention(memberToBan)+"(✅Пользователь) был забанен в чате "+
-               bannedUntil.map(instant -> "до "+TimeUtils.getStringDateTimeWithTimeZone(instant, chatTimeZone)).orElse("навечно.");
+               bannedUntil.map(instant -> "до "+TimeUtils.getFormattedStringDateTimeWithTimeZone(instant, chatTimeZone)).orElse("навечно.");
 
        if(!messageDto.isEventOrTimerMode()){
            message+="\nМодератор: %s(%s)".formatted(

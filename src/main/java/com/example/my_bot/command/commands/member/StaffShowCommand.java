@@ -6,7 +6,9 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.mapper.MessageMapper;
+import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -33,12 +35,14 @@ public class StaffShowCommand implements ChatCommand {
     private VkChatClient vkChatClient;
     private final long groupId;
     private final MessageMapper messageMapper;
+    private final GlobalUserService globalUserService;
 
-    public StaffShowCommand(MemberService memberService, RoleService roleService, @Value("${vk.group.id}") long groupId, MessageMapper messageMapper) {
+    public StaffShowCommand(MemberService memberService, RoleService roleService, @Value("${vk.group.id}") long groupId, MessageMapper messageMapper, GlobalUserService globalUserService) {
         this.memberService = memberService;
         this.roleService = roleService;
         this.groupId = groupId;
         this.messageMapper = messageMapper;
+        this.globalUserService = globalUserService;
     }
 
     @Autowired
@@ -77,11 +81,15 @@ public class StaffShowCommand implements ChatCommand {
 
 
         for(Map.Entry<Integer, List<MemberEntity>> entry: staffMap.entrySet()){
-            sb.append(roleMap.get(entry.getKey())).append(" ").append("(%d):\n".formatted(entry.getKey()));
+            sb.append(roleMap.get(entry.getKey()))
+                    .append(" ")
+                    .append("(%d):\n".formatted(entry.getKey()));
             for(MemberEntity member:entry.getValue()){
             if(member.isChatAdmin()){
                 sb.append("\uD83D\uDCA0 ");
-            } sb.append(createMention(member.getUserId()));
+            }
+            sb.append("%s(%s)".formatted(createMention(member.getUserId()),globalUserService.getUserNameInRequiredCase(member.getUserId(), NameCase.NOMINATIVE).orElse("Этот участник")));
+
             if(!member.getPresenceType().equals(IN_CHAT)){
                 sb.append(" \uD83D\uDEAA");
             } sb.append("\n");

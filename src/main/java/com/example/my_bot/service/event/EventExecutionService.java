@@ -80,23 +80,12 @@ public class EventExecutionService {
    private static final Pattern FROM_ID_PATTERN = Pattern.compile(FROM_ID_PARAMETER, Pattern.CASE_INSENSITIVE);
    private static final Pattern MEMBER_ID_PATTERN = Pattern.compile(MEMBER_ID_PARAMETER, Pattern.CASE_INSENSITIVE);
    private static final Pattern ARG_1_PATTERN = Pattern.compile(ARG_1_PARAMETER, Pattern.CASE_INSENSITIVE);
+   private static final Pattern PUSH_ALL_PATTERN = Pattern.compile("([*@])all\\b", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
+   private static final Pattern PUSH_ONLINE_PATTERN = Pattern.compile("([*@])online\\b", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
+   private static final Pattern ANY_PUSH_PATTERN = Pattern.compile("\\[[^\\]\\[]+\\|[^\\]\\[]+\\]", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
+   private static final Pattern URL_PATTERN = Pattern.compile("(?i)(?<!\\S)((?:https?://|www\\.|(?:[a-z0-9-]+\\.)+(?:com|net|org|io|ru|de|uk|xyz|info|biz|app|dev))(?:[^\\s]*)?)", Pattern.CASE_INSENSITIVE);
+   private static final Pattern VK_CHAT_INVITE_LINK_PATTERN = Pattern.compile("(?i)(?:https?://)?vk\\.me/join/[A-Za-z0-9_/=-]+");
 
-
-   private static final Pattern PUSH_ALL_PATTERN =
-           Pattern.compile("([*@])all\\b", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
-
-   private static final Pattern PUSH_ONLINE_PATTERN =
-           Pattern.compile("([*@])online\\b", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
-
-   private static final Pattern ANY_PUSH_PATTERN =
-            Pattern.compile("\\[[^\\]\\[]+\\|[^\\]\\[]+\\]", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
-
-   private static final Pattern URL_PATTERN = Pattern.compile(
-           "(?i)(?<!\\S)((?:https?://|www\\.|(?:[a-z0-9-]+\\.)+(?:com|net|org|io|ru|de|uk|xyz|info|biz|app|dev))(?:[^\\s]*)?)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS);
-
-   private static final Pattern VK_CHAT_INVITE_LINK_PATTERN = Pattern.compile(
-            "(?i)(?:https?://)?vk\\.me/join/[A-Za-z0-9_/=-]+"
-    );
    private static final Cache<String, Pattern> STRICT_WORD_FILTER_PATTERN_CACHE = Caffeine.newBuilder()
            .expireAfterAccess(15, TimeUnit.MINUTES)
            .build();
@@ -231,7 +220,7 @@ public class EventExecutionService {
                         continue;
                     }
                     if(currentEvent.getType()==ANY_MESSAGE){
-                        if(action==null){
+                        if(action==null&&userReaction==null){
                             executeEvent(chatId, fromId, null, currentEvent, 1, conversationMessageId, fwdMessageOwnerId,userText);
                         }continue;
                     }
@@ -387,7 +376,6 @@ public class EventExecutionService {
                         callQuantity++;
                         if(!isAdvancedEvent) break;
                 }
-
             }case SHORT_MESSAGE ->{
                 if(!attachments.isEmpty()||userText.length()>=intArg) return;
                 callQuantity = 1;

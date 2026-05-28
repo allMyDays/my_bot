@@ -35,7 +35,7 @@ public class TimerEntity {
     @Column(nullable = false)
     private TimerType type;
 
-    @Column(nullable = false)
+    @Column(nullable = true, columnDefinition = "TEXT")
     private String fullCommand;
 
     @Column(nullable = false)

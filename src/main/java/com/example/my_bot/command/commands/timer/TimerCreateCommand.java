@@ -25,7 +25,6 @@ import org.springframework.context.annotation.Lazy;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
@@ -117,7 +116,7 @@ public class TimerCreateCommand implements ChatCommand {
 
         }
 
-        String dateToShow = TimeUtils.getStringDateTimeWithTimeZone(
+        String dateToShow = TimeUtils.getFormattedStringDateTimeWithTimeZone(
                 createdTimer.getNextExecution(), chatService.getChatTimeZone(chatId));
 
         sendMessage.setText(("✅ Вы успешно создали новый таймер.\n" +

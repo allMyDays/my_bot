@@ -109,9 +109,13 @@ public class TimeUtils {
             }
         }
 
-    public static String getStringDateTimeWithTimeZone(@NonNull Instant instant, @NonNull TimeZoneType timeZone) {
+    public static String getFormattedStringDateTimeWithTimeZone(@NonNull Instant instant, @NonNull TimeZoneType timeZone){
        LocalDateTime localDateTime = instant.atZone(timeZone.getZoneOffset()).toLocalDateTime();
         return localDateTime.format(RUSSIAN_DATE_TIME_FORMATTER)+" "+timeZone.getStringType();
+    }
+    public static String getFormattedStringDateTime(@NonNull Instant instant, @NonNull TimeZoneType timeZone){
+        LocalDateTime localDateTime = instant.atZone(timeZone.getZoneOffset()).toLocalDateTime();
+        return localDateTime.format(RUSSIAN_DATE_TIME_FORMATTER);
     }
 
     public static String getStringDateTimeWithTimeZone(@NonNull LocalDateTime localDateTime, @NonNull TimeZoneType timeZone) {

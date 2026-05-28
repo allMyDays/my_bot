@@ -104,9 +104,9 @@ public class AsyncEventHandler {
 
             if(!isPersonalChat(peerId)){
                 chatActionService.handleChatAction(chatId,fromId,action);
-                eventExecutionService.executeRequiredChatEvents(chatId,fromId,conversationMessageId,action,message.getAttachments(),message.getText(),message.getFwdMessages(),message.getReplyMessage(),null,message.getExpireTTL()!=null);
                 handleMessageForLogChat(currentChat, message);
-                messageLogService.saveNewMessageLog(chatId, fromId, conversationMessageId);
+                eventExecutionService.executeRequiredChatEvents(chatId,fromId,conversationMessageId,action,message.getAttachments(),message.getText(),message.getFwdMessages(),message.getReplyMessage(),null,message.getExpireTTL()!=null);
+                messageLogService.saveNewMessageLog(message);
             }
             chatActionService.checkLastChatSynchronizationAndExecute(chatId);
 
@@ -151,10 +151,7 @@ public class AsyncEventHandler {
         Long logChatId = currentChat.getBoundLogChat();
 
         if(logChatId!=null&&message.getAction()==null){
-            SendMessageDto sendMessage = messageMapper.toSendMessageDto(
-                    "Из чата "+currentChat.getChatCode(),
-                    convertToPeerId(logChatId)
-            );
+            SendMessageDto sendMessage = messageMapper.toSendMessageDto("",convertToPeerId(logChatId));
             Forward forward = new Forward();
             forward.setConversationMessageIds(List.of(message.getConversationMessageId()));
             forward.setPeerId(convertToPeerId(chatId));
@@ -164,12 +161,13 @@ public class AsyncEventHandler {
                 vkChatClient.sendText(sendMessage);
             }catch(ApiException e){
                 int errorCode = e.getCode();
-                if(NO_CHAT_ACCESS.getCodes().contains(errorCode)
-                        || YOU_ARE_RESTRICTED_TO_WRITE.getCodes().contains(errorCode)
-                ){      // кикнули или запретили писать в чат
+                if(CURRENT_MESSAGE_CANNOT_BE_FORWARD.getCodes().contains(errorCode)){
+                    return;  // данное сообщение нельзя переслать по техническим ограничениям вк
+                }
+                else if(NO_CHAT_ACCESS.getCodes().contains(errorCode)||YOU_ARE_RESTRICTED_TO_WRITE.getCodes().contains(errorCode)){
                     chatService.setBoundLogChatAsNull(chatId);
                     sendMessage.setText("\uD83E\uDD14Похоже, что меня исключили из привязанного логчата или запретили мне там писать. Логчат был отвязан от текущей беседы.");
-                }else if(CHAT_FORWARD_DISABLED.getCodes().contains(errorCode)){
+                }else if(CHAT_FORWARD_DISABLED.getCodes().contains(errorCode)) {
                     chatService.setBoundLogChatAsNull(chatId);
                     sendMessage.setText("\uD83E\uDD14Похоже, что в данном чате включен запрет на пересыл сообщений. В таком случае я не могу пересылать сообщения отсюда в логчат. Логчат был отвязан от текущей беседы.");
                 }else{

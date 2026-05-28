@@ -88,7 +88,7 @@ public class AllTimersShowCommand implements ChatCommand {
                         customExecutionLimit.ifPresent(limit -> sb.append(" (%d/%d).".formatted(timer.getExecutionCounter(), limit)));
                         sb.append(" Следующий вызов: ");
                     }
-                    sb.append(TimeUtils.getStringDateTimeWithTimeZone(nextExecution, chatTimeZone));
+                    sb.append(TimeUtils.getFormattedStringDateTimeWithTimeZone(nextExecution, chatTimeZone));
                     sb.append("\n");
 
         }

@@ -12,7 +12,6 @@ import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.ChatUtils;
-import com.example.my_bot.utils.TextUtils;
 import com.example.my_bot.utils.TimeUtils;
 import com.example.my_bot.vk.VkAction;
 import com.example.my_bot.vk.enumeration.VkActionType;
@@ -114,7 +113,7 @@ public class ChatActionService {
             Optional<Instant> bannedUntil = banStatus.getBannedUntil();
             String message = "%s(Этот пользователь) в бане до %s.".formatted(
                     createMention(memberId),
-                    bannedUntil.map(instant -> TimeUtils.getStringDateTimeWithTimeZone(instant, chatTimeZone)).orElse("∞")
+                    bannedUntil.map(instant -> TimeUtils.getFormattedStringDateTimeWithTimeZone(instant, chatTimeZone)).orElse("∞")
             );
 
             if(chatService.isAutoUnban(chatId)&&fromId!=memberId){

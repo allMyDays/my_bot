@@ -70,7 +70,7 @@ public enum MyEventType {
     ZALGO("зальго","сообщение с Zalgo", TEXT,  new AdvancedEventConfig(true, false,100)),
     CHAT_INVITE_LINK("чатссылка","Ссылка на чат", TEXT,  new AdvancedEventConfig(true, false,50)),
     CAPS("капс", "сообщение КАПСом", TEXT, new AdvancedEventConfig(true, false,5_000)),
-    REGEX_FILTER("регулярка","Регулярное выражение", TEXT, STRING,1,35,  new AdvancedEventConfig(true, true,1_000)),
+    REGEX_FILTER("регулярка","Регулярное выражение", TEXT, STRING,1,500,  new AdvancedEventConfig(true, true,1_000)),
     SELF_DESTRUCTING_MESSAGE("исчезающее", "Исчезающее сообщение", TEXT,  new AdvancedEventConfig(true, false,5_000)),
     ANY_PUSH_QUANTITY("пуши","Количество пушей", TEXT, INTEGER, 1, 1000,  new AdvancedEventConfig(true, false,10_000)),
     SAME_MESSAGES("одинаковые", "Одинаковые сообщения подряд", TEXT, INTEGER, 2, 100,  new AdvancedEventConfig(false, false)),

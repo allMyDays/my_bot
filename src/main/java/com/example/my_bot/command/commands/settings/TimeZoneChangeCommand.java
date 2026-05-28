@@ -65,7 +65,7 @@ public class TimeZoneChangeCommand implements ChatCommand {
         chatService.setChatTimeZone(chatId, timeZoneToAssign);
         sendMessage.setText(
                 "✅Временная зона чата была успешно установлена на %s.".formatted(timeZoneToAssign.getStringType())
-                +"\nТекущее время: "+ TimeUtils.getStringDateTimeWithTimeZone(Instant.now(), timeZoneToAssign)
+                +"\nТекущее время: "+ TimeUtils.getFormattedStringDateTimeWithTimeZone(Instant.now(), timeZoneToAssign)
         );
 
         vkChatClient.sendText(sendMessage);

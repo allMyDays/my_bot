@@ -20,7 +20,6 @@ import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ConversationMember;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
@@ -29,7 +28,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.swing.text.html.parser.Entity;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -82,8 +80,7 @@ public class MemberService {
 
 
     @Transactional
-    public void synchronizeChatMembers(long chatId) throws ClientException, ApiException {
-
+    public void synchronizeChatMembers(long chatId) throws ClientException, ApiException{
 
         List<ConversationMember> currentChatMembers = vkChatClient.getAllConversationMembers(chatId);
         Set<Long> vkUserIds = currentChatMembers.stream()
@@ -92,10 +89,8 @@ public class MemberService {
 
         memberRepository.setUnknownLeaveAndChatAdminFalseForMembersNotInList(chatId, vkUserIds);
 
-
         Map<Long, MemberEntity> currentChatMemberMap =  memberRepository.findByChatIdAndUserIdIn(chatId, vkUserIds).stream()
                 .collect(Collectors.toMap(MemberEntity::getUserId, Function.identity()));
-
 
         List<MemberEntity> newMembers = new ArrayList<>();
         for (ConversationMember vkMember : currentChatMembers) {
@@ -122,17 +117,14 @@ public class MemberService {
                 entity.setChatAdmin(true);
             } else {
                 entity.setChatAdmin(false);
-            } if(memberId==(groupId*-1)){
+            }if(memberId==(groupId*-1)){
                 entity.setRolePriority(CHAT_MANAGER_ROLE_PRIORITY);
                 // даю боту роль выше чем у создателя, чтобы его никто не мог наказывать
             }
-
         }
-
-        if (!newMembers.isEmpty()) {
+        if(!newMembers.isEmpty()) {
             memberRepository.saveAll(newMembers);
         }
-
         chatService.setLastSyncToNow(chatId);
         invalidateMemberCache(chatId);
 
@@ -175,26 +167,12 @@ public class MemberService {
 
     @Transactional
     public void setPresenceTypeToMember(long chatId, long userId, @NonNull MemberPresenceType presenceType, boolean createIfAbsent){
-        MemberEntity member = memberRepository.findByChatIdAndUserId(chatId, userId).orElse(null);
-        if(member==null){
-            if(createIfAbsent){
-                member =memberRepository.save(new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, presenceType, null, Instant.now()));
-                putMemberToCache(chatId, member);
-                return;
-            }throw new UserNeverBeenInChatException(userId);
-        }
-        if(member.getPresenceType()!=presenceType){
-            member.setPresenceType(presenceType);
-            putMemberToCache(chatId, member);
-        }
-
+        setPresenceTypeToMembers(chatId, Set.of(userId), presenceType, createIfAbsent);
     }
 
     @Transactional
     public void setPresenceTypeToMembers(long chatId, @NonNull Set<Long> userIds, @NonNull MemberPresenceType presenceType, boolean createIfAbsent) {
-        if (userIds.isEmpty()) {
-            return;
-        }
+        if(userIds.isEmpty()) return;
 
         List<MemberEntity> existingMembers = memberRepository.findByChatIdAndUserIdIn(chatId, userIds);
         Map<Long, MemberEntity> existingMap = existingMembers.stream()
@@ -204,29 +182,29 @@ public class MemberService {
         List<MemberEntity> toPutInCache = new ArrayList<>();
         List<Long> missingUserIds = new ArrayList<>();
 
-        for (Long userId : userIds) {
+        for(Long userId: userIds){
             MemberEntity member = existingMap.get(userId);
-            if (member != null) {
-                if (member.getPresenceType() != presenceType) {
+            if (member!= null){
+                if(member.getPresenceType()!= presenceType){
                     member.setPresenceType(presenceType);
                     toPutInCache.add(member);
                 }
-            } else if (createIfAbsent) {
-                member = new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, presenceType, null, Instant.now());
+            } else if(createIfAbsent){
+                member= new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, presenceType, null, Instant.now());
                 toSave.add(member);
                 toPutInCache.add(member);
-            } else {
+            }else{
                 missingUserIds.add(userId);
             }
         }
 
-        if (!missingUserIds.isEmpty()) {
+        if(!missingUserIds.isEmpty()){
             throw new UserNeverBeenInChatException(missingUserIds);
-        } if (!toSave.isEmpty()) {
+        }if(!toSave.isEmpty()){
             memberRepository.saveAll(toSave);
         }
 
-        if (!toPutInCache.isEmpty()) {
+        if(!toPutInCache.isEmpty()){
             memberRepository.flush();
             putMembersToCache(chatId, toPutInCache);
         }
@@ -245,11 +223,13 @@ public class MemberService {
 
     }
 
-    public Page<MemberEntity> findNotKickedNewMembersWithRoleLessThan(long chatId, Instant after , int rolePriority, int limit){
+    public Page<MemberEntity> getNotKickedNewMembersWithRoleLessThan(long chatId, Instant after , int rolePriority, int limit){
         return memberRepository.findNotKickedNewMembersWithRoleLessThan(chatId,after,rolePriority, PageRequest.of(0, limit));
     }
 
-
+    public Set<Long> getAllCurrentChatMemberWithFirstAppearanceBeforeThan(long chatId, Instant thresholdDate){
+        return memberRepository.findAllCurrentMemberWithFirstAppearanceBeforeThan(chatId, thresholdDate);
+    }
 
     @Transactional
     public RoleDto removePositiveRoleFromExitedMembers(long chatId, long fromId){    // возвращает роль человека, который вызвал метод
@@ -282,18 +262,15 @@ public class MemberService {
         }
 
         checkMemberInteractionAbility(chatId, fromId, userToAssign);
-
         roleService.checkRoleInteractionAbility(chatId, newRolePriority,fromId);
 
         RoleDto roleToChange = roleService.getRoleByPriority(chatId, memberToAssign.getRolePriority())
                 .orElseThrow(RoleNotFoundException::new);
 
         memberToAssign.setRolePriority(newRolePriority);
-
         putMemberToCache(chatId,memberRepository.save(memberToAssign));
 
         return new AssignMemberResult(roleToChange, roleToAssign);
-
     }
 
     @Transactional

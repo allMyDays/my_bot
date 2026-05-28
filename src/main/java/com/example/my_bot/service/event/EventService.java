@@ -523,11 +523,10 @@ public class EventService {
 
         try{
             Pattern.compile(pattern);
+            return true;
         }catch(PatternSyntaxException e){
             return false;
         }
-        if(pattern.contains(")+")||pattern.contains("++")) return false;
-        return true;
     }
 
     public boolean isEventRoleHighEnough(int eventRole, int memberRole){

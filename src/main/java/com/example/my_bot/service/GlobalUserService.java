@@ -46,7 +46,7 @@ public class GlobalUserService {
 
     private final MemberService memberService;
 
-    private static final long AUTO_UPDATE_NAMES_INTERVAL_MINUTES = 60;
+    private static final long AUTO_UPDATE_NAMES_INTERVAL_MINUTES = 300;
 
     @Autowired
     @Lazy

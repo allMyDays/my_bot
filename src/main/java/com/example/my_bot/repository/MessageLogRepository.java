@@ -1,16 +1,15 @@
 package com.example.my_bot.repository;
 
-import com.example.my_bot.entity.BanEntity;
 import com.example.my_bot.entity.MessageLogEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface MessageLogRepository extends JpaRepository<MessageLogEntity, Long> {
@@ -18,6 +17,37 @@ public interface MessageLogRepository extends JpaRepository<MessageLogEntity, Lo
     Optional<MessageLogEntity> findByChatIdAndConversationMessageId(long chatId, int conversationMessageId);
 
 
+    @Query("""
+    SELECT m.fromId as fromId, MAX(m.createdAt) as lastMessageAt
+    FROM MessageLogEntity m
+    WHERE m.chatId = :chatId
+      AND m.fromId IN :requiredMembers
+    GROUP BY m.fromId
+    HAVING MAX(m.createdAt) <= :thresholdDate
+""")
+    List<MemberLastMessageProjection> findMembersWhoStoppedWritingBeforeRequiredDate(
+            @Param("chatId") long chatId,
+            @Param("thresholdDate") Instant thresholdDate,
+            @Param("requiredMembers") Set<Long> requiredMembers
+    );
+
+    @Query("""
+    SELECT m.fromId as fromId, MAX(m.createdAt) as lastMessageAt
+    FROM MessageLogEntity m
+    WHERE m.chatId = :chatId
+      AND m.fromId IN :requiredMembers
+    GROUP BY m.fromId
+""")
+    List<MemberLastMessageProjection> findLastMessageOfRequiredMembers(
+            @Param("chatId") long chatId,
+            @Param("requiredMembers") Set<Long> requiredMembers
+    );
+
+
+    interface MemberLastMessageProjection {
+        Long getFromId();
+        Instant getLastMessageAt();
+    }
 
 
 }

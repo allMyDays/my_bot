@@ -11,7 +11,8 @@ public enum ChatErrorCode {
     YOU_ARE_NOT_CHAT_ADMIN(Set.of(925)),
     YOU_LEFT_THIS_CHAT(Set.of(922)),
     CHAT_FORWARD_DISABLED(Set.of(994)),
-    NO_CHAT_ACCESS(Set.of(917,15,7));
+    NO_CHAT_ACCESS(Set.of(917,15,7)),
+    CURRENT_MESSAGE_CANNOT_BE_FORWARD(Set.of(969));
 
 
 

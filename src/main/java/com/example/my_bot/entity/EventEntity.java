@@ -45,7 +45,7 @@ public class EventEntity {
     @Column(nullable = false)
     private long creatorId;
 
-    @Column(nullable = true)
+    @Column(nullable = true, columnDefinition = "TEXT")
     private String fullCommand;
 
     @Column(name = "ae_max_usage", nullable = true)
