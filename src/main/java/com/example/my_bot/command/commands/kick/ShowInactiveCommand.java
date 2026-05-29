@@ -7,13 +7,13 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.dto.member.InactiveMemberResult;
+import com.example.my_bot.dto.member.InactiveMemberDto;
+import com.example.my_bot.dto.member.InactiveMembersResult;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
-import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.MessageLogService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.TimeUtils;
@@ -83,10 +83,10 @@ public class ShowInactiveCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
-        List<InactiveMemberResult> resultList;
+        InactiveMembersResult membersResult;
 
         try{
-            resultList= messageLogService.findCurrentInactiveChatMembers(chatId, optionalPeriodSec.get(),true);
+            membersResult= messageLogService.findCurrentInactiveChatMembers(chatId, optionalPeriodSec.get(), true, null,null);
         }catch(MemberException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
@@ -97,25 +97,25 @@ public class ShowInactiveCommand implements ChatCommand {
         Instant now = Instant.now();
 
         StringBuilder sb = new StringBuilder(
-                "&#128270; Было найдено %d участников, которые не писали сообщения %s (то есть после %s)\nУчастники и время их последнего сообщения по %s:\n\n"
+                "&#128270; Было найдено %d участников, которые не писали сообщения %s и более (то есть после %s)\nУчастники и время их последнего сообщения по %s:\n\n"
                         .formatted(
-                                resultList.size(),
+                                membersResult.getInactiveMembers().size(),
                                 formatDurationFromSeconds(optionalPeriodSec.get(),false),
-                                getFormattedStringDateTimeWithTimeZone(now.minusSeconds(optionalPeriodSec.get()), chatTimeZone),
+                                getFormattedStringDateTimeWithTimeZone(membersResult.getThresholdDate(), chatTimeZone),
                                 chatTimeZone.getStringType()
                         )
         );
-        AtomicInteger atomicInteger = new AtomicInteger();
 
         Map<Long, Optional<String>> memberNamesMap = globalUserService.getUserNamesInRequiredCase(
-                resultList.stream()
-                        .map(InactiveMemberResult::getUserId)
+                membersResult.getInactiveMembers().stream()
+                        .map(InactiveMemberDto::getUserId)
                         .collect(Collectors.toSet()),
                 NameCase.NOMINATIVE
         );
-        for(InactiveMemberResult memberResult: resultList){
-            Optional<Instant> lastMessage = memberResult.getLastMessage();
-            sb.append("%d. ".formatted(atomicInteger.incrementAndGet()))
+        int counter=0;
+        for(InactiveMemberDto memberResult: membersResult.getInactiveMembers()){
+            Optional<Instant> lastMessage = memberResult.getLastMessageAt();
+            sb.append("%d. ".formatted(++counter))
                     .append(createMention(memberResult.getUserId()))
                     .append("(%s)".formatted(memberNamesMap.get(memberResult.getUserId()).orElse("Этот участник")))
                     .append(" — ");

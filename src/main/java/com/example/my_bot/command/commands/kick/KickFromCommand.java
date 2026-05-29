@@ -50,6 +50,10 @@ public class KickFromCommand implements ChatCommand {
 
     private final MessageMapper messageMapper;
 
+    private final static DefaultRole KICK_MEMBERS_WITH_ROLE_LESS_THAN = MODERATOR;
+
+    private final static int MEMBERS_LIMIT_AT_ONE_USAGE = 100;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -62,8 +66,6 @@ public class KickFromCommand implements ChatCommand {
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         long chatId = messageDto.getChatId();
-
-        DefaultRole requiredRole = MODERATOR;
 
         long inviterId;
 
@@ -89,7 +91,7 @@ public class KickFromCommand implements ChatCommand {
           }
         }
 
-        Page<MemberEntity> allRequiredMembers = memberService.getNotKickedMembersInvitedByAndWithRoleLessThan(chatId, inviterId, requiredRole.getRolePriority(), 100);
+        Page<MemberEntity> allRequiredMembers = memberService.getNotKickedMembersInvitedByAndWithRoleLessThan(chatId, inviterId, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(), MEMBERS_LIMIT_AT_ONE_USAGE);
 
         Set<Long> kickedMembers = vkChatClient.kickManyChatMembers(chatId,
                 allRequiredMembers.getContent().stream()
@@ -101,7 +103,7 @@ public class KickFromCommand implements ChatCommand {
                 .orElse("этим участником");
 
         sendMessage.setText("✅Было исключено %d из %d участников с ролью ниже чем «%s», которые были приглашены %s(%s)."
-                .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), requiredRole.getRoleName(),createMention(inviterId), memberName));
+                .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName(),createMention(inviterId), memberName));
 
         vkChatClient.sendText(sendMessage);
 

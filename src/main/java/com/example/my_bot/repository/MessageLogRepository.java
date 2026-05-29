@@ -1,6 +1,8 @@
 package com.example.my_bot.repository;
 
 import com.example.my_bot.entity.MessageLogEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -40,7 +42,7 @@ public interface MessageLogRepository extends JpaRepository<MessageLogEntity, Lo
 """)
     List<MemberLastMessageProjection> findLastMessageOfRequiredMembers(
             @Param("chatId") long chatId,
-            @Param("requiredMembers") Set<Long> requiredMembers
+            @Param("requiredMembers") List<Long> requiredMembers
     );
 
 

@@ -1,11 +1,13 @@
 package com.example.my_bot.service;
 
-import com.example.my_bot.dto.member.InactiveMemberResult;
-import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.dto.member.InactiveMemberDto;
+import com.example.my_bot.dto.member.InactiveMembersResult;
 import com.example.my_bot.entity.MessageLogEntity;
 import com.example.my_bot.exception.member.InactiveMembersIntervalOutOfBoundsException;
+import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.repository.MessageLogRepository;
 import com.example.my_bot.vk.VkMessage;
+import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,7 @@ public class MessageLogService{
 
     private final MemberService memberService;
     private final MessageLogRepository messageRepository;
+    private final RoleService roleService;
     private final ConcurrentMap<Long, Set<MessageLogEntity>> temporaryMessagesCache = new ConcurrentHashMap<>();
 
     private final static int INTERVAL_BETWEEN_SAVING_MESSAGES_INTO_DATA_BASE_SEC = 60;
@@ -85,42 +88,48 @@ public class MessageLogService{
         }
     }
 
-    public List<InactiveMemberResult> findCurrentInactiveChatMembers(long chatId, long timePeriodSec, boolean sort){
+    public InactiveMembersResult findCurrentInactiveChatMembers(long chatId, long timePeriodSec, boolean sort, @Nullable Integer roleLessThan, @Nullable Integer limit){
 
         if(timePeriodSec<INACTIVE_MEMBERS_MIN_PERIOD_SEC||timePeriodSec>INACTIVE_MEMBERS_MAX_PERIOD_SEC){
             throw new InactiveMembersIntervalOutOfBoundsException(INACTIVE_MEMBERS_MIN_PERIOD_SEC, INACTIVE_MEMBERS_MAX_PERIOD_SEC);
         }
-        List<InactiveMemberResult> result = new ArrayList<>();
-
         Instant thresholdDate = Instant.now().minusSeconds(timePeriodSec);
+        InactiveMembersResult resultToReturn = new InactiveMembersResult();
+        List<Long> requiredMembers;
 
-        Set<Long> requiredMembers = memberService.getAllCurrentChatMemberWithFirstAppearanceBeforeThan(chatId, thresholdDate);
-
-        List<MessageLogRepository.MemberLastMessageProjection> lastMessagesList =
-                messageRepository.findLastMessageOfRequiredMembers(chatId, requiredMembers);
-
+        if(roleLessThan!=null){
+            if(!roleService.roleExistsByPriority(chatId, roleLessThan)){
+                throw new RoleNotFoundException();
+            }
+            requiredMembers = memberService.getAllCurrentChatMemberWithRoleLessThanAndFirstAppearanceBeforeThan(chatId, roleLessThan, thresholdDate);
+        }else{
+            requiredMembers = memberService.getAllCurrentChatMemberWithFirstAppearanceBeforeThan(chatId, thresholdDate);
+        }
         Map<Long, MessageLogRepository.MemberLastMessageProjection> lastMessagesMap =
                 messageRepository.findLastMessageOfRequiredMembers(chatId, requiredMembers).stream()
                         .collect(Collectors.toMap(m->m.getFromId(), Function.identity()));
 
+        int totalInactiveQuantity=0;
+
         for(Long userId: requiredMembers){
-            var lastMessage = lastMessagesMap.get(userId);
-            if(lastMessage!=null&&lastMessage.getLastMessageAt().isAfter(thresholdDate)){
+            var msgProjection = lastMessagesMap.get(userId);
+            if(msgProjection!=null&&msgProjection.getLastMessageAt().isAfter(thresholdDate)){
                 // участник имеет свежее последнее сообщение
                 continue;
             }
-            InactiveMemberResult inactiveMemberResult = new InactiveMemberResult();
-            inactiveMemberResult.setUserId(userId);
-            inactiveMemberResult.setLastMessage(lastMessage==null?null:lastMessage.getLastMessageAt());
-
-            result.add(inactiveMemberResult);
+            if(limit==null||totalInactiveQuantity<limit){
+                resultToReturn.addNewInactiveMember(userId, msgProjection==null?null:msgProjection.getLastMessageAt());// участник достаточно старый и либо писал давно, либо вообще ничего не писал
+            }
+            totalInactiveQuantity++;
         }
+        resultToReturn.setTotalInactiveQuantity(totalInactiveQuantity);
+        resultToReturn.setThresholdDate(thresholdDate);
         if(sort){
-            result.sort(Comparator.comparing(
-                    (InactiveMemberResult r) -> r.getLastMessage().orElse(null),
+            resultToReturn.getInactiveMembers().sort(Comparator.comparing(
+                    (InactiveMemberDto r) -> r.getLastMessageAt().orElse(null),
                     Comparator.nullsLast(Comparator.reverseOrder())
             ));
         }
-        return result;
+        return resultToReturn;
     }
 }

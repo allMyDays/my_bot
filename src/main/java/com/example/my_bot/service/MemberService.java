@@ -18,6 +18,7 @@ import com.example.my_bot.service.chat.ChatService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ConversationMember;
+import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -227,8 +229,11 @@ public class MemberService {
         return memberRepository.findNotKickedNewMembersWithRoleLessThan(chatId,after,rolePriority, PageRequest.of(0, limit));
     }
 
-    public Set<Long> getAllCurrentChatMemberWithFirstAppearanceBeforeThan(long chatId, Instant thresholdDate){
+    public List<Long> getAllCurrentChatMemberWithFirstAppearanceBeforeThan(long chatId, @NonNull Instant thresholdDate){
         return memberRepository.findAllCurrentMemberWithFirstAppearanceBeforeThan(chatId, thresholdDate);
+    }
+    public List<Long> getAllCurrentChatMemberWithRoleLessThanAndFirstAppearanceBeforeThan(long chatId, int rolePriority, @NonNull Instant thresholdDate){
+        return memberRepository.findAllCurrentMemberWithRoleLessThanAndFirstAppearanceBeforeThan(chatId, rolePriority, thresholdDate);
     }
 
     @Transactional

@@ -38,6 +38,10 @@ public class KickCommunitiesCommand implements ChatCommand {
 
     private final MessageMapper messageMapper;
 
+    private final static DefaultRole KICK_MEMBERS_WITH_ROLE_LESS_THAN = MODERATOR;
+
+    private final static int MEMBERS_LIMIT_AT_ONE_USAGE = 100;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -51,9 +55,7 @@ public class KickCommunitiesCommand implements ChatCommand {
 
         long chatId = messageDto.getChatId();
 
-        DefaultRole requiredRole = MODERATOR;
-
-        Page<MemberEntity> allRequiredCommunities = memberService.getNotKickedCommunitiesWithRoleLessThan(chatId, requiredRole.getRolePriority(), 100);
+        Page<MemberEntity> allRequiredCommunities = memberService.getNotKickedCommunitiesWithRoleLessThan(chatId, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(), MEMBERS_LIMIT_AT_ONE_USAGE);
 
         Set<Long> kickedCommunities = vkChatClient.kickManyChatMembers(chatId,
                 allRequiredCommunities.getContent().stream()
@@ -62,7 +64,7 @@ public class KickCommunitiesCommand implements ChatCommand {
                         .toList());
 
         vkChatClient.sendText(messageMapper.toSendMessageDto("✅Было исключено %d из %d сообществ с ролью ниже чем «%s»."
-                .formatted(kickedCommunities.size(), allRequiredCommunities.getTotalElements(), requiredRole.getRoleName()),messageDto));
+                .formatted(kickedCommunities.size(), allRequiredCommunities.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName()),messageDto));
 
 
 

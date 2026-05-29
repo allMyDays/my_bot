@@ -7,11 +7,15 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.dto.member.InactiveMemberDto;
+import com.example.my_bot.dto.member.InactiveMembersResult;
 import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.enumeration.TimeZoneType;
+import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.service.MessageLogService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -23,21 +27,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 
-import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.constant.MessageConstant.INVALID_TIME_PERIOD_MESSAGE;
+import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "кикновичков", alternativeCommandNames = {"kicknew"}, defaultRole = ADMINISTRATOR, eventable = true)
-public class KickNewCommand implements ChatCommand {
+@Command(mainCommandName = "кикнеактив", alternativeCommandNames = {"kickinactive"}, defaultRole = ADMINISTRATOR, eventable = true)
+public class KickInactiveCommand implements ChatCommand {
 
     @Getter
-    private final CommandCooldown cooldown = new CommandCooldown(3,60*3);
+    private final CommandCooldown cooldown = new CommandCooldown(3,15);
 
     private VkChatClient vkChatClient;
 
@@ -45,9 +50,9 @@ public class KickNewCommand implements ChatCommand {
 
     private final ChatService chatService;
 
-    private final int MAX_COMMAND_PERIOD_IN_SECONDS = 86_400;
-
     private final MessageMapper messageMapper;
+
+    private final MessageLogService messageLogService;
 
     private final static DefaultRole KICK_MEMBERS_WITH_ROLE_LESS_THAN = MODERATOR;
 
@@ -60,54 +65,48 @@ public class KickNewCommand implements ChatCommand {
     }
 
 
-
     @Override
     public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
 
         long chatId = messageDto.getChatId();
+        String[] args = messageDto.getFirstRowArguments();
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto("", messageDto);
 
-        String[] args = messageDto.getFirstRowArguments();
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
             return;
         }
-        Optional<Long> optionalPeriod = TimeUtils.toSecondsFromString(args[0], args[1]);
-        if(optionalPeriod.isEmpty()){
+        Optional<Long> optionalPeriodSec = TimeUtils.toSecondsFromString(args[0], args[1]);
+        if(optionalPeriodSec.isEmpty()){
             sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
             vkChatClient.sendText(sendMessage);
             return;
-        }long periodInSeconds = optionalPeriod.get();
+        } long periodSec = optionalPeriodSec.get();
 
-        if(periodInSeconds>MAX_COMMAND_PERIOD_IN_SECONDS){
-            sendMessage.setText("Максимальный период, за который можно исключить новичков — %s"
-                    .formatted(TimeUtils.formatDurationFromSeconds(MAX_COMMAND_PERIOD_IN_SECONDS,false)));
+
+        InactiveMembersResult membersResult;
+        try{
+            membersResult= messageLogService.findCurrentInactiveChatMembers(chatId, periodSec,false, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(),MEMBERS_LIMIT_AT_ONE_USAGE);
+        }catch(MemberException e){
+            sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return;
         }
-
-        Instant kickAfter = Instant.now().minusSeconds(periodInSeconds);
-
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
 
-        String dateToShow = TimeUtils.getFormattedStringDateTimeWithTimeZone(kickAfter, chatTimeZone);
-        Page<MemberEntity> allRequiredMembers = memberService.getNotKickedNewMembersWithRoleLessThan(chatId,kickAfter,KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(), MEMBERS_LIMIT_AT_ONE_USAGE);
+        String dateToShow = TimeUtils.getFormattedStringDateTimeWithTimeZone(membersResult.getThresholdDate(), chatTimeZone);
 
-        Set<Long> kickedCommunities = vkChatClient.kickManyChatMembers(chatId,
-                allRequiredMembers.getContent().stream()
-                        .filter(m->!m.isChatAdmin())
-                        .map(MemberEntity::getUserId)
-                        .toList());
+        Set<Long> kickedMembers = vkChatClient.kickManyChatMembers(chatId,
+                membersResult.getInactiveMembers().stream()
+                        .map(InactiveMemberDto::getUserId)
+                        .toList()
+        );
 
-        sendMessage.setText("✅Было исключено %d из %d новичков с ролью ниже чем «%s», впервые появившихся в чате после %s"
-                .formatted(kickedCommunities.size(), allRequiredMembers.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName(), dateToShow));
+        sendMessage.setText("✅Было исключено %d из %d участников с ролью ниже чем «%s», которые не писали сообщения после %s"
+                .formatted(kickedMembers.size(), membersResult.getTotalInactiveQuantity(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName(), dateToShow));
         vkChatClient.sendText(sendMessage);
-
-
-
-
 
     }
 }

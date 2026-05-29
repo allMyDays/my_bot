@@ -116,7 +116,17 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
 
 
     @Query("SELECT m.userId FROM MemberEntity m WHERE m.chatId = :chatId AND m.presenceType = 'IN_CHAT' AND m.firstAppearance < :thresholdDate")
-    Set<Long> findAllCurrentMemberWithFirstAppearanceBeforeThan(@Param("chatId") long chatId, @Param("thresholdDate") Instant thresholdDate);
+    List<Long> findAllCurrentMemberWithFirstAppearanceBeforeThan(
+            @Param("chatId") long chatId,
+            @Param("thresholdDate") Instant thresholdDate
+    );
+
+    @Query("SELECT m.userId FROM MemberEntity m WHERE m.chatId = :chatId AND m.rolePriority < :rolePriority AND m.presenceType = 'IN_CHAT' AND m.firstAppearance < :thresholdDate")
+    List<Long> findAllCurrentMemberWithRoleLessThanAndFirstAppearanceBeforeThan(
+            @Param("chatId") long chatId,
+            @Param("rolePriority") int rolePriority,
+            @Param("thresholdDate") Instant thresholdDate
+    );
 
 
 
