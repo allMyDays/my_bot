@@ -11,17 +11,22 @@ import java.text.BreakIterator;
 public class TextUtils {
 
      public static String createMention(long memberId){
-
         if(memberId<0) {
             return "@club"+(memberId*-1);
         } return "@id"+memberId;
     }
 
     public static String createMemberLink(long memberId){
-
         if(memberId<0) {
             return "vk.com/club"+(memberId*-1);
         } return "vk.com/id"+memberId;
+    }
+
+    public static String createMentionBody(long memberId) {
+        if(memberId<0){
+            return "club"+(memberId*-1);
+        }
+        return "id" + memberId;
     }
 
 

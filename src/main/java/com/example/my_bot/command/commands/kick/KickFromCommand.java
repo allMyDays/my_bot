@@ -99,8 +99,7 @@ public class KickFromCommand implements ChatCommand {
                         .map(MemberEntity::getUserId)
                         .toList());
 
-        String memberName = globalUserService.getUserNameInRequiredCase(inviterId, NameCase.INSTRUMENTAL)
-                .orElse("этим участником");
+        String memberName = globalUserService.getUserNameInRequiredCase(inviterId, NameCase.INSTRUMENTAL);
 
         sendMessage.setText("✅Было исключено %d из %d участников с ролью ниже чем «%s», которые были приглашены %s(%s)."
                 .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName(),createMention(inviterId), memberName));

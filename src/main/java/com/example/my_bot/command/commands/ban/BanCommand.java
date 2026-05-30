@@ -132,7 +132,7 @@ public class BanCommand implements ChatCommand {
        if(!messageDto.isEventOrTimerMode()){
            message+="\nМодератор: %s(%s)".formatted(
                createMention(fromId),
-               globalUserService.getUserNameInRequiredCase(fromId, NameCase.NOMINATIVE).orElse("этот участник")
+               globalUserService.getUserNameInRequiredCase(fromId, NameCase.NOMINATIVE)
            );
        }
 

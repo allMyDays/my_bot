@@ -1,4 +1,4 @@
-package com.example.my_bot.command.commands.kick;
+package com.example.my_bot.command.commands.stat;
 
 
 import com.example.my_bot.annotation.Command;
@@ -7,8 +7,10 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.dto.member.InactiveMemberDto;
-import com.example.my_bot.dto.member.InactiveMembersResult;
+import com.example.my_bot.dto.member.inactive.InactiveMemberDto;
+import com.example.my_bot.dto.member.inactive.InactiveMembersResult;
+import com.example.my_bot.dto.member.stat.ChatMembersStatisticResult;
+import com.example.my_bot.dto.member.stat.MemberStatisticDto;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
@@ -27,22 +29,22 @@ import org.springframework.context.annotation.Lazy;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.MessageConstant.INVALID_TIME_PERIOD_MESSAGE;
-import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.utils.TextUtils.createMention;
 import static com.example.my_bot.utils.TimeUtils.*;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "неактив", alternativeCommandNames = {"inactive"}, defaultRole = ADMINISTRATOR, eventable = true)
-public class ShowInactiveCommand implements ChatCommand {
+@Command(mainCommandName = "статистика", alternativeCommandNames = {"statistic","stat","стата"}, defaultRole = MODERATOR, eventable = true)
+public class ShowAllMembersStatisticCommand implements ChatCommand {
 
     @Getter
-    private final CommandCooldown cooldown = new CommandCooldown(3,60*15);
+    private final CommandCooldown cooldown = new CommandCooldown(3,60*7);
 
     private VkChatClient vkChatClient;
 
@@ -54,7 +56,9 @@ public class ShowInactiveCommand implements ChatCommand {
 
     private final MessageMapper messageMapper;
 
-    private final static long DEFAULT_INACTIVE_PERIOD_SEC = 86_400;
+    private final static long DEFAULT_STATISTIC_PERIOD_SEC = 86_400;
+
+    private final static int MEMBERS_LIMIT_AT_ONE_USAGE = 50;
 
     @Autowired
     @Lazy
@@ -74,7 +78,7 @@ public class ShowInactiveCommand implements ChatCommand {
         Optional<Long> optionalPeriodSec;
 
         if(args.length<2){
-            optionalPeriodSec = Optional.of(DEFAULT_INACTIVE_PERIOD_SEC);
+            optionalPeriodSec = Optional.of(DEFAULT_STATISTIC_PERIOD_SEC);
         }else{
             optionalPeriodSec = TimeUtils.toSecondsFromString(args[0], args[1]);
         }
@@ -83,51 +87,52 @@ public class ShowInactiveCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
-        InactiveMembersResult membersResult;
+        ChatMembersStatisticResult statResult;
 
         try{
-            membersResult= messageLogService.findCurrentInactiveChatMembers(chatId, optionalPeriodSec.get(), true, null,null);
+            statResult= messageLogService.getAllMembersStatForRequiredTimePeriod(chatId, optionalPeriodSec.get(), MEMBERS_LIMIT_AT_ONE_USAGE);
         }catch(MemberException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return;
         }
-
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
-        Instant now = Instant.now();
 
         StringBuilder sb = new StringBuilder(
-                "&#128270; Было найдено %d участников, которые не писали сообщения %s и более (то есть после %s)\nУчастники и время их последнего сообщения по %s:\n\n"
+                "\uD83D\uDCCA Статистика чата за период %s  (с %s до %s)\n[\uD83D\uDCAC символы | ✉ сообщения]:\n\n"
                         .formatted(
-                                membersResult.getInactiveMembers().size(),
                                 formatDurationFromSeconds(optionalPeriodSec.get(),false),
-                                getFormattedStringDateTimeWithTimeZone(membersResult.getThresholdDate(), chatTimeZone),
-                                chatTimeZone.getStringType()
+                                getFormattedStringDateTime(statResult.getStart(), chatTimeZone),
+                                getFormattedStringDateTimeWithTimeZone(statResult.getEnd(), chatTimeZone)
                         )
         );
 
-        Map<Long, Optional<String>> memberNamesMap = globalUserService.getUserNamesInRequiredCase(
-                membersResult.getInactiveMembers().stream()
-                        .map(InactiveMemberDto::getUserId)
+        Map<Long, String> memberNamesMap = globalUserService.getUserNamesInRequiredCase(
+                statResult.getMemberStatisticDtoList().stream()
+                        .map(MemberStatisticDto::getUserId)
                         .collect(Collectors.toSet()),
                 NameCase.NOMINATIVE
         );
         int counter=0;
-        for(InactiveMemberDto memberResult: membersResult.getInactiveMembers()){
-            Optional<Instant> lastMessage = memberResult.getLastMessageAt();
+        for(MemberStatisticDto memberStat: statResult.getMemberStatisticDtoList()){
             sb.append("%d. ".formatted(++counter))
-                    .append(createMention(memberResult.getUserId()))
-                    .append("(%s)".formatted(memberNamesMap.get(memberResult.getUserId()).orElse("Этот участник")))
-                    .append(" — ");
-
-            if(lastMessage.isEmpty()){
-                sb.append("ни одного сообщения за срок.");
-            }else{
-                sb.append(" %s ".formatted(formatDurationFromSeconds(Duration.between(lastMessage.get(), now).getSeconds(),false)));
-                sb.append(" [%s]".formatted(getFormattedStringDateTime(lastMessage.get(), chatTimeZone)));
-            }
-            sb.append("\n");
+                    .append(createMention(memberStat.getUserId()))
+                    .append("(%s)".formatted(memberNamesMap.get(memberStat.getUserId())))
+                    .append(" — ")
+                    .append("%s | %s".formatted(memberStat.getTotalMessages(), memberStat.getTotalSymbols()))
+                    .append("\n");
         }
+        sb.append("\nВсего сообщений: ")
+                .append(statResult.getTotalMessageQuantity())
+                .append("\nВсего символов: ")
+                .append(statResult.getTotalSymbolsQuantity());
+
+        if(statResult.getTotalMembersQuantity()>MEMBERS_LIMIT_AT_ONE_USAGE){
+            sb.append("\nВсего писало %d участников. Было показано %d самых активных."
+                            .formatted(statResult.getTotalMembersQuantity(), MEMBERS_LIMIT_AT_ONE_USAGE)
+            );
+        }
+
 
         sendMessage.setText(sb.toString());
         vkChatClient.sendText(sendMessage);

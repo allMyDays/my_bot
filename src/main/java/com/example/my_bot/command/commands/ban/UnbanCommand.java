@@ -81,7 +81,7 @@ public class UnbanCommand implements ChatCommand {
 
        sendMessage.setText("✅С %s(%s) был успешно снят бан. Теперь вам нужно самостоятельно пригласить этого пользователя в чат.".formatted(
                createMention(memberToUnban),
-               globalUserService.getUserNameInRequiredCase(memberToUnban, NameCase.GENITIVE).orElse("данного участника")
+               globalUserService.getUserNameInRequiredCase(memberToUnban, NameCase.GENITIVE)
        ));
 
        vkChatClient.sendText(sendMessage);

@@ -175,7 +175,7 @@ public class LogChatCommand implements ChatCommand {
            sendMessage.setPeerId(ChatUtils.convertToPeerId(targetChat.get().getChatId()));
            sendMessage.setText(
                    "%s(%s) установил логчат для данной беседы. Если хотите удалить логчат, используйте команду «%c%s %s»."
-                           .formatted(createMention(fromId),globalUserService.getUserNameInRequiredCase(fromId, NameCase.NOMINATIVE).orElse("Этот пользователь"),
+                           .formatted(createMention(fromId),globalUserService.getUserNameInRequiredCase(fromId, NameCase.NOMINATIVE),
                                    DEFAULT_CHAT_PREFIX,logChatMainCommand,REMOVE_ARGUMENT)
            );
            vkChatClient.sendText(sendMessage);

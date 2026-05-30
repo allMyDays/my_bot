@@ -10,6 +10,8 @@ import com.example.my_bot.exception.user.GlobalGlobalUserDoesNotHaveRequiredBoun
 import com.example.my_bot.exception.user.GlobalGlobalUserNotFoundException;
 import com.example.my_bot.mapper.GlobalUserMapper;
 import com.example.my_bot.repository.GlobalUserRepository;
+import com.example.my_bot.utils.ChatUtils;
+import com.example.my_bot.utils.TextUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.NonNull;
@@ -28,6 +30,9 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+
+import static com.example.my_bot.utils.TextUtils.createMention;
+import static com.example.my_bot.utils.TextUtils.createMentionBody;
 
 @Service
 @RequiredArgsConstructor
@@ -134,19 +139,22 @@ public class GlobalUserService {
         return globalUserRepository.findUserIdsByBoundChat(chatId);
     }
 
-    public Optional<String> getUserNameInRequiredCase(long userId, @NonNull NameCase requiredNameCase){
+    public String getUserNameInRequiredCase(long userId, @NonNull NameCase requiredNameCase){
         return getUserNamesInRequiredCase(Set.of(userId),requiredNameCase).get(userId);
     }
 
-    public Map<Long, Optional<String>> getUserNamesInRequiredCase(@NonNull Set<Long> userIds, @NonNull NameCase requiredCase){
+    public Map<Long, String> getUserNamesInRequiredCase(@NonNull Set<Long> userIds, @NonNull NameCase requiredCase){
 
-        Map<Long, Optional<String>> existing = new HashMap<>();
+        Map<Long, String> existing = new HashMap<>();
         Set<Long> missing = new HashSet<>();
 
         for(long userId: userIds){
             ConcurrentHashMap<NameCase, String> fullName = cacheManager.getFullNameCache().getIfPresent(userId);
-            if(fullName==null) missing.add(userId);
-            else existing.put(userId, Optional.ofNullable(fullName.get(requiredCase)));
+            if(fullName==null) missing.add(userId);  // поискать в бд
+            else{
+                String nameCase = fullName.get(requiredCase);  // в бд имени нет если nameCase=null
+                existing.put(userId, nameCase!=null?nameCase:createMentionBody(userId));
+            }
         }
         if(!missing.isEmpty()){
             Map<Long, ConcurrentHashMap<NameCase, String>> loaded = new HashMap<>();
@@ -154,7 +162,7 @@ public class GlobalUserService {
                 if(userIds.size()==1&&isItTimeToUpdateUserFullName(user.getLastFullNameUpdate())){
                     selfLink.updateUserNameCases(user);
                 }
-                ConcurrentHashMap<NameCase, String> cases = new ConcurrentHashMap<>();
+                ConcurrentHashMap<NameCase, String> nameCases = new ConcurrentHashMap<>();
                 for (NameCase nc : NameCase.values()){
                     String gottenName = switch (nc) {
                         case NOMINATIVE -> user.getFullNameInNom();
@@ -164,17 +172,19 @@ public class GlobalUserService {
                         case INSTRUMENTAL -> user.getFullNameInIns();
                         case PREPOSITIONAL -> user.getFullNameInAbl();
                     };
-                    if(gottenName!=null) cases.put(nc, gottenName);
+                    if(gottenName!=null) nameCases.put(nc, gottenName);
                 }
-                loaded.put(user.getUserId(), cases);
+                loaded.put(user.getUserId(), nameCases);
                 missing.remove(user.getUserId());
             }
 
-            missing.forEach(userId -> loaded.computeIfAbsent(userId, k -> new ConcurrentHashMap<>()));
+            missing.forEach(userId -> loaded.computeIfAbsent(userId, k -> new ConcurrentHashMap<>())); // имён этих юзеров нет в бд
             cacheManager.getFullNameCache().putAll(loaded);
 
-            loaded.forEach((key, value) ->
-                    existing.put(key, Optional.ofNullable(value.get(requiredCase)))
+            loaded.forEach((userId, hashMap) ->{
+                        String nameCase = hashMap.get(requiredCase);
+                        existing.put(userId, nameCase!=null?nameCase:createMentionBody(userId));
+                    }
             );
         }
         return existing;

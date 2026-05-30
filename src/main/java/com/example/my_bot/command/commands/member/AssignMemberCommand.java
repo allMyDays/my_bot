@@ -109,8 +109,7 @@ public class AssignMemberCommand implements ChatCommand {
             RoleDto oldRole = assignResult.getPreviousRole();
             RoleDto newRole = assignResult.getNewRole();
 
-            String username = userService.getUserNameInRequiredCase(userToAssign, NameCase.GENITIVE)
-                    .orElse("этого участника");
+            String username = userService.getUserNameInRequiredCase(userToAssign, NameCase.GENITIVE);
 
             sendMessage.setText(
                     String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,

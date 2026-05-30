@@ -45,10 +45,24 @@ public interface MessageLogRepository extends JpaRepository<MessageLogEntity, Lo
             @Param("requiredMembers") List<Long> requiredMembers
     );
 
+    @Query("SELECT m.fromId as fromId, COUNT(m) as messageCount, COALESCE(SUM(m.symbolsQuantity), 0) as totalSymbols " +
+            "FROM MessageLogEntity m " +
+            "WHERE m.chatId = :chatId AND m.createdAt BETWEEN :start AND :end " +
+            "GROUP BY m.fromId "+
+            "ORDER BY messageCount DESC"
+    )
+    List<MemberStatsProjection> getChatMembersStat(@Param("chatId") long chatId, @Param("start") Instant start, @Param("end") Instant end);
+
 
     interface MemberLastMessageProjection {
         Long getFromId();
         Instant getLastMessageAt();
+    }
+
+    interface MemberStatsProjection{
+        Long getFromId();
+        Long getMessageCount();
+        Long getTotalSymbols();
     }
 
 

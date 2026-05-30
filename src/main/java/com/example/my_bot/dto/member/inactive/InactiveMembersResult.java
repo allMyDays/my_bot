@@ -1,4 +1,4 @@
-package com.example.my_bot.dto.member;
+package com.example.my_bot.dto.member.inactive;
 
 import jakarta.annotation.Nullable;
 import lombok.*;

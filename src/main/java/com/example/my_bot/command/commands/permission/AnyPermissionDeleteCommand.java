@@ -82,8 +82,7 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
         }
 
         sendMessage.setText(userId.map(aLong ->{
-                    String userName = userService.getUserNameInRequiredCase(aLong, NameCase.ACCUSATIVE)
-                            .orElse("этого участника");
+                    String userName = userService.getUserNameInRequiredCase(aLong, NameCase.ACCUSATIVE);
 
                     return  "✅Настройка сброшена. Теперь возможность использовать эту команду у %s(%s) зависит только от уровня его роли."
                             .formatted(createMention(aLong),userName);

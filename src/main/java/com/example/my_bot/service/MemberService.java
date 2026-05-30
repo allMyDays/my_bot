@@ -95,15 +95,17 @@ public class MemberService {
                 .collect(Collectors.toMap(MemberEntity::getUserId, Function.identity()));
 
         List<MemberEntity> newMembers = new ArrayList<>();
+        Instant now = Instant.now();
+
         for (ConversationMember vkMember : currentChatMembers) {
             long memberId = vkMember.getMemberId();
             MemberEntity entity = currentChatMemberMap.get(memberId);
 
-            if (entity == null) {
+            if (entity == null){
                 entity = new MemberEntity();
                 entity.setUserId(memberId);
                 entity.setChatId(chatId);
-                entity.setFirstAppearance(Instant.ofEpochSecond(vkMember.getJoinDate()));
+                entity.setFirstAppearance(now);
                 newMembers.add(entity);
                 entity.setInvitedById(vkMember.getInvitedBy());
             }
@@ -211,18 +213,16 @@ public class MemberService {
             putMembersToCache(chatId, toPutInCache);
         }
     }
-
     public Page<MemberEntity> getLeftButNotKickedMembersWithRoleLessThan(long chatId, int rolePriority, int limit){
         return memberRepository.findLeftButNotKickedMembersWithRoleLessThan(chatId, rolePriority, PageRequest.of(0, limit));
-
     }
+
     public Page<MemberEntity> getNotKickedCommunitiesWithRoleLessThan(long chatId, int rolePriority, int limit){
         return memberRepository.findNotKickedCommunitiesWithRoleLessThan(chatId, rolePriority, PageRequest.of(0, limit));
-
     }
+
     public Page<MemberEntity> getNotKickedMembersInvitedByAndWithRoleLessThan(long chatId, long inviter, int rolePriority, int limit){
         return memberRepository.findNotKickedMembersInvitedByAndWithRoleLessThan(chatId,inviter, rolePriority, PageRequest.of(0, limit));
-
     }
 
     public Page<MemberEntity> getNotKickedNewMembersWithRoleLessThan(long chatId, Instant after , int rolePriority, int limit){
@@ -232,6 +232,7 @@ public class MemberService {
     public List<Long> getAllCurrentChatMemberWithFirstAppearanceBeforeThan(long chatId, @NonNull Instant thresholdDate){
         return memberRepository.findAllCurrentMemberWithFirstAppearanceBeforeThan(chatId, thresholdDate);
     }
+
     public List<Long> getAllCurrentChatMemberWithRoleLessThanAndFirstAppearanceBeforeThan(long chatId, int rolePriority, @NonNull Instant thresholdDate){
         return memberRepository.findAllCurrentMemberWithRoleLessThanAndFirstAppearanceBeforeThan(chatId, rolePriority, thresholdDate);
     }
@@ -249,7 +250,6 @@ public class MemberService {
         return callerRole;
     }
 
-    
     @Transactional
     public AssignMemberResult assignNewRoleToMember(long chatId, long userToAssign, int newRolePriority, long fromId){
 
@@ -298,6 +298,7 @@ public class MemberService {
             throw new MemberAccessDeniedException(userToInteract,fromId);
         }
     }
+
     public boolean isChatAdmin(long chatId, long memberId){
         Optional<MemberDto> member = getCachedMemberInfo(chatId, memberId);
         return member.map(MemberDto::isChatAdmin).orElse(false);
@@ -312,16 +313,13 @@ public class MemberService {
 
         });
     }
-
-       private void invalidateMemberCache(long chatId){
+    private void invalidateMemberCache(long chatId){
         cacheManager.getActiveMembersCache().invalidate(chatId);
+    }
 
-        }
-
-        public List<MemberEntity> getMembersWithPositiveRole(long chatId){
-           return memberRepository.findMembersWithPositiveRole(chatId);
-        }
-
+    public List<MemberEntity> getMembersWithPositiveRole(long chatId){
+        return memberRepository.findMembersWithPositiveRole(chatId);
+    }
 
     private MemberDto putMemberToCache(long chatId, @NonNull MemberEntity member){
 
@@ -345,7 +343,6 @@ public class MemberService {
             }
         }
     }
-
 
     private void changeCachedMembersRole(long chatId, @NonNull List<Long> memberIds, int newRolePriority){
 

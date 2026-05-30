@@ -7,9 +7,8 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.dto.member.InactiveMemberDto;
-import com.example.my_bot.dto.member.InactiveMembersResult;
-import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.dto.member.inactive.InactiveMemberDto;
+import com.example.my_bot.dto.member.inactive.InactiveMembersResult;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.exception.member.MemberException;
@@ -25,9 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.data.domain.Page;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 

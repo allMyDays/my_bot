@@ -98,8 +98,7 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
 
         memberPermissionMap.forEach((userId, permissionMap)->{
             String mention = TextUtils.createMention(userId);
-            String userName = userService.getUserNameInRequiredCase(userId, NameCase.GENITIVE)
-                    .orElse("этого участника");
+            String userName = userService.getUserNameInRequiredCase(userId, NameCase.GENITIVE);
             sb.append("\nПерсонально для %s(%s):".formatted(mention,userName));
             permissionMap.forEach((command,isAllowed)->{
                 sb.append("\n").append(isAllowed ? "➕ " : "➖ ").append(chatPrefix).append(command);

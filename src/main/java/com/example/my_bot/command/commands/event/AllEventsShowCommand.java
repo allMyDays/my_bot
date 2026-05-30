@@ -111,7 +111,7 @@ public class AllEventsShowCommand implements ChatCommand {
             Long memberToTrigger = currentEvent.getMemberToTrigger();
             if(memberToTrigger!=null){  // личное событие
                 forRoleOrMember = "%s(%s)"
-                        .formatted(createMention(memberToTrigger), globalUserService.getUserNameInRequiredCase(memberToTrigger, NameCase.GENITIVE).orElse("этого участника"));
+                        .formatted(createMention(memberToTrigger), globalUserService.getUserNameInRequiredCase(memberToTrigger, NameCase.GENITIVE));
             }else{
                 String roleName = roleService.getRoleName(chatId, currentEvent.getRolePriority()).orElse(null);
                 forRoleOrMember = "роли %s и ниже".formatted(roleName!=null?"«"+roleName+"»":"с приоритетом "+currentEvent.getRolePriority());

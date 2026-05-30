@@ -87,8 +87,7 @@ public class MemberRoleShowCommand implements ChatCommand {
         String roleName = memberToCheck==-groupId
                 ? "Чат-менеджер"
                 : roleService.getRoleName(chatId, userRolePriority).orElse("Unknown role");
-        String userName = userService.getUserNameInRequiredCase(memberToCheck, NameCase.GENITIVE)
-                .orElse("участника");
+        String userName = userService.getUserNameInRequiredCase(memberToCheck, NameCase.GENITIVE);
 
 
         vkChatClient.sendText(

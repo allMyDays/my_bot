@@ -1,9 +1,12 @@
 package com.example.my_bot.service;
 
-import com.example.my_bot.dto.member.InactiveMemberDto;
-import com.example.my_bot.dto.member.InactiveMembersResult;
+import com.example.my_bot.dto.member.inactive.InactiveMemberDto;
+import com.example.my_bot.dto.member.inactive.InactiveMembersResult;
+import com.example.my_bot.dto.member.stat.ChatMembersStatisticResult;
+import com.example.my_bot.dto.member.stat.MemberStatisticDto;
 import com.example.my_bot.entity.MessageLogEntity;
 import com.example.my_bot.exception.member.InactiveMembersIntervalOutOfBoundsException;
+import com.example.my_bot.exception.member.MemberStatisticIntervalOutOfBoundsException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.repository.MessageLogRepository;
 import com.example.my_bot.vk.VkMessage;
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -35,8 +39,12 @@ public class MessageLogService{
 
     private final static int INTERVAL_BETWEEN_SAVING_MESSAGES_INTO_DATA_BASE_SEC = 60;
 
-    private final static int INACTIVE_MEMBERS_MAX_PERIOD_SEC = 315_360_000;
     private final static int INACTIVE_MEMBERS_MIN_PERIOD_SEC = INTERVAL_BETWEEN_SAVING_MESSAGES_INTO_DATA_BASE_SEC;
+    private final static int INACTIVE_MEMBERS_MAX_PERIOD_SEC = 315_360_000;
+
+    private final static int STATISTIC_MIN_PERIOD_SEC = INTERVAL_BETWEEN_SAVING_MESSAGES_INTO_DATA_BASE_SEC;
+    private final static int STATISTIC_MAX_PERIOD_SEC = 630_720_000;
+
 
     public void saveNewMessageLog(@NonNull VkMessage message){
         if(isPersonalChat(message.getPeerId())) return;
@@ -76,19 +84,19 @@ public class MessageLogService{
 
         Set<MessageLogEntity> collectedMessages = new HashSet<>();
 
-        for (Long chatId : temporaryMessagesCache.keySet()) {
+        for(Long chatId : temporaryMessagesCache.keySet()) {
             Set<MessageLogEntity> oldSet = temporaryMessagesCache.replace(chatId, ConcurrentHashMap.newKeySet());
             if(oldSet!=null){
                 collectedMessages.addAll(oldSet);
             }
         }
-        if (!collectedMessages.isEmpty()) {
+        if(!collectedMessages.isEmpty()){
             messageRepository.saveAll(collectedMessages);
             messageRepository.flush();
         }
     }
 
-    public InactiveMembersResult findCurrentInactiveChatMembers(long chatId, long timePeriodSec, boolean sort, @Nullable Integer roleLessThan, @Nullable Integer limit){
+    public InactiveMembersResult findCurrentInactiveChatMembers(long chatId, long timePeriodSec, boolean sort, @Nullable Integer roleLessThan, @Nullable Integer memberLimit){
 
         if(timePeriodSec<INACTIVE_MEMBERS_MIN_PERIOD_SEC||timePeriodSec>INACTIVE_MEMBERS_MAX_PERIOD_SEC){
             throw new InactiveMembersIntervalOutOfBoundsException(INACTIVE_MEMBERS_MIN_PERIOD_SEC, INACTIVE_MEMBERS_MAX_PERIOD_SEC);
@@ -117,7 +125,7 @@ public class MessageLogService{
                 // участник имеет свежее последнее сообщение
                 continue;
             }
-            if(limit==null||totalInactiveQuantity<limit){
+            if(memberLimit==null||totalInactiveQuantity<memberLimit){
                 resultToReturn.addNewInactiveMember(userId, msgProjection==null?null:msgProjection.getLastMessageAt());// участник достаточно старый и либо писал давно, либо вообще ничего не писал
             }
             totalInactiveQuantity++;
@@ -132,4 +140,42 @@ public class MessageLogService{
         }
         return resultToReturn;
     }
+
+
+    public ChatMembersStatisticResult getAllMembersStatForRequiredTimePeriod(long chatId, long timePeriodSec, @Nullable Integer memberLimit){
+
+        if(timePeriodSec<STATISTIC_MIN_PERIOD_SEC||timePeriodSec>STATISTIC_MAX_PERIOD_SEC){
+            throw new MemberStatisticIntervalOutOfBoundsException(STATISTIC_MIN_PERIOD_SEC, STATISTIC_MAX_PERIOD_SEC);
+        }
+        ChatMembersStatisticResult result = new ChatMembersStatisticResult();
+
+        Instant end = Instant.now();
+        Instant start = end.minusSeconds(timePeriodSec);
+
+        List<MessageLogRepository.MemberStatsProjection> membersStatList = messageRepository.getChatMembersStat(chatId, start, end);
+
+        AtomicInteger counter= new AtomicInteger();
+        membersStatList.forEach(ms->{
+            result.setTotalMessageQuantity(result.getTotalMessageQuantity()+ms.getMessageCount());
+            result.setTotalSymbolsQuantity(result.getTotalSymbolsQuantity()+ms.getTotalSymbols());
+
+            if(memberLimit==null||counter.get()<memberLimit){
+                result.addMemberStat(
+                        new MemberStatisticDto(ms.getFromId(), ms.getMessageCount(), ms.getTotalSymbols())
+                );
+            }
+            counter.incrementAndGet();
+        });
+        result.setStart(start);
+        result.setEnd(end);
+        result.setTotalMembersQuantity(membersStatList.size());
+
+        return result;
+    }
+
+
+
+
+
+
 }

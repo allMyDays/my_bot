@@ -78,8 +78,7 @@ public class DemoteMemberCommand implements ChatCommand {
             return;
         }
         if(assignResult!=null){
-            String username = userService.getUserNameInRequiredCase(userToAssign, NameCase.GENITIVE)
-                    .orElse("этого участника");
+            String username = userService.getUserNameInRequiredCase(userToAssign, NameCase.GENITIVE);
 
             sendMessage.setText(
                     String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,

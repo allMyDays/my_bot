@@ -101,8 +101,6 @@ public class VkChatClient{
             query.forward(sendMessageDto.getForward());
         }
         query.execute();
-
-
     }
 
     public List<ConversationMember> getAllConversationMembers(long chatId) throws ClientException, ApiException {

@@ -75,7 +75,7 @@ public class StaffShowCommand implements ChatCommand {
             } allStaffMembers.add(memberEntity.getUserId());
         }
 
-        Map<Long, Optional<String>> memberNamesMap = globalUserService.getUserNamesInRequiredCase(allStaffMembers, NameCase.NOMINATIVE);
+        Map<Long, String> memberNamesMap = globalUserService.getUserNamesInRequiredCase(allStaffMembers, NameCase.NOMINATIVE);
 
         sb.append("В чате %d управляющих (из них %d сейчас отсутствует).\n\n".formatted(allStaffMembers.size(), exitedStaffMembers));
 
@@ -90,7 +90,7 @@ public class StaffShowCommand implements ChatCommand {
             if(member.isChatAdmin()){
                 sb.append("\uD83D\uDCA0 ");
             }
-            sb.append("%s(%s)".formatted(createMention(member.getUserId()),memberNamesMap.get(member.getUserId()).orElse("Этот участник")));
+            sb.append("%s(%s)".formatted(createMention(member.getUserId()),memberNamesMap.get(member.getUserId())));
 
             if(!member.getPresenceType().equals(IN_CHAT)){
                 sb.append(" \uD83D\uDEAA");
