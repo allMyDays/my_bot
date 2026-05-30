@@ -9,6 +9,7 @@ import com.example.my_bot.exception.member.InactiveMembersIntervalOutOfBoundsExc
 import com.example.my_bot.exception.member.MemberStatisticIntervalOutOfBoundsException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.repository.MessageLogRepository;
+import com.example.my_bot.vk.VkAction;
 import com.example.my_bot.vk.VkMessage;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
@@ -46,13 +47,13 @@ public class MessageLogService{
     private final static int STATISTIC_MAX_PERIOD_SEC = 630_720_000;
 
 
-    public void saveNewMessageLog(@NonNull VkMessage message){
-        if(isPersonalChat(message.getPeerId())) return;
-        if(message.getAction()!=null) return;
-        long chatId = extractConversationId(message.getPeerId());
-        int symbolsQuantity = message.getText()!=null?message.getText().length():0;
+    public void saveNewMessageLog(long peerId, long fromId, int conversationMessageId, @Nullable VkAction action, @Nullable String text){
+        if(isPersonalChat(peerId)) return;
+        if(action!=null) return;
+        long chatId = extractConversationId(peerId);
+        int symbolsQuantity = text!=null?text.length():0;
 
-        MessageLogEntity newEntity = new MessageLogEntity(chatId, message.getFromId(), message.getConversationMessageId(), Instant.now(), symbolsQuantity,false);
+        MessageLogEntity newEntity = new MessageLogEntity(chatId, fromId, conversationMessageId, Instant.now(), symbolsQuantity,false);
         temporaryMessagesCache.compute(chatId, (key, existingSet) -> {
             if(existingSet==null){
                 existingSet = ConcurrentHashMap.newKeySet();

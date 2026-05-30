@@ -3,10 +3,9 @@ package com.example.my_bot.client;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
 import com.example.my_bot.service.MemberService;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.example.my_bot.service.MessageLogService;
+import com.example.my_bot.vk.VkSendResponse;
+import com.google.gson.*;
 import com.vk.api.sdk.client.AbstractQueryBuilder;
 import com.vk.api.sdk.client.VkApiClient;
 import com.vk.api.sdk.client.actors.GroupActor;
@@ -46,6 +45,9 @@ public class VkChatClient{
     private final GroupActor groupActor;
     private final long groupId;
     private MemberService memberService;
+    private MessageLogService messageLogService;
+
+    private static final Gson GSON = new Gson();
 
     public VkChatClient(VkApiClient vkApiClient, GroupActor groupActor) {
         this.vkApiClient = vkApiClient;
@@ -56,12 +58,17 @@ public class VkChatClient{
 
     @Autowired
     @Lazy
-    public void setMemberService(MemberService memberService) {
+    public void setMemberService(MemberService memberService){
         this.memberService = memberService;
     }
 
+    @Autowired
+    @Lazy
+    public void setMessageLogService(MessageLogService messageLogService){
+        this.messageLogService = messageLogService;
+    }
 
-  public void sendText(@NonNull SendMessageDto sendMessageDto) throws ClientException, ApiException{
+    public void sendText(@NonNull SendMessageDto sendMessageDto) throws ClientException, ApiException{
 
      if(sendMessageDto.isDoNotSendMessage()) return;
      String text = sendMessageDto.getText();
@@ -82,9 +89,11 @@ public class VkChatClient{
 
     private void sendNotLongText(@NonNull SendMessageDto sendMessageDto) throws ClientException, ApiException{
 
+        long peerId = sendMessageDto.getPeerId();
+
         MessagesSendQueryWithDeprecated query = vkApiClient.messages()
                 .sendDeprecated(groupActor)
-                .peerId(sendMessageDto.getPeerId())
+                .peerIds(peerId)
                 .message(sendMessageDto.getText())
                 .disableMentions(!sendMessageDto.isAbleMentions())
                 .randomId((int) System.currentTimeMillis());
@@ -92,7 +101,7 @@ public class VkChatClient{
         if(sendMessageDto.isReplyToMessageId()&&sendMessageDto.getConversationMessageId()!=null){
             Forward forward = new Forward();
             forward.setConversationMessageIds(List.of(sendMessageDto.getConversationMessageId()));
-            forward.setPeerId(sendMessageDto.getPeerId());
+            forward.setPeerId(peerId);
             forward.setIsReply(true);
 
             query.forward(forward);
@@ -100,7 +109,15 @@ public class VkChatClient{
         if(sendMessageDto.getForward()!=null){
             query.forward(sendMessageDto.getForward());
         }
-        query.execute();
+
+        String jsonResponse = query.executeAsString();
+
+        if(!isPersonalChat(peerId)){
+            VkSendResponse resp = GSON.fromJson(jsonResponse, VkSendResponse.class);
+            int cmId = resp.response.get(0).conversationMessageId;
+            messageLogService.saveNewMessageLog(peerId, -groupId, cmId, null, sendMessageDto.getText());
+        }
+
     }
 
     public List<ConversationMember> getAllConversationMembers(long chatId) throws ClientException, ApiException {

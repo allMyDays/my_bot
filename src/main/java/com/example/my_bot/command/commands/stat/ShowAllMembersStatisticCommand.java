@@ -99,7 +99,7 @@ public class ShowAllMembersStatisticCommand implements ChatCommand {
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
 
         StringBuilder sb = new StringBuilder(
-                "\uD83D\uDCCA Статистика чата за период %s  (с %s до %s)\n[\uD83D\uDCAC символы | ✉ сообщения]:\n\n"
+                "\uD83D\uDCCA Статистика чата за период %s  (с %s до %s)\n[ ✉ сообщения | 🔣 символы ]:\n\n"
                         .formatted(
                                 formatDurationFromSeconds(optionalPeriodSec.get(),false),
                                 getFormattedStringDateTime(statResult.getStart(), chatTimeZone),
