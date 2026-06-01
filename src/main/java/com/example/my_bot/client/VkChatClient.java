@@ -114,6 +114,10 @@ public class VkChatClient{
 
         if(!isPersonalChat(peerId)){
             VkSendResponse resp = GSON.fromJson(jsonResponse, VkSendResponse.class);
+            if(resp==null||resp.response==null||resp.response.isEmpty()){
+                log.warn("cannot get cmid of just sent message cause vk sent not full response {} ",resp);
+                return;
+            }
             int cmId = resp.response.get(0).conversationMessageId;
             messageLogService.saveNewMessageLog(peerId, -groupId, cmId, null, sendMessageDto.getText());
         }

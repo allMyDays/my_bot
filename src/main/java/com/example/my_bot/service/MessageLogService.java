@@ -10,7 +10,6 @@ import com.example.my_bot.exception.member.MemberStatisticIntervalOutOfBoundsExc
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.repository.MessageLogRepository;
 import com.example.my_bot.vk.VkAction;
-import com.example.my_bot.vk.VkMessage;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -143,16 +143,24 @@ public class MessageLogService{
     }
 
 
-    public ChatMembersStatisticResult getAllMembersStatForRequiredTimePeriod(long chatId, long timePeriodSec, @Nullable Integer memberLimit){
-
-        if(timePeriodSec<STATISTIC_MIN_PERIOD_SEC||timePeriodSec>STATISTIC_MAX_PERIOD_SEC){
-            throw new MemberStatisticIntervalOutOfBoundsException(STATISTIC_MIN_PERIOD_SEC, STATISTIC_MAX_PERIOD_SEC);
-        }
-        ChatMembersStatisticResult result = new ChatMembersStatisticResult();
+    public ChatMembersStatisticResult getAllChatMembersStatForATimePeriod(long chatId, long timePeriodSec, @Nullable Integer memberLimit){
 
         Instant end = Instant.now();
         Instant start = end.minusSeconds(timePeriodSec);
 
+        return getAllChatMembersStatForATimePeriod(chatId, start, end, memberLimit);
+    }
+
+    public ChatMembersStatisticResult getAllChatMembersStatForATimePeriod(long chatId, @NonNull Instant start, @NonNull Instant end, @Nullable Integer memberLimit){
+        ChatMembersStatisticResult result = new ChatMembersStatisticResult();
+
+        if(!start.isBefore(end)){
+            throw new MemberStatisticIntervalOutOfBoundsException("Дата, с которой нужно посмотреть статистику (первая), обязана быть раньше чем конечная дата (вторая).");
+        }
+        long periodSec = Duration.between(start, end).toSeconds();
+        if(periodSec<STATISTIC_MIN_PERIOD_SEC||periodSec>STATISTIC_MAX_PERIOD_SEC){
+            throw new MemberStatisticIntervalOutOfBoundsException(STATISTIC_MIN_PERIOD_SEC, STATISTIC_MAX_PERIOD_SEC);
+        }
         List<MessageLogRepository.MemberStatsProjection> membersStatList = messageRepository.getChatMembersStat(chatId, start, end);
 
         AtomicInteger counter= new AtomicInteger();

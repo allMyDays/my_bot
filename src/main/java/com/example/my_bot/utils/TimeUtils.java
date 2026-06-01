@@ -6,6 +6,7 @@ import lombok.NonNull;
 
 import java.math.BigInteger;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -19,10 +20,9 @@ public class TimeUtils {
     private static final DateTimeFormatter RUSSIAN_DATE_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("dd MMMM yyyy, HH:mm", new Locale("ru"));
 
-    private static final DateTimeFormatter DATE_TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm", new Locale("ru"));
-
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     @Getter
     private enum TimeUnit {
@@ -41,7 +41,7 @@ public class TimeUtils {
         }
     }
 
-    public static String formatDurationFromSeconds(long seconds, boolean includeSeconds) {
+    public static String formatDurationFromSeconds(long seconds, boolean includeSeconds){
         if (seconds < 0) throw new IllegalArgumentException("seconds must be >= 0");
         if (seconds == 0) return includeSeconds ? "0 секунд." : "";
 
@@ -180,11 +180,28 @@ public class TimeUtils {
      * @param dateTimeStr строка с датой и временем
      * @return Optional, содержащий LocalDateTime при успешном парсинге, иначе пустой Optional
      */
-    public static Optional<LocalDateTime> parseDateTime(@NonNull String dateTimeStr) {
+    public static Optional<LocalDateTime> parseDateTime(@NonNull String dateTimeStr){
         try {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm dd.MM.yyyy");
             return Optional.of(LocalDateTime.parse(dateTimeStr, formatter));
         } catch (DateTimeParseException e) {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Парсит строку с датой в формате dd.MM.yyyy".
+     * <p>
+     * Пример: "01.01.2027"
+     * </p>
+     *
+     * @param dateStr строка с датой
+     * @return Optional, содержащий LocalTime при успешном парсинге, иначе пустой Optional
+     */
+    public static Optional<LocalDate> parseDate(@NonNull String dateStr){
+        try {
+            return Optional.of(LocalDate.parse(dateStr.trim(), DATE_FORMATTER));
+        } catch (Exception e){
             return Optional.empty();
         }
     }
