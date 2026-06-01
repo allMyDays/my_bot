@@ -15,10 +15,12 @@ import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.chat.ChatException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
+import com.example.my_bot.service.MessageLogService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.ChatUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import com.vk.api.sdk.objects.messages.Forward;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,13 +30,16 @@ import org.springframework.context.annotation.Lazy;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.enumeration.DefaultRole.*;
 import static com.example.my_bot.utils.ChatUtils.DEFAULT_CHAT_PREFIX;
+import static com.example.my_bot.utils.ChatUtils.convertToPeerId;
 import static com.example.my_bot.utils.TextUtils.createMention;
+import static com.example.my_bot.utils.TextUtils.isValidInteger;
 
 @Slf4j
 @Command(mainCommandName = "логчат", alternativeCommandNames = {"logchat"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = true)
@@ -43,26 +48,16 @@ public class LogChatCommand implements ChatCommand {
 
     @Getter
     private final CommandCooldown cooldown = new CommandCooldown(4,60*2);
-
     private final ChatService chatService;
-
     private final MessageMapper messageMapper;
-
     private final GlobalUserService globalUserService;
-
+    private final MessageLogService messageLogService;
     private final CaffeineCacheManager cacheManager;
-
     private VkChatClient vkChatClient;
 
     private final static String logChatMainCommand = LogChatCommand.class.getAnnotation(Command.class).mainCommandName();
-
     private final static String FOR_ARGUMENT = "для";
-
     private final static String REMOVE_ARGUMENT = "удалить";
-
-
-
-
 
 
     @Autowired
@@ -142,6 +137,23 @@ public class LogChatCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
+        if(isValidInteger(args[0])){  // !логчат 10 (вывести последние N сообщений из логчата)
+            if(currentChat.getBoundLogChat()==null){
+                sendMessage.setText("К текущему чату не привязан логчат.");
+                vkChatClient.sendText(sendMessage);
+                return;
+            }
+            List<Integer> requiredMessageIds =
+                    messageLogService.findLastMessagesForwardedToLogChat(currentChat.getBoundLogChat(), Integer.parseInt(args[0]));
+
+            Forward forward = new Forward();
+            forward.setConversationMessageIds(requiredMessageIds);
+            forward.setPeerId(convertToPeerId(currentChat.getBoundLogChat()));
+            sendMessage.setForward(forward);
+            sendMessage.setText("Последние [%d] сообщений из привязанного логчата:".formatted(requiredMessageIds.size()));
+            vkChatClient.sendText(sendMessage);
+            return;
+        }
 
         // !логчат для 6fgf553vd
 
@@ -172,7 +184,7 @@ public class LogChatCommand implements ChatCommand {
        Optional<ChatEntity> targetChat = chatService.findByChatCode(userChatCode);
        if(targetChat.isPresent()){
            sendMessage.setReplyToMessageId(false);
-           sendMessage.setPeerId(ChatUtils.convertToPeerId(targetChat.get().getChatId()));
+           sendMessage.setPeerId(convertToPeerId(targetChat.get().getChatId()));
            sendMessage.setText(
                    "%s(%s) установил логчат для данной беседы. Если хотите удалить логчат, используйте команду «%c%s %s»."
                            .formatted(createMention(fromId),globalUserService.getUserNameInRequiredCase(fromId, NameCase.NOMINATIVE),

@@ -104,7 +104,7 @@ public class AsyncEventHandler {
 
             if(!isPersonalChat(peerId)){
                 chatActionService.handleChatAction(chatId,fromId,action);
-                messageLogService.saveNewMessageLog(peerId, fromId, conversationMessageId, action, message.getText());
+                messageLogService.saveNewMessageLog(peerId, fromId, conversationMessageId, action, message.getText(),false);
                 handleMessageForLogChat(currentChat, message);
                 eventExecutionService.executeRequiredChatEvents(chatId,fromId,conversationMessageId,action,message.getAttachments(),message.getText(),message.getFwdMessages(),message.getReplyMessage(),null,message.getExpireTTL()!=null);
             }
@@ -156,6 +156,7 @@ public class AsyncEventHandler {
             forward.setConversationMessageIds(List.of(message.getConversationMessageId()));
             forward.setPeerId(convertToPeerId(chatId));
             sendMessage.setForward(forward);
+            sendMessage.setForwardedToLogChat(true);
 
             try {
                 vkChatClient.sendText(sendMessage);
@@ -175,6 +176,7 @@ public class AsyncEventHandler {
                 }
                 sendMessage.setPeerId(convertToPeerId(chatId));
                 sendMessage.setForward(null);
+                sendMessage.setForwardedToLogChat(false);
                 try {
                     vkChatClient.sendText(sendMessage);
                 } catch (ApiException ex) {

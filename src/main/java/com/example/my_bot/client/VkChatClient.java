@@ -43,7 +43,7 @@ import static com.example.my_bot.vk.enumeration.CommunityErrorCode.NO_GROUP_MEMB
 public class VkChatClient{
     private final VkApiClient vkApiClient;
     private final GroupActor groupActor;
-    private final long groupId;
+    private final long theBotId;
     private MemberService memberService;
     private MessageLogService messageLogService;
 
@@ -52,7 +52,7 @@ public class VkChatClient{
     public VkChatClient(VkApiClient vkApiClient, GroupActor groupActor) {
         this.vkApiClient = vkApiClient;
         this.groupActor = groupActor;
-        this.groupId = groupActor.getGroupId();
+        this.theBotId = groupActor.getGroupId();
     }
 
 
@@ -119,7 +119,7 @@ public class VkChatClient{
                 return;
             }
             int cmId = resp.response.get(0).conversationMessageId;
-            messageLogService.saveNewMessageLog(peerId, -groupId, cmId, null, sendMessageDto.getText());
+            messageLogService.saveNewMessageLog(peerId, -theBotId, cmId, null, sendMessageDto.getText(), sendMessageDto.isForwardedToLogChat());
         }
 
     }
@@ -167,7 +167,7 @@ public class VkChatClient{
 
     public void kickOneChatMember(long chatId, long memberId) throws ClientException, ApiException{
 
-        if(memberId==-groupId){
+        if(memberId==-theBotId){
             return;
         }
         vkApiClient.messages().removeChatUser(groupActor)
@@ -193,7 +193,7 @@ public class VkChatClient{
                     log.error("chat {} error: memberId is null in method kickManyChatMembers", chatId);
                     continue;
                 }
-                if (memberId.equals(-groupId)) {
+                if (memberId.equals(-theBotId)) {
                     continue;
                 }
                 MessagesRemoveChatUserQuery removeQuery = vkApiClient.messages()

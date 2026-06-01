@@ -14,6 +14,9 @@ import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -25,17 +28,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.example.my_bot.utils.ChatUtils.extractConversationId;
-import static com.example.my_bot.utils.ChatUtils.isPersonalChat;
+import static com.example.my_bot.utils.ChatUtils.*;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class MessageLogService{
 
     private final MemberService memberService;
     private final MessageLogRepository messageRepository;
     private final RoleService roleService;
+    private final long theBotId;
+
     private final ConcurrentMap<Long, Set<MessageLogEntity>> temporaryMessagesCache = new ConcurrentHashMap<>();
 
     private final static int INTERVAL_BETWEEN_SAVING_MESSAGES_INTO_DATA_BASE_SEC = 60;
@@ -46,14 +49,22 @@ public class MessageLogService{
     private final static int STATISTIC_MIN_PERIOD_SEC = INTERVAL_BETWEEN_SAVING_MESSAGES_INTO_DATA_BASE_SEC;
     private final static int STATISTIC_MAX_PERIOD_SEC = 630_720_000;
 
+    public MessageLogService(MemberService memberService, MessageLogRepository messageRepository, RoleService roleService, @Value("${vk.group.id}") long theBotId){
+        this.memberService = memberService;
+        this.messageRepository = messageRepository;
+        this.roleService = roleService;
+        this.theBotId = theBotId;
+    }
 
-    public void saveNewMessageLog(long peerId, long fromId, int conversationMessageId, @Nullable VkAction action, @Nullable String text){
+
+    public void saveNewMessageLog(long peerId, long fromId, int conversationMessageId, @Nullable VkAction action, @Nullable String text, boolean isForwardedToLogChat){
         if(isPersonalChat(peerId)) return;
         if(action!=null) return;
         long chatId = extractConversationId(peerId);
         int symbolsQuantity = text!=null?text.length():0;
 
         MessageLogEntity newEntity = new MessageLogEntity(chatId, fromId, conversationMessageId, Instant.now(), symbolsQuantity,false);
+        newEntity.setForwardedToLogChat(isForwardedToLogChat);
         temporaryMessagesCache.compute(chatId, (key, existingSet) -> {
             if(existingSet==null){
                 existingSet = ConcurrentHashMap.newKeySet();
@@ -63,24 +74,8 @@ public class MessageLogService{
         });
     }
 
-    public Optional<Long> getMessageOwnerId(long chatId, int conversationMessageId){
-        Set<MessageLogEntity> freshChatMessages = temporaryMessagesCache.get(chatId);
-        MessageLogEntity found;
-        if(freshChatMessages!=null){
-                     found = freshChatMessages.stream()
-                    .filter(c->c.getConversationMessageId()==conversationMessageId)
-                    .findFirst()
-                             .orElse(null);
-            if(found!=null) return Optional.of(found.getFromId());
-        }
-        found = messageRepository.findByChatIdAndConversationMessageId(chatId, conversationMessageId)
-                .orElse(null);
-        if(found!=null) return Optional.of(found.getFromId());
-        return  Optional.empty();
-    }
-
     @Scheduled(fixedRate = INTERVAL_BETWEEN_SAVING_MESSAGES_INTO_DATA_BASE_SEC * 1_000)
-    protected void loadMessagesIntoTheDatabase(){
+    protected void loadAllChatsMessagesIntoTheDatabase(){
         log.info("Starting log messages batch save");
 
         Set<MessageLogEntity> collectedMessages = new HashSet<>();
@@ -95,6 +90,39 @@ public class MessageLogService{
             messageRepository.saveAll(collectedMessages);
             messageRepository.flush();
         }
+    }
+    private void loadRequiredChatMessagesIntoTheDatabase(long chatId){
+
+        Set<MessageLogEntity> oldSet = temporaryMessagesCache.replace(chatId, ConcurrentHashMap.newKeySet());
+
+        if(oldSet!=null&&!oldSet.isEmpty()){
+            messageRepository.saveAll(oldSet);
+            messageRepository.flush();
+        }
+    }
+
+    public Optional<Long> getMessageOwnerId(long chatId, int conversationMessageId){
+        Set<MessageLogEntity> freshChatMessages = temporaryMessagesCache.get(chatId);
+        Optional<MessageLogEntity> found=Optional.empty();
+        if(freshChatMessages!=null){
+                     found = freshChatMessages.stream()
+                    .filter(c->c.getConversationMessageId()==conversationMessageId)
+                    .findFirst();
+        }
+        if(found.isEmpty()){
+            found = messageRepository.findByChatIdAndConversationMessageId(chatId, conversationMessageId);
+        }
+        return found.map(MessageLogEntity::getFromId);
+    }
+
+    public List<Integer> findLastMessagesForwardedToLogChat(long logChatId, int msgQuantity){
+        if(msgQuantity<1) msgQuantity= 1;
+        if(msgQuantity>FORWARDED_MESSAGES_MAX_LIMIT) msgQuantity= FORWARDED_MESSAGES_MAX_LIMIT;
+
+        loadRequiredChatMessagesIntoTheDatabase(logChatId);
+
+        Pageable limit = PageRequest.of(0, msgQuantity);
+        return messageRepository.findLastNUndeletedConversationMessageIds(logChatId, -theBotId,true,limit);
     }
 
     public InactiveMembersResult findCurrentInactiveChatMembers(long chatId, long timePeriodSec, boolean sort, @Nullable Integer roleLessThan, @Nullable Integer memberLimit){
@@ -155,7 +183,7 @@ public class MessageLogService{
         ChatMembersStatisticResult result = new ChatMembersStatisticResult();
 
         if(!start.isBefore(end)){
-            throw new MemberStatisticIntervalOutOfBoundsException("Дата, с которой нужно посмотреть статистику (первая), обязана быть раньше чем конечная дата (вторая).");
+            throw new MemberStatisticIntervalOutOfBoundsException("Дата, с которой нужно посмотреть статистику, обязана быть раньше чем конечная дата.");
         }
         long periodSec = Duration.between(start, end).toSeconds();
         if(periodSec<STATISTIC_MIN_PERIOD_SEC||periodSec>STATISTIC_MAX_PERIOD_SEC){
@@ -181,6 +209,7 @@ public class MessageLogService{
 
         return result;
     }
+
 
 
 

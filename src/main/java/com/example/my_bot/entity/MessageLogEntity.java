@@ -46,6 +46,8 @@ public class MessageLogEntity {
     @Column(nullable = false)
     private boolean isDeleted;
 
+    private boolean isForwardedToLogChat;
+
     public MessageLogEntity(long chatId, long fromId, int conversationMessageId, @NonNull Instant createdAt, int symbolsQuantity, boolean isDeleted) {
         this.chatId = chatId;
         this.fromId = fromId;

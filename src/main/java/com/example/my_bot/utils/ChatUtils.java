@@ -11,6 +11,8 @@ public class ChatUtils {
 
     public final static int MAX_MESSAGE_LENGTH = 4096;
 
+    public final static int FORWARDED_MESSAGES_MAX_LIMIT = 100;
+
     public final static char DEFAULT_CHAT_PREFIX = '!';
 
     public final static int CHAT_MANAGER_ROLE_PRIORITY = 1_000;

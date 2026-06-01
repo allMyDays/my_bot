@@ -25,6 +25,8 @@ public class SendMessageDto {
 
     private Forward forward;
 
+    private boolean isForwardedToLogChat;
+
 
     public SendMessageDto(@NonNull String text, long peerId, @Nullable Integer conversationMessageId, boolean replyToMessageId, boolean ableMentions,@Nullable Forward forward) {
         this.text = text;
