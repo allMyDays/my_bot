@@ -75,7 +75,7 @@ public class UnBindCommand implements ChatCommand {
         }
         sendMessage.setText("Вы успешно сняли с %s(%s) привязку этого чата.".formatted(createMention(userToUnbind),userToUnbind==fromId
                          ? "себя"
-                         : userService.getUserNameInRequiredCase(userToUnbind, NameCase.DATIVE))
+                         : userService.getUserFullNameInRequiredCase(userToUnbind, NameCase.DATIVE))
         );
 
         vkChatClient.sendText(sendMessage);

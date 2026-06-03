@@ -28,7 +28,6 @@ import org.springframework.context.annotation.Lazy;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.Optional;
@@ -176,7 +175,7 @@ public class ShowAllMembersStatisticCommand implements ChatCommand {
                         )
         );
 
-        Map<Long, String> memberNamesMap = globalUserService.getUserNamesInRequiredCase(
+        Map<Long, String> memberNamesMap = globalUserService.getUserFullNamesInRequiredCase(
                 statResult.getMemberStatisticDtoList().stream()
                         .map(MemberStatisticDto::getUserId)
                         .collect(Collectors.toSet()),

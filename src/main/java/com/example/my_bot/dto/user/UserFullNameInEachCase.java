@@ -6,6 +6,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class UserFullNameInEachCase {
+        private long userId;
         private String nominative;     // именительный
         private String genitive;       // родительный
         private String dative;         // дательный

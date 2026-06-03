@@ -79,7 +79,7 @@ public class PromoteMemberCommand implements ChatCommand {
             return;
         }
         if(assignResult!=null){
-            String username = userService.getUserNameInRequiredCase(userToAssign, NameCase.GENITIVE);
+            String username = userService.getUserFullNameInRequiredCase(userToAssign, NameCase.GENITIVE);
 
             sendMessage.setText(
                     String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,

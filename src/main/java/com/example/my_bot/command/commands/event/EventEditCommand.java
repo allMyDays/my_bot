@@ -167,7 +167,7 @@ public class EventEditCommand implements ChatCommand {
                 Long memberToTrigger = editedEvent.getMemberToTrigger();
                 send(sendMessage,
                         "✅Вы успешно сделали событие №%d («%s») персональным для %s(%s). \n❓Теперь событие будет реагировать только на этого участника."
-                        .formatted(outerEventId, editedEvent.getType().getDescription(),createMention(memberToTrigger),globalUserService.getUserNameInRequiredCase(memberToTrigger, NameCase.GENITIVE)));
+                        .formatted(outerEventId, editedEvent.getType().getDescription(),createMention(memberToTrigger),globalUserService.getUserFullNameInRequiredCase(memberToTrigger, NameCase.GENITIVE)));
             }
             case ACTION_LIMIT -> {
                 // !редивент 1 лимитдействия 100 2 часа

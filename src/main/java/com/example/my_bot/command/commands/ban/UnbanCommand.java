@@ -14,7 +14,6 @@ import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.GlobalUserService;
-import com.example.my_bot.service.chat.ChatService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -81,7 +80,7 @@ public class UnbanCommand implements ChatCommand {
 
        sendMessage.setText("✅С %s(%s) был успешно снят бан. Теперь вам нужно самостоятельно пригласить этого пользователя в чат.".formatted(
                createMention(memberToUnban),
-               globalUserService.getUserNameInRequiredCase(memberToUnban, NameCase.GENITIVE)
+               globalUserService.getUserFullNameInRequiredCase(memberToUnban, NameCase.GENITIVE)
        ));
 
        vkChatClient.sendText(sendMessage);

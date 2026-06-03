@@ -60,7 +60,7 @@ public class UserInputResolver {
         } else {
             String userNickname = m.group(1);
             return cacheManager.getNicknameCache().get(userNickname,
-                    k -> vkChatClient.getMemberIdByNickname(userNickname));
+                    k -> vkChatClient.getMemberIdByScreenName(userNickname));
 
         }
     }

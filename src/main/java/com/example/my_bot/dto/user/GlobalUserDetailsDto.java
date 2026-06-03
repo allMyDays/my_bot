@@ -16,23 +16,15 @@ import java.util.Optional;
 @Getter
 public class GlobalUserDetailsDto {
 
-
     private long userId;
 
     private boolean isBanned;
 
     private Long boundChat;
 
-    private Instant lastFullNameUpdate;
-
     @JsonIgnore
     public Optional<Long> getOptionalBoundChat() {
         return Optional.ofNullable(boundChat);
-    }
-
-    @JsonIgnore
-    public Optional<Instant> getOptionalLastFullNameUpdate() {
-        return Optional.ofNullable(lastFullNameUpdate);
     }
 
 }

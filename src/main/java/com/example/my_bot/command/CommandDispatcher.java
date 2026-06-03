@@ -38,8 +38,6 @@ public class CommandDispatcher {
     private final MessageMapper messageMapper;
 
 
-
-
     public void dispatch(CommandMessageDto messageDto) throws ClientException, ApiException {
 
              long fromId = messageDto.getFromId();

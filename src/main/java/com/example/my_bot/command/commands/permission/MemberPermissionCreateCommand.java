@@ -108,7 +108,7 @@ public class MemberPermissionCreateCommand implements ChatCommand {
         String cmdPrefix = "⚙ " + chatPrefix;
         String userMention = createMention(targetUserId.get());
 
-        String userName = userService.getUserNameInRequiredCase(targetUserId.get(), NameCase.INSTRUMENTAL);
+        String userName = userService.getUserFullNameInRequiredCase(targetUserId.get(), NameCase.INSTRUMENTAL);
 
         appendSection(result, permissionResult.getAccepted(), cmdPrefix,
                 "✅Команды:\n", "%s\nТеперь "+(allow?"могут персонально":"никогда не могут")

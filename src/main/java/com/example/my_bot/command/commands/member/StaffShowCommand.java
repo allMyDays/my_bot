@@ -75,7 +75,7 @@ public class StaffShowCommand implements ChatCommand {
             } allStaffMembers.add(memberEntity.getUserId());
         }
 
-        Map<Long, String> memberNamesMap = globalUserService.getUserNamesInRequiredCase(allStaffMembers, NameCase.NOMINATIVE);
+        Map<Long, String> memberNamesMap = globalUserService.getUserFullNamesInRequiredCase(allStaffMembers, NameCase.NOMINATIVE);
 
         sb.append("В чате %d управляющих (из них %d сейчас отсутствует).\n\n".formatted(allStaffMembers.size(), exitedStaffMembers));
 

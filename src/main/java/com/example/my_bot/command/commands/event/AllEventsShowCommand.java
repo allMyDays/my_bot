@@ -26,13 +26,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
-import java.sql.Time;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
-import static com.example.my_bot.utils.ChatUtils.CHAT_MANAGER_ROLE_PRIORITY;
 import static com.example.my_bot.utils.TextUtils.*;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
@@ -111,7 +109,7 @@ public class AllEventsShowCommand implements ChatCommand {
             Long memberToTrigger = currentEvent.getMemberToTrigger();
             if(memberToTrigger!=null){  // личное событие
                 forRoleOrMember = "%s(%s)"
-                        .formatted(createMention(memberToTrigger), globalUserService.getUserNameInRequiredCase(memberToTrigger, NameCase.GENITIVE));
+                        .formatted(createMention(memberToTrigger), globalUserService.getUserFullNameInRequiredCase(memberToTrigger, NameCase.GENITIVE));
             }else{
                 String roleName = roleService.getRoleName(chatId, currentEvent.getRolePriority()).orElse(null);
                 forRoleOrMember = "роли %s и ниже".formatted(roleName!=null?"«"+roleName+"»":"с приоритетом "+currentEvent.getRolePriority());

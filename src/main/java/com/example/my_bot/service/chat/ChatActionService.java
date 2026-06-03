@@ -45,7 +45,7 @@ public class ChatActionService {
 
     private final MessageMapper messageMapper;
 
-    private static final long AUTO_SYNC_INTERVAL_MINUTES = 60;
+    private static final long AUTO_SYNC_INTERVAL_MINUTES = 90;
 
 
 
@@ -77,9 +77,8 @@ public class ChatActionService {
                 memberService.setPresenceTypeToMember(chatId, memberId, presenceType, true);
             }
 
-           }
-
         }
+    }
 
     public void checkLastChatSynchronizationAndExecute(long chatId) {
 

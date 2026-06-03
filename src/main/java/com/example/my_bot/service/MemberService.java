@@ -5,6 +5,7 @@ import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.member.AssignMemberResult;
 import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.dto.RoleDto;
+import com.example.my_bot.dto.user.UserFullNameInEachCase;
 import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.enumeration.member.MemberPresenceType;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
@@ -12,13 +13,14 @@ import com.example.my_bot.exception.member.MemberAccessDeniedException;
 import com.example.my_bot.exception.member.MemberAlreadyHasThisRoleException;
 import com.example.my_bot.exception.member.UserNeverBeenInChatException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
+import com.example.my_bot.mapper.FullNameMapper;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.repository.MemberRepository;
 import com.example.my_bot.service.chat.ChatService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ConversationMember;
-import jakarta.annotation.Nullable;
+import com.vk.api.sdk.objects.messages.responses.GetConversationMembersResponse;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +28,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,18 +46,15 @@ import static com.example.my_bot.utils.ChatUtils.CHAT_MANAGER_ROLE_PRIORITY;
 public class MemberService {
 
     private final MemberRepository memberRepository;
-
     private final VkChatClient vkChatClient;
-
     private final MemberMapper memberMapper;
-
     private final ChatService chatService;
-
     private final CaffeineCacheManager cacheManager;
-
-    private RoleService roleService;
-
+    private final FullNameMapper fullNameMapper;
+    private final RoleService roleService;
+    private final GlobalUserService globalUserService;
     private final long groupId;
+
 
     public MemberService(
             MemberRepository memberRepository,
@@ -64,27 +62,31 @@ public class MemberService {
             MemberMapper memberMapper,
             ChatService chatService,
             CaffeineCacheManager cacheManager,
+            FullNameMapper fullNameMapper,
+            @Lazy RoleService roleService,
+            @Lazy GlobalUserService globalUserService,
             @Value("${vk.group.id}") long groupId) {
         this.memberRepository = memberRepository;
         this.vkChatClient = vkChatClient;
         this.memberMapper = memberMapper;
         this.chatService = chatService;
         this.cacheManager = cacheManager;
+        this.fullNameMapper = fullNameMapper;
+        this.roleService = roleService;
+        this.globalUserService = globalUserService;
         this.groupId = groupId;
     }
-
-
-    @Autowired
-    @Lazy
-    public void setRoleService(RoleService roleService) {
-        this.roleService = roleService;
-    }
-
 
     @Transactional
     public void synchronizeChatMembers(long chatId) throws ClientException, ApiException{
 
-        List<ConversationMember> currentChatMembers = vkChatClient.getAllConversationMembers(chatId);
+        GetConversationMembersResponse response= vkChatClient.getAllConversationMembersWithAllNameCases(chatId);
+
+        List<UserFullNameInEachCase> userFullNames = fullNameMapper.mapProfileNames(response.getProfiles());
+        userFullNames.addAll(fullNameMapper.mapGroupNames(response.getGroups()));
+        globalUserService.putFullNamesToTheDataBase(userFullNames);
+
+        List<ConversationMember> currentChatMembers = response.getItems();
         Set<Long> vkUserIds = currentChatMembers.stream()
                 .map(ConversationMember::getMemberId)
                 .collect(Collectors.toSet());
@@ -97,11 +99,11 @@ public class MemberService {
         List<MemberEntity> newMembers = new ArrayList<>();
         Instant now = Instant.now();
 
-        for (ConversationMember vkMember : currentChatMembers) {
-            long memberId = vkMember.getMemberId();
-            MemberEntity entity = currentChatMemberMap.get(memberId);
+        for(ConversationMember vkMember: currentChatMembers){
+            long memberId= vkMember.getMemberId();
+            MemberEntity entity= currentChatMemberMap.get(memberId);
 
-            if (entity == null){
+            if(entity== null){
                 entity = new MemberEntity();
                 entity.setUserId(memberId);
                 entity.setChatId(chatId);

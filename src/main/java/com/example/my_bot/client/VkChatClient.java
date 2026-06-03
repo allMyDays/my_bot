@@ -15,7 +15,6 @@ import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.base.BoolInt;
 import com.vk.api.sdk.objects.base.NameCase;
 import com.vk.api.sdk.objects.base.responses.BoolResponse;
-import com.vk.api.sdk.objects.messages.ConversationMember;
 import com.vk.api.sdk.objects.messages.Forward;
 import com.vk.api.sdk.objects.messages.responses.DeleteFullResponse;
 import com.vk.api.sdk.objects.messages.responses.GetByConversationMessageIdResponse;
@@ -37,6 +36,7 @@ import java.util.*;
 import static com.example.my_bot.enumeration.member.MemberPresenceType.KICKED;
 import static com.example.my_bot.utils.ChatUtils.*;
 import static com.example.my_bot.vk.enumeration.CommunityErrorCode.NO_GROUP_MEMBERS_ACCESS;
+import static com.vk.api.sdk.objects.users.Fields.*;
 
 @Component
 @Slf4j
@@ -124,13 +124,16 @@ public class VkChatClient{
 
     }
 
-    public List<ConversationMember> getAllConversationMembers(long chatId) throws ClientException, ApiException {
+    public GetConversationMembersResponse getAllConversationMembersWithAllNameCases(long chatId) throws ClientException, ApiException {
 
-        GetConversationMembersResponse membersResponse =
-                vkApiClient.messages()
+        return vkApiClient.messages()
                         .getConversationMembers(groupActor, convertToPeerId(chatId))
+                        .fields(
+                                FIRST_NAME_NOM, FIRST_NAME_GEN, FIRST_NAME_DAT, FIRST_NAME_ACC, FIRST_NAME_INS, FIRST_NAME_ABL,
+                                LAST_NAME_NOM, LAST_NAME_GEN, LAST_NAME_DAT, LAST_NAME_ACC, LAST_NAME_INS, LAST_NAME_ABL
+                        )
                         .execute();
-        return membersResponse.getItems();
+
 
     }
     public void changeChatTitle(long chatId, String newTitle) throws ClientException, ApiException {
@@ -140,7 +143,7 @@ public class VkChatClient{
                 .execute();
     }
 
-    public Optional<Long> getMemberIdByNickname(@NonNull String nickName){
+    public Optional<Long> getMemberIdByScreenName(@NonNull String nickName){
 
         ResolveScreenNameResponse response = null;
         try {

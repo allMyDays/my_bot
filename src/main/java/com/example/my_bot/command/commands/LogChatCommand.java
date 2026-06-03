@@ -17,20 +17,17 @@ import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MessageLogService;
 import com.example.my_bot.service.chat.ChatService;
-import com.example.my_bot.utils.ChatUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.Forward;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -187,7 +184,7 @@ public class LogChatCommand implements ChatCommand {
            sendMessage.setPeerId(convertToPeerId(targetChat.get().getChatId()));
            sendMessage.setText(
                    "%s(%s) установил логчат для данной беседы. Если хотите удалить логчат, используйте команду «%c%s %s»."
-                           .formatted(createMention(fromId),globalUserService.getUserNameInRequiredCase(fromId, NameCase.NOMINATIVE),
+                           .formatted(createMention(fromId),globalUserService.getUserFullNameInRequiredCase(fromId, NameCase.NOMINATIVE),
                                    DEFAULT_CHAT_PREFIX,logChatMainCommand,REMOVE_ARGUMENT)
            );
            vkChatClient.sendText(sendMessage);

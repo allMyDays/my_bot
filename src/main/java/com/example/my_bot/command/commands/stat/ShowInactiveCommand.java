@@ -31,7 +31,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.MessageConstant.INVALID_TIME_PERIOD_MESSAGE;
-import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.utils.TextUtils.createMention;
 import static com.example.my_bot.utils.TimeUtils.*;
@@ -106,7 +105,7 @@ public class ShowInactiveCommand implements ChatCommand {
                         )
         );
 
-        Map<Long, String> memberNamesMap = globalUserService.getUserNamesInRequiredCase(
+        Map<Long, String> memberNamesMap = globalUserService.getUserFullNamesInRequiredCase(
                 membersResult.getInactiveMembers().stream()
                         .map(InactiveMemberDto::getUserId)
                         .collect(Collectors.toSet()),

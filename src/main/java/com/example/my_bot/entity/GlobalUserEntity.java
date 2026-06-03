@@ -38,9 +38,6 @@ public class GlobalUserEntity {
 
     private String fullNameInAbl;
 
-    private Instant lastFullNameUpdate;
-
-
 
     public GlobalUserEntity(Long userId) {
         this.userId = userId;
