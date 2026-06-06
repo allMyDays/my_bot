@@ -12,6 +12,7 @@ import com.example.my_bot.dto.member.inactive.InactiveMembersResult;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
+import com.example.my_bot.exception.message.MessageException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MessageLogService;
@@ -86,7 +87,7 @@ public class ShowInactiveCommand implements ChatCommand {
 
         try{
             membersResult= messageLogService.findCurrentInactiveChatMembers(chatId, optionalPeriodSec.get(), true, null,null);
-        }catch(MemberException e){
+        }catch(MemberException | MessageException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return;

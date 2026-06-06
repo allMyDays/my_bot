@@ -16,6 +16,7 @@ import com.example.my_bot.repository.RoleRateLimitRepository;
 import com.example.my_bot.utils.TextUtils;
 import com.google.common.collect.ImmutableMap;
 import jakarta.transaction.Transactional;
+import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +50,7 @@ public class RoleRateLimitService {
 
     private final static int MIN_LIMIT_PERIOD_IN_SECONDS = 60;
 
+    @Getter
     private final static int MAX_LIMIT_PERIOD_IN_SECONDS = 86_400;
 
     private final static int MIN_LIMIT_USAGE = 1;
@@ -61,7 +63,6 @@ public class RoleRateLimitService {
     public void setCommandRegistry(CommandRegistry commandRegistry) {
         this.commandRegistry = commandRegistry;
     }
-
 
     @Transactional
     public RoleRateLimitEntity createCommandRateLimit(long chatId, long fromId, @NonNull String userCommand, int rolePriority, int maxUsage, long periodInSeconds, boolean isPersonal){

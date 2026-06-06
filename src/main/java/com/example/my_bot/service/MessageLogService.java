@@ -5,16 +5,17 @@ import com.example.my_bot.dto.member.inactive.InactiveMembersResult;
 import com.example.my_bot.dto.member.stat.ChatMembersStatisticResult;
 import com.example.my_bot.dto.member.stat.MemberStatisticDto;
 import com.example.my_bot.entity.MessageLogEntity;
-import com.example.my_bot.exception.member.InactiveMembersIntervalOutOfBoundsException;
-import com.example.my_bot.exception.member.MemberStatisticIntervalOutOfBoundsException;
+import com.example.my_bot.exception.message.FindingMessageIntervalOutOfBoundsException;
+import com.example.my_bot.exception.message.InactiveMembersStatisticIntervalOutOfBoundsException;
+import com.example.my_bot.exception.message.MemberStatisticIntervalOutOfBoundsException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.repository.MessageLogRepository;
 import com.example.my_bot.vk.VkAction;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -49,6 +50,8 @@ public class MessageLogService{
     private final static int STATISTIC_MIN_PERIOD_SEC = INTERVAL_BETWEEN_SAVING_MESSAGES_INTO_DATA_BASE_SEC;
     private final static int STATISTIC_MAX_PERIOD_SEC = 630_720_000;
 
+    private final static long FINDING_MESSAGES_MAX_TIME_PERIOD_SEC = 630_720_000;
+
     public MessageLogService(MemberService memberService, MessageLogRepository messageRepository, RoleService roleService, @Value("${vk.group.id}") long theBotId){
         this.memberService = memberService;
         this.messageRepository = messageRepository;
@@ -80,7 +83,7 @@ public class MessageLogService{
 
         Set<MessageLogEntity> collectedMessages = new HashSet<>();
 
-        for(Long chatId : temporaryMessagesCache.keySet()) {
+        for(Long chatId: temporaryMessagesCache.keySet()) {
             Set<MessageLogEntity> oldSet = temporaryMessagesCache.replace(chatId, ConcurrentHashMap.newKeySet());
             if(oldSet!=null){
                 collectedMessages.addAll(oldSet);
@@ -122,13 +125,13 @@ public class MessageLogService{
         loadRequiredChatMessagesIntoTheDatabase(logChatId);
 
         Pageable limit = PageRequest.of(0, msgQuantity);
-        return messageRepository.findLastNUndeletedConversationMessageIds(logChatId, -theBotId,true,limit);
+        return messageRepository.findLastNUndeletedMemberMessageIds(logChatId, -theBotId,true,limit);
     }
 
     public InactiveMembersResult findCurrentInactiveChatMembers(long chatId, long timePeriodSec, boolean sort, @Nullable Integer roleLessThan, @Nullable Integer memberLimit){
 
         if(timePeriodSec<INACTIVE_MEMBERS_MIN_PERIOD_SEC||timePeriodSec>INACTIVE_MEMBERS_MAX_PERIOD_SEC){
-            throw new InactiveMembersIntervalOutOfBoundsException(INACTIVE_MEMBERS_MIN_PERIOD_SEC, INACTIVE_MEMBERS_MAX_PERIOD_SEC);
+            throw new InactiveMembersStatisticIntervalOutOfBoundsException(INACTIVE_MEMBERS_MIN_PERIOD_SEC, INACTIVE_MEMBERS_MAX_PERIOD_SEC);
         }
         Instant thresholdDate = Instant.now().minusSeconds(timePeriodSec);
         InactiveMembersResult resultToReturn = new InactiveMembersResult();
@@ -209,6 +212,41 @@ public class MessageLogService{
 
         return result;
     }
+
+    public Page<Integer> findNotDeletedMessageIdsOfNotAChatAdminOwner(long chatId, long memberId, long timePeriodSec, int messageLimit){
+        if(timePeriodSec>FINDING_MESSAGES_MAX_TIME_PERIOD_SEC){
+            throw new FindingMessageIntervalOutOfBoundsException();
+        }
+        if(memberId!=-theBotId&&memberService.isChatAdmin(chatId, memberId)) return Page.empty();
+        loadRequiredChatMessagesIntoTheDatabase(chatId);
+
+        Instant after = Instant.now().minusSeconds(timePeriodSec<=0?1:timePeriodSec);
+        Pageable limit = PageRequest.of(0, messageLimit<=0?1:messageLimit);
+        return messageRepository.findFreshNotDeletedMemberMessageIds(chatId, memberId, after, limit);
+    }
+
+    public Page<Integer> findNotDeletedMessageIdsOfNotChatAdminOwners(long chatId, long timePeriodSec, int messageLimit){
+        if(timePeriodSec>FINDING_MESSAGES_MAX_TIME_PERIOD_SEC){
+            throw new FindingMessageIntervalOutOfBoundsException();
+        }
+        loadRequiredChatMessagesIntoTheDatabase(chatId);
+
+        Instant after = Instant.now().minusSeconds(timePeriodSec<=0?1:timePeriodSec);
+        Pageable limit = PageRequest.of(0, messageLimit<=0?1:messageLimit);
+        List<Long> chatAdmins = memberService.getAllChatAdmins(chatId).stream()
+                .filter(a->a!=-theBotId)
+                .toList();
+
+        return messageRepository.findFreshNotDeletedMessageIdsOfOwnersNotIn(chatId, chatAdmins, after, limit);
+    }
+
+    public void markMessagesAsDeleted(long chatId, @NonNull Set<Integer> conversationMessageIds){
+        loadRequiredChatMessagesIntoTheDatabase(chatId);
+        messageRepository.markMessagesAsDeleted(chatId, conversationMessageIds);
+    }
+
+
+
 
 
 

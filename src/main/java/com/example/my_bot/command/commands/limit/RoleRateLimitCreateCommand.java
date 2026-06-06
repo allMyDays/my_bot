@@ -94,7 +94,7 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
             return;
         }
         String result = "✅Успешно добавлен новый лимит в %d использований за %s для команды «%s», воздействующий только на роль «%s»."
-                .formatted(createdLimit.getMaxUsage(), TimeUtils.formatDurationFromSeconds(createdLimit.getPeriodInSeconds(),true),
+                .formatted(createdLimit.getMaxUsage(), TimeUtils.formatDurationFromSeconds(createdLimit.getTimePeriodSec(),true),
                         createdLimit.getCommandName(), roleService.getRoleName(chatId,createdLimit.getRolePriority()).orElse("unknown"));
 
         if(createdLimit.isPersonal()){

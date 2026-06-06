@@ -8,14 +8,15 @@ import java.util.Arrays;
 public class ChatUtils {
 
     public final static long PEER_ID_CHAT_OFFSET = 2_000_000_000L;
-
     public final static int MAX_MESSAGE_LENGTH = 4096;
-
     public final static int FORWARDED_MESSAGES_MAX_LIMIT = 100;
+    public final static int MAX_CMIDS_IN_ONE_DELETION_METHOD_CALL = 100;
+    public final static int MAX_QUERIES_IN_ONE_BATCH = 25;
 
     public final static char DEFAULT_CHAT_PREFIX = '!';
-
     public final static int CHAT_MANAGER_ROLE_PRIORITY = 1_000;
+
+
 
     private static final String CHAT_CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final int CHAT_CODE_LENGTH = 10;

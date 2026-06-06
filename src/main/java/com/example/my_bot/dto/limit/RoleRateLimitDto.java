@@ -22,7 +22,7 @@ public class RoleRateLimitDto {
 
     private int maxUsage;
 
-    private int periodInSeconds;
+    private int timePeriodSec;
 
 
 

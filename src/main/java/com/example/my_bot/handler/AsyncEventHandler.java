@@ -113,7 +113,7 @@ public class AsyncEventHandler {
         }catch (Exception e) {
             log.error("Произошла ошибка: ",e);
             try {
-                vkChatClient.sendText(messageMapper.toSendMessageDto(UNKNOWN_ERROR_MESSAGE, convertToPeerId(chatId)));
+                vkChatClient.sendText(messageMapper.toSendMessageDto(UNKNOWN_ERROR_MESSAGE, peerId));
             } catch (ClientException | ApiException e2) {
                 log.error("Ошибка при попытке отправить сообщение об ошибке в диалог c peerId {}: ",peerId,e2);
 

@@ -6,6 +6,7 @@ import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.MessageLogService;
 import com.example.my_bot.vk.VkSendResponse;
 import com.google.gson.*;
+import com.google.gson.reflect.TypeToken;
 import com.vk.api.sdk.client.AbstractQueryBuilder;
 import com.vk.api.sdk.client.VkApiClient;
 import com.vk.api.sdk.client.actors.GroupActor;
@@ -13,8 +14,10 @@ import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ApiExtendedException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.base.BoolInt;
+import com.vk.api.sdk.objects.base.MessageError;
 import com.vk.api.sdk.objects.base.NameCase;
 import com.vk.api.sdk.objects.base.responses.BoolResponse;
+import com.vk.api.sdk.objects.messages.DeleteFullResponseItem;
 import com.vk.api.sdk.objects.messages.Forward;
 import com.vk.api.sdk.objects.messages.responses.DeleteFullResponse;
 import com.vk.api.sdk.objects.messages.responses.GetByConversationMessageIdResponse;
@@ -23,6 +26,7 @@ import com.vk.api.sdk.objects.messages.responses.IsMessagesFromGroupAllowedRespo
 import com.vk.api.sdk.objects.utils.DomainResolvedType;
 import com.vk.api.sdk.objects.utils.responses.ResolveScreenNameResponse;
 import com.vk.api.sdk.queries.execute.ExecuteBatchQuery;
+import com.vk.api.sdk.queries.messages.MessagesDeleteQueryWithFull;
 import com.vk.api.sdk.queries.messages.MessagesRemoveChatUserQuery;
 import com.vk.api.sdk.queries.messages.MessagesSendQueryWithDeprecated;
 import lombok.NonNull;
@@ -31,7 +35,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+import java.lang.reflect.Type;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.member.MemberPresenceType.KICKED;
 import static com.example.my_bot.utils.ChatUtils.*;
@@ -237,45 +243,6 @@ public class VkChatClient{
         return kickedMembers;
     }
 
-
-    public UserFullNameInEachCase getAllNameCases(long userId) throws ClientException, ApiException {
-        String stringUserId = String.valueOf(userId);
-        ExecuteBatchQuery batch = vkApiClient.execute().batch(groupActor,
-                vkApiClient.users().get(groupActor).userIds(stringUserId).nameCase(NameCase.ACCUSATIVE),
-                vkApiClient.users().get(groupActor).userIds(stringUserId).nameCase(NameCase.DATIVE),
-                vkApiClient.users().get(groupActor).userIds(stringUserId).nameCase(NameCase.GENITIVE),
-                vkApiClient.users().get(groupActor).userIds(stringUserId).nameCase(NameCase.INSTRUMENTAL),
-                vkApiClient.users().get(groupActor).userIds(stringUserId).nameCase(NameCase.NOMINATIVE),
-                vkApiClient.users().get(groupActor).userIds(stringUserId).nameCase(NameCase.PREPOSITIONAL)
-        );
-        JsonElement response = batch.execute();
-        JsonArray jsonArray = response.getAsJsonArray();
-
-        UserFullNameInEachCase result = new UserFullNameInEachCase();
-
-        for (int i = 0; i < jsonArray.size(); i++) {
-            JsonElement element = jsonArray.get(i);
-            if (!element.isJsonArray()) continue;
-
-            JsonArray usersArray = element.getAsJsonArray();
-            if (usersArray.isEmpty()) continue;
-
-            JsonObject user = usersArray.get(0).getAsJsonObject();
-            String firstName = user.get("first_name").getAsString();
-            String lastName = user.get("last_name").getAsString();
-            String fullName = firstName + " " + lastName;
-
-            switch (i) {
-                case 0: result.setAccusative(fullName); break;
-                case 1: result.setDative(fullName); break;
-                case 2: result.setGenitive(fullName); break;
-                case 3: result.setInstrumental(fullName); break;
-                case 4: result.setNominative(fullName); break;
-                case 5: result.setPrepositional(fullName); break;
-            }
-        }
-        return result;
-    }
     public boolean canTheBotWriteToUser(long userId) {
         try {
             IsMessagesFromGroupAllowedResponse response = vkApiClient.messages()
@@ -314,17 +281,27 @@ public class VkChatClient{
             return false;
         }
     }
-    public void deleteOneMessage(long peerId, int conversationMessageId) throws ClientException, ApiException {
+    public Set<Integer> deleteChatMessages(long chatId, @NonNull List<Integer> conversationMessageIds) throws ClientException, ApiException{
+            if(conversationMessageIds.isEmpty()) return Collections.emptySet();
+
             List<DeleteFullResponse> response = vkApiClient.messages()
                     .deleteFull(groupActor)
-                    .peerId(peerId)
-                    .cmids(conversationMessageId)
+                    .peerId(convertToPeerId(chatId))
+                    .cmids(conversationMessageIds)
                     .deleteForAll(true)
                     .execute();
 
-            if (response != null && !response.isEmpty()) {
-                log.warn("deleteFull method returned null or empty List<DeleteFullResponse>");
+            if(response==null){
+                log.warn("vk method deleteFull returned response is null");
+                return Collections.emptySet();
             }
+            Set<Integer> deletedMessages = response.stream()
+                    .filter(DeleteFullResponseItem::isResponse)
+                    .map(DeleteFullResponseItem::getConversationMessageId)
+                    .collect(Collectors.toSet());
+
+            messageLogService.markMessagesAsDeleted(chatId, deletedMessages);
+            return deletedMessages;
         }
 
      public void getFullConversationMessage(long chatId, int conversationMessageId) throws ClientException, ApiException {
@@ -334,5 +311,53 @@ public class VkChatClient{
                 .execute();
 
      }
+
+    public Set<Integer> batchDeleteMessages(long chatId, @NonNull List<Integer> messagesToDelete) throws ApiException, ClientException {
+        if (messagesToDelete.isEmpty()) return Collections.emptySet();
+
+        List<MessagesDeleteQueryWithFull> deleteQueries = new ArrayList<>();
+
+        List<List<Integer>> cmidBatches = partitionList(messagesToDelete, MAX_CMIDS_IN_ONE_DELETION_METHOD_CALL);
+
+        for(List<Integer> batchCmids : cmidBatches){
+            MessagesDeleteQueryWithFull query = vkApiClient.messages()
+                    .deleteFull(groupActor)
+                    .peerId(convertToPeerId(chatId))
+                    .cmids(batchCmids)
+                    .deleteForAll(true);
+            deleteQueries.add(query);
+
+            if(deleteQueries.size()>=MAX_QUERIES_IN_ONE_BATCH) break;
+        }
+
+        ExecuteBatchQuery batchQuery = vkApiClient.execute().batch(groupActor, deleteQueries.toArray(new MessagesDeleteQueryWithFull[0]));
+
+        JsonElement batchResponse = batchQuery.execute();
+        log.info("chat {}: batch deletion messages execute result: {}",chatId, batchResponse);
+
+        Type type = new TypeToken<List<List<DeleteFullResponse>>>(){}.getType();
+        List<List<DeleteFullResponse>> nested = GSON.fromJson(batchResponse, type);
+        List<DeleteFullResponse> flat = nested.stream().flatMap(List::stream).toList();
+
+        Set<Integer> justDeletedByTheBot = flat.stream()
+                .filter(DeleteFullResponseItem::isResponse)
+                .map(DeleteFullResponseItem::getConversationMessageId)
+                .collect(Collectors.toSet());
+
+        messageLogService.markMessagesAsDeleted(chatId, justDeletedByTheBot);
+        return justDeletedByTheBot;
+
+    }
+
+    private <T> List<List<T>> partitionList(List<T> list, int size) {
+        List<List<T>> partitions = new ArrayList<>();
+        for (int i = 0; i < list.size(); i += size) {
+            partitions.add(list.subList(i, Math.min(i + size, list.size())));
+        }
+        return partitions;
+    }
+
+
+
 
 }

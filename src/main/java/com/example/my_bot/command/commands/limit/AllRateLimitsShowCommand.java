@@ -57,7 +57,7 @@ public class AllRateLimitsShowCommand implements ChatCommand {
                     .formatted(
                             limit.getCommandName(),
                             limit.getMaxUsage(),
-                            TimeUtils.formatDurationFromSeconds(limit.getPeriodInSeconds(),true),
+                            TimeUtils.formatDurationFromSeconds(limit.getTimePeriodSec(),true),
                             roleName==null?"с приоритетом "+limit.getRolePriority():"«%s»".formatted(roleName),
                             limit.isPersonal()?"Считается отдельно для каждого участника.":"Лимит общий для всех участников с этой ролью."
                     )

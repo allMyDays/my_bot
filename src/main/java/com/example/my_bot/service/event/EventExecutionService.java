@@ -540,7 +540,7 @@ public class EventExecutionService {
 
        }if(eventDto.isDelete()&&vkType!=ACTION/*&&!memberService.isChatAdmin(chatId,fromId)*/){
                try {
-                   vkChatClient.deleteOneMessage(convertToPeerId(chatId), chatMessageId);
+                   vkChatClient.batchDeleteMessages(chatId, List.of(chatMessageId));
                } catch (Exception e) {
                    log.warn("chat {} error: could not delete not-chat-admin message {}",chatId,chatMessageId, e);
                }

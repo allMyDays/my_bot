@@ -1,10 +1,12 @@
-package com.example.my_bot.exception.member;
+package com.example.my_bot.exception.message;
 
+import com.example.my_bot.exception.member.MemberException;
+import com.vk.api.sdk.objects.messages.Message;
 import lombok.NonNull;
 
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
-public class MemberStatisticIntervalOutOfBoundsException extends MemberException {
+public class MemberStatisticIntervalOutOfBoundsException extends MessageException {
 
 
     public MemberStatisticIntervalOutOfBoundsException(int min, int max){

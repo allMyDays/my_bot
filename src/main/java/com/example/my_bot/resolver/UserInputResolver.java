@@ -36,7 +36,7 @@ public class UserInputResolver {
         userInput=userInput.toLowerCase().trim();
 
         Matcher matcher = MEMBER_MENTION.matcher(userInput);
-        if (matcher.find()) {
+        if (matcher.find()){
             String type = matcher.group(1); // "id" или "club"
             if(!isValidLong(matcher.group(2))){
                 return Optional.empty();
@@ -69,11 +69,8 @@ public class UserInputResolver {
 
         ParseMemberInputResult result = new ParseMemberInputResult();
         Long targetMember = null;
-        if(messageDto.getReplyMessageOwnerId().isPresent()){
-            targetMember = messageDto.getReplyMessageOwnerId().get();
-            result.setFwdMessage(true);
-        }else if(!messageDto.getFwdMessageOwnerIds().isEmpty()){
-            targetMember = messageDto.getFwdMessageOwnerIds().get(0);
+        if(!messageDto.getReplyOrFwdMessages().isEmpty()){
+            targetMember = messageDto.getReplyOrFwdMessages().get(0).getFromId();
             result.setFwdMessage(true);
         }else{
             if(messageDto.getFirstRowArguments().length>=(userIndex+1)){

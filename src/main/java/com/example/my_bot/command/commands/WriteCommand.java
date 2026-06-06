@@ -26,7 +26,7 @@ import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 public class WriteCommand implements ChatCommand {
 
     @Getter
-    private final CommandCooldown cooldown = new CommandCooldown(50,60*2);
+    private final CommandCooldown cooldown = new CommandCooldown(5000,60*2);
 
     private VkChatClient vkChatClient;
 

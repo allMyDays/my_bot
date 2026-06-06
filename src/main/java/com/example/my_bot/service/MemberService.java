@@ -133,18 +133,15 @@ public class MemberService {
         }
         chatService.setLastSyncToNow(chatId);
         invalidateMemberCache(chatId);
-
     }
 
     public int getMemberRolePriority(long chatId, long userId){
         Optional<MemberDto> member = getCachedMemberInfo(chatId, userId);
         return member.map(MemberDto::getRolePriority).orElse(MEMBER.getRolePriority());
-
     }
     public Optional<Instant> getFirstAppearance(long chatId, long userId){
         Optional<MemberDto> member = getCachedMemberInfo(chatId, userId);
         return member.map(MemberDto::getFirstAppearance);
-
     }
 
     @Transactional
@@ -157,7 +154,6 @@ public class MemberService {
         List<Long> memberIds = memberRepository.updateMembersRoleAndReturnIds(chatId, oldRolePriority, newRolePriority);
 
         changeCachedMembersRole(chatId, memberIds, newRolePriority);
-
     }
 
     @Transactional
@@ -209,7 +205,6 @@ public class MemberService {
         }if(!toSave.isEmpty()){
             memberRepository.saveAll(toSave);
         }
-
         if(!toPutInCache.isEmpty()){
             memberRepository.flush();
             putMembersToCache(chatId, toPutInCache);
@@ -287,7 +282,6 @@ public class MemberService {
                 .orElseThrow(RoleNotFoundException::new);
 
         return assignNewRoleToMember(chatId, userToAssign, roleToAssign.getRolePriority(), fromId);
-
     }
 
     public void checkMemberInteractionAbility(long chatId, long fromId, long userToInteract){
@@ -306,13 +300,16 @@ public class MemberService {
         return member.map(MemberDto::isChatAdmin).orElse(false);
     }
 
+    public List<Long> getAllChatAdmins(long chatId){
+        return memberRepository.findAllChatAdmins(chatId);
+    }
+
     public Optional<MemberDto> getCachedMemberInfo(long chatId, long memberId){
 
         ConcurrentHashMap<Long, Optional<MemberDto>> members = cacheManager.getActiveMembersCache().get(chatId,k->new ConcurrentHashMap<>());
         return members.computeIfAbsent(memberId, key-> {
            Optional<MemberEntity> member = memberRepository.findByChatIdAndUserId(chatId, memberId);
            return member.map(memberMapper::toMemberDto);
-
         });
     }
     private void invalidateMemberCache(long chatId){
@@ -332,8 +329,8 @@ public class MemberService {
         members.put(memberDto.getUserId(), Optional.of(memberDto));
 
         return memberDto;
-
     }
+
     private void putMembersToCache(long chatId, @NonNull List<MemberEntity> membersToPut){
 
         ConcurrentHashMap<Long, Optional<MemberDto>> memberCache = cacheManager.getActiveMembersCache()

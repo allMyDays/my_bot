@@ -12,6 +12,7 @@ import com.example.my_bot.dto.member.inactive.InactiveMembersResult;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.exception.member.MemberException;
+import com.example.my_bot.exception.message.MessageException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.MessageLogService;
@@ -86,7 +87,7 @@ public class KickInactiveCommand implements ChatCommand {
         InactiveMembersResult membersResult;
         try{
             membersResult= messageLogService.findCurrentInactiveChatMembers(chatId, periodSec,false, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(),MEMBERS_LIMIT_AT_ONE_USAGE);
-        }catch(MemberException e){
+        }catch(MemberException | MessageException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return;

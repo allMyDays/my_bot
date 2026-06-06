@@ -128,6 +128,9 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
             @Param("thresholdDate") Instant thresholdDate
     );
 
+    @Query("SELECT m.userId FROM MemberEntity m WHERE m.chatId = :chatId AND m.isChatAdmin = true")
+    List<Long> findAllChatAdmins(@Param("chatId") long chatId);
+
 
 
 

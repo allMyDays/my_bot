@@ -1,5 +1,6 @@
 package com.example.my_bot.dto.command;
 
+import com.vk.api.sdk.objects.messages.ForeignMessage;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,9 +26,8 @@ public class CommandMessageDto{
     @Getter
     private long fromId;
 
-    private Long replyMessageOwnerId;
-
-    private List<Long> fwdMessagesOwnerIds = new ArrayList<>();
+    @Getter
+    private List<ForeignMessage> replyOrFwdMessages=new ArrayList<>();
 
     @Getter
     private String[] firstRowArguments = new String[0];
@@ -49,16 +49,7 @@ public class CommandMessageDto{
     @Getter
     private boolean eventOrTimerMode = false;
     
-    
 
-
-    public Optional<Long> getReplyMessageOwnerId() {
-        return Optional.ofNullable(replyMessageOwnerId);
-    }
-
-    public List<Long> getFwdMessageOwnerIds() {
-        return fwdMessagesOwnerIds;
-    }
 
     public Optional<String> getUserText() {
         return Optional.ofNullable(userText);
@@ -68,12 +59,8 @@ public class CommandMessageDto{
         return userText !=null&&!userText.trim().isEmpty();
     }
 
-    public boolean hasReplyMessage(){
-        return replyMessageOwnerId !=null;
-    }
-    public boolean hasFwdMessages(){
-        return !fwdMessagesOwnerIds.isEmpty();
-    }
+
+
 
     public Optional<String> getCommand() {
         if(command==null||command.trim().isEmpty()){

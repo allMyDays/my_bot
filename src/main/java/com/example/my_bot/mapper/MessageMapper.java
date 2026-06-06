@@ -11,6 +11,8 @@ import lombok.NonNull;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.util.List;
+
 @Mapper(componentModel = "spring")
 public abstract class MessageMapper {
 
@@ -21,13 +23,9 @@ public abstract class MessageMapper {
         CommandMessageDto commandMessageDto = toCommandMessageDto(chatId, message.getFromId(), message.getText(), message.getConversationMessageId(),replyToMessageId,false);
         commandMessageDto.setPeerId(message.getPeerId());
         if(message.getReplyMessage()!=null){
-            commandMessageDto.setReplyMessageOwnerId(message.getReplyMessage().getFromId());
-        }if(message.getFwdMessages()!=null){
-            commandMessageDto.setFwdMessagesOwnerIds(
-                    message.getFwdMessages().stream()
-                     .map(ForeignMessage::getFromId)
-                     .toList()
-            );
+            commandMessageDto.setReplyOrFwdMessages(List.of(message.getReplyMessage()));
+        }else if(message.getFwdMessages()!=null){
+            commandMessageDto.setReplyOrFwdMessages(message.getFwdMessages());
         } return commandMessageDto;
 
     }

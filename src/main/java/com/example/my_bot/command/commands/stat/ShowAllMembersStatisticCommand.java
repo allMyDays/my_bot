@@ -12,6 +12,7 @@ import com.example.my_bot.dto.member.stat.MemberStatisticDto;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
+import com.example.my_bot.exception.message.MessageException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MessageLogService;
@@ -129,7 +130,7 @@ public class ShowAllMembersStatisticCommand implements ChatCommand {
             }
             try{
                 statResult = messageLogService.getAllChatMembersStatForATimePeriod(chatId, startInstant, endInstant, MEMBERS_LIMIT_AT_ONE_USAGE);
-            }catch(MemberException e){
+            }catch(MemberException | MessageException e){
                 sendMessage.setText(e.getMessage());
                 vkChatClient.sendText(sendMessage);
                 return;
@@ -154,7 +155,7 @@ public class ShowAllMembersStatisticCommand implements ChatCommand {
         }
         try{
             statResult= messageLogService.getAllChatMembersStatForATimePeriod(chatId, optionalPeriodSec.get(), MEMBERS_LIMIT_AT_ONE_USAGE);
-        }catch(MemberException e){
+        }catch(MemberException | MessageException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return;

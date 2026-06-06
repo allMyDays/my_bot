@@ -40,7 +40,7 @@ import static com.example.my_bot.utils.TextUtils.createMention;
 public class BanCommand implements ChatCommand {
 
     @Getter
-    private final CommandCooldown cooldown = new CommandCooldown(20,60);
+    private final CommandCooldown cooldown = new CommandCooldown(7,60);
 
     private final MessageMapper messageMapper;
 

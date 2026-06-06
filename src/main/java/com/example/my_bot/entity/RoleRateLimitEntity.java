@@ -36,14 +36,14 @@ public class RoleRateLimitEntity {
     private int maxUsage;
 
     @Column(nullable = false)
-    private int periodInSeconds;
+    private int timePeriodSec;
 
-    public RoleRateLimitEntity(Long chatId, String commandName, Integer rolePriority, boolean isPersonal, int maxUsage, int periodInSeconds) {
+    public RoleRateLimitEntity(Long chatId, String commandName, Integer rolePriority, boolean isPersonal, int maxUsage, int timePeriodSec) {
         this.chatId = chatId;
         this.commandName = commandName;
         this.rolePriority = rolePriority;
         this.isPersonal = isPersonal;
         this.maxUsage = maxUsage;
-        this.periodInSeconds = periodInSeconds;
+        this.timePeriodSec = timePeriodSec;
     }
 }

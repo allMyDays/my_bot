@@ -30,16 +30,15 @@ import static com.example.my_bot.enumeration.key.CooldownCacheKeyBuilder.DEFAULT
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class CommandAccessService {
 
-    private CommandRegistry commandRegistry;
+    private final CommandRegistry commandRegistry;
 
-    private RolePermissionService rolePermissionService;
+    private final RolePermissionService rolePermissionService;
 
-    private MemberPermissionService memberPermissionService;
+    private final MemberPermissionService memberPermissionService;
 
-    private RoleRateLimitService roleRateLimitService;
+    private final RoleRateLimitService roleRateLimitService;
 
     private final static int MILLISECONDS_BETWEEN_SENDING_COOLDOWN_MESSAGE_TO_USER = 30_000;
 
@@ -63,27 +62,16 @@ public class CommandAccessService {
             })
             .build();
 
-
-    @Autowired
-    @Lazy
-    public void setRolePermissionService(RolePermissionService rolePermissionService) {
-        this.rolePermissionService = rolePermissionService;
-    }
-    @Autowired
-    @Lazy
-    public void setMemberPermissionService(MemberPermissionService memberPermissionService) {
-        this.memberPermissionService = memberPermissionService;
-    }
-    @Autowired
-    @Lazy
-    public void setCommandRegistry(CommandRegistry commandRegistry) {
+    public CommandAccessService(@Lazy CommandRegistry commandRegistry,
+                                @Lazy RolePermissionService rolePermissionService,
+                                @Lazy MemberPermissionService memberPermissionService,
+                                @Lazy RoleRateLimitService roleRateLimitService){
         this.commandRegistry = commandRegistry;
-    }
-    @Autowired
-    @Lazy
-    public void setRoleRateLimitService(RoleRateLimitService roleRateLimitService) {
+        this.rolePermissionService = rolePermissionService;
+        this.memberPermissionService = memberPermissionService;
         this.roleRateLimitService = roleRateLimitService;
     }
+
 
     public CommandAuthorizationResult checkCommandsAuthorization(
             long chatId, @NonNull Set<String> userCommands, int userRolePriority, long fromId){
@@ -192,7 +180,7 @@ public class CommandAccessService {
                     ? CUSTOM_ROLE_COOLDOWN.buildRolePersonalKey(chatId, fromId, normalizedCommand, roleLimit.get().getEntityId())
                     : CUSTOM_ROLE_COOLDOWN.buildRoleKey(chatId, normalizedCommand, userRolePriority, roleLimit.get().getEntityId());
 
-            customInfo = probeCooldown(customKey, roleLimit.get().getPeriodInSeconds(), roleLimit.get().getMaxUsage(), now);
+            customInfo = probeCooldown(customKey, roleLimit.get().getTimePeriodSec(), roleLimit.get().getMaxUsage(), now);
         }
 
         boolean defaultFull = defaultInfo.full;
@@ -202,7 +190,7 @@ public class CommandAccessService {
             addCall(defaultKey, defaultCooldown.getSeconds(), now);
 
             if (customInfo != null) {
-                addCall(customKey, roleLimit.get().getPeriodInSeconds(), now);
+                addCall(customKey, roleLimit.get().getTimePeriodSec(), now);
             }
 
             CooldownResult result = new CooldownResult();
