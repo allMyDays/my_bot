@@ -131,9 +131,19 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
     @Query("SELECT m.userId FROM MemberEntity m WHERE m.chatId = :chatId AND m.isChatAdmin = true")
     List<Long> findAllChatAdmins(@Param("chatId") long chatId);
 
+    @Query("SELECT m.userId AS userId, u.fullNameInNom AS fullName " +
+            "FROM MemberEntity m JOIN GlobalUserEntity u ON m.userId = u.userId " +
+            "WHERE m.chatId = :chatId AND m.presenceType = 'IN_CHAT' " +
+            "AND u.fullNameInNom LIKE CONCAT('%', :name, '%')")
+    Optional<MemberIdAndNameProjection> findCurrentMemberByFullName(@Param("chatId") Long chatId,
+                                                                    @Param("name") String fullName);
 
 
 
+    interface MemberIdAndNameProjection {
+        Long getUserId();
+        String getFullName();
+    }
 
 }
 

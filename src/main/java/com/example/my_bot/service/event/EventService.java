@@ -102,7 +102,7 @@ public class EventService {
                                long fromId,
                                boolean delete, boolean reply, boolean silent){
 
-        userArgument = validateEventArgument(eventType,userArgument);
+        userArgument = validateEventArgument(chatId, eventType,userArgument);
 
         if (countChatEvents(chatId)>=getMaxEvents()){
             throw new TooManyEventsException();
@@ -421,7 +421,7 @@ public class EventService {
 
     }
 
-    private String validateEventArgument(@NonNull MyEventType eventType, @Nullable String userArgument){
+    private String validateEventArgument(long chatId, @NonNull MyEventType eventType, @Nullable String userArgument){
         EventArgumentType eventArgType = eventType.getArgumentType();
         if(eventArgType== NONE){
             if(userArgument!=null){
@@ -438,7 +438,7 @@ public class EventService {
             if(eventArgType==INTEGER){
                 switch (eventType){
                     case WITH_SUBSCRIPTION, WITHOUT_SUBSCRIPTION -> {
-                        Long groupId = userInputResolver.getMemberIdByStringInput(userArgument).orElse(null);
+                        Long groupId = userInputResolver.getMemberIdByStringInput(chatId, userArgument).orElse(null);
                         if(groupId==null||!ChatUtils.isGroupId(groupId)){
                             throw new IncorrectEventArgumentException("Для данного типа события, аргумент обязан быть ссылкой или упоминанием сообщества.");
                         }

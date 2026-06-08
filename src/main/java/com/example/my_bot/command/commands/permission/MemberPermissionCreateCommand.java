@@ -68,7 +68,7 @@ public class MemberPermissionCreateCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
-        Optional<Long> targetUserId = userInputResolver.getMemberIdByStringInput(args[0].trim());
+        Optional<Long> targetUserId = userInputResolver.getMemberIdByStringInput(chatId, args[0].trim());
         if(targetUserId.isEmpty()){
             sendMessage.setText(MEMBER_LINK_IS_NOT_CORRECT);
             vkChatClient.sendText(sendMessage);

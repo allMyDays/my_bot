@@ -104,7 +104,7 @@ public class DeleteMessagesCommand implements ChatCommand {
         }
         else if(args.length!=2){
             // либо [!чистка @durov] либо [!чистка @durov 2 часа]
-            targetMember = userInputResolver.getMemberIdByStringInput(args[0]).orElse(null);
+            targetMember = userInputResolver.getMemberIdByStringInput(chatId, args[0]).orElse(null);
             if(targetMember==null){
                 sendMessage.setText(MEMBER_LINK_IS_NOT_CORRECT);
                 vkChatClient.sendText(sendMessage);

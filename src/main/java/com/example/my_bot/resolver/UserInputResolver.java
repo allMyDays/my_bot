@@ -4,6 +4,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
+import com.example.my_bot.service.MemberService;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,45 +25,48 @@ public class UserInputResolver {
 
     private final VkChatClient vkChatClient;
 
-    private final Pattern MEMBER_MENTION = Pattern.compile("\\[(id|club)(\\d+)\\|[^]]+]");
+    private final Pattern MEMBER_MENTION_PATTERN = Pattern.compile("\\[(id|club)(\\d+)\\|[^]]+]");
 
-    private static final Pattern VK_URL_PATTERN = Pattern.compile(
+    private static final Pattern MEMBER_URL_PATTERN = Pattern.compile(
             "(?:https?://)?(?:www\\.)?(?:m\\.)?(?:(?:vk\\.(?:com|ru))|vkontakte\\.ru)/(((id|club|public)\\d{1,11})|[a-zA-Z0-9_.]{2,32})");
+    private final MemberService memberService;
 
 
+    public Optional<Long> getMemberIdByStringInput(long chatId, @NonNull String userInput){
 
-    public Optional<Long> getMemberIdByStringInput(@NonNull String userInput){
+        userInput=userInput.trim();
 
-        userInput=userInput.toLowerCase().trim();
-
-        Matcher matcher = MEMBER_MENTION.matcher(userInput);
-        if (matcher.find()){
-            String type = matcher.group(1); // "id" или "club"
-            if(!isValidLong(matcher.group(2))){
+        Matcher mentionMatcher = MEMBER_MENTION_PATTERN.matcher(userInput.toLowerCase());
+        if(mentionMatcher.find()){
+            String type = mentionMatcher.group(1); // "id" или "club"
+            if(!isValidLong(mentionMatcher.group(2))){
                 return Optional.empty();
-            } long id = Long.parseLong(matcher.group(2));
-
-            return Optional.of(type.equals("id")?id:(id*-1));
-        }
-        Matcher m = VK_URL_PATTERN.matcher(userInput);
-        if (!m.find()) return Optional.empty();
-
-        if (m.group(2) != null) {
-            String prefix = m.group(3);
-            String fullMatch = m.group(2);
-            String numStr = fullMatch.substring(prefix.length());
-            long id = Long.parseLong(numStr);
-            if (prefix.equals("id")) {
-                return Optional.of(id);
-            } else {
-                return Optional.of(-id);
             }
-        } else {
-            String userNickname = m.group(1);
-            return cacheManager.getNicknameCache().get(userNickname,
-                    k -> vkChatClient.getMemberIdByScreenName(userNickname));
-
+            long id = Long.parseLong(mentionMatcher.group(2));
+            return Optional.of(type.equals("id")?id:-id);
         }
+
+        Matcher urlMatcher= MEMBER_URL_PATTERN.matcher(userInput.toLowerCase());
+        if(urlMatcher.find()){
+            if(urlMatcher.group(2)!= null){  // id123, club45, public6789
+                String prefix = urlMatcher.group(3);
+                String fullMatch = urlMatcher.group(2);
+                String numStr = fullMatch.substring(prefix.length());
+                long id = Long.parseLong(numStr);
+                if(prefix.equals("id")){
+                    return Optional.of(id);
+                }else{
+                    return Optional.of(-id);
+                }
+            }else{  // durov
+                String userNickname = urlMatcher.group(1);
+                return cacheManager.getNicknameCache().get(userNickname,
+                        k -> vkChatClient.getMemberIdByScreenName(userNickname));
+            }
+        }else if(userInput.length()>1){  // поиск по имени/фамилии
+            return memberService.findCurrentMemberByFirstNameOrLastName(chatId, userInput);
+        }
+        return Optional.empty();
     }
 
     public ParseMemberInputResult getMemberIdByAnyInput(CommandMessageDto messageDto, int userIndex){
@@ -74,7 +78,7 @@ public class UserInputResolver {
             result.setFwdMessage(true);
         }else{
             if(messageDto.getFirstRowArguments().length>=(userIndex+1)){
-                Optional<Long> memberOptional = getMemberIdByStringInput(messageDto.getFirstRowArguments()[userIndex]);
+                Optional<Long> memberOptional = getMemberIdByStringInput(messageDto.getChatId(), messageDto.getFirstRowArguments()[userIndex]);
                 if(memberOptional.isPresent()){
                     targetMember = memberOptional.get();
                 }

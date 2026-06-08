@@ -62,7 +62,7 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }if(args.length==2){
-            userId = userInputResolver.getMemberIdByStringInput(args[1]);
+            userId = userInputResolver.getMemberIdByStringInput(chatId, args[1]);
             if(userId.isEmpty()){
                 sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
                 vkChatClient.sendText(sendMessage);

@@ -8,6 +8,7 @@ import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
 import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.enumeration.member.MemberPresenceType;
+import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.exception.member.MemberAccessDeniedException;
 import com.example.my_bot.exception.member.MemberAlreadyHasThisRoleException;
@@ -17,13 +18,13 @@ import com.example.my_bot.mapper.FullNameMapper;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.repository.MemberRepository;
 import com.example.my_bot.service.chat.ChatService;
+import com.github.benmanes.caffeine.cache.Cache;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ConversationMember;
 import com.vk.api.sdk.objects.messages.responses.GetConversationMembersResponse;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -307,10 +308,15 @@ public class MemberService {
     public Optional<MemberDto> getCachedMemberInfo(long chatId, long memberId){
 
         ConcurrentHashMap<Long, Optional<MemberDto>> members = cacheManager.getActiveMembersCache().get(chatId,k->new ConcurrentHashMap<>());
-        return members.computeIfAbsent(memberId, key-> {
+        Optional<MemberDto> memberToReturn = members.computeIfAbsent(memberId, key-> {
            Optional<MemberEntity> member = memberRepository.findByChatIdAndUserId(chatId, memberId);
            return member.map(memberMapper::toMemberDto);
         });
+        memberToReturn.ifPresent(m->  // вгрузить в кеш имена активно общающихся участников чата
+                globalUserService.getUserFullNameInRequiredCase(m.getUserId(),NameCase.NOMINATIVE)
+        );
+        return memberToReturn;
+
     }
     private void invalidateMemberCache(long chatId){
         cacheManager.getActiveMembersCache().invalidate(chatId);
@@ -320,15 +326,36 @@ public class MemberService {
         return memberRepository.findMembersWithPositiveRole(chatId);
     }
 
-    private MemberDto putMemberToCache(long chatId, @NonNull MemberEntity member){
+    public Optional<Long> findCurrentMemberByFirstNameOrLastName(long chatId, @NonNull String firstNameOrLastName){
+        firstNameOrLastName = firstNameOrLastName.trim();
 
-        MemberDto memberDto = memberMapper.toMemberDto(member);
-
-        ConcurrentHashMap<Long, Optional<MemberDto>> members = cacheManager.getActiveMembersCache()
+        ConcurrentHashMap<Long, Optional<MemberDto>> activeMembersCache = cacheManager.getActiveMembersCache()
                 .get(chatId,k-> new ConcurrentHashMap<>());
-        members.put(memberDto.getUserId(), Optional.of(memberDto));
+        Cache<Long, ConcurrentHashMap<NameCase, String>> fullNameCache = cacheManager.getFullNameCache();
 
-        return memberDto;
+        for(Optional<MemberDto> optionalMember: activeMembersCache.values()){  // быстрый поиск имени участника в кеше
+            if(optionalMember.isEmpty()) continue;
+            MemberDto member = optionalMember.get();
+            if(member.getPresenceType()!=IN_CHAT) continue;
+            ConcurrentHashMap<NameCase, String> fullName = fullNameCache.getIfPresent(member.getUserId());
+            if(fullName==null) continue;
+            String nominativeFullName = fullName.get(NameCase.NOMINATIVE);
+            if(nominativeFullName==null) continue;
+
+            if(nominativeFullName.contains(firstNameOrLastName)) return optionalMember.map(MemberDto::getUserId);
+        }
+        Optional<MemberRepository.MemberIdAndNameProjection> foundMember=
+                memberRepository.findCurrentMemberByFullName(chatId, firstNameOrLastName);
+        foundMember.ifPresent(m-> {
+                        ConcurrentHashMap<NameCase, String> fullName = new ConcurrentHashMap<>();
+                        fullName.put(NameCase.NOMINATIVE, m.getFullName());
+                        fullNameCache.put(m.getUserId(),fullName);
+        });
+        return foundMember.map(MemberRepository.MemberIdAndNameProjection::getUserId);
+    }
+
+    private void putMemberToCache(long chatId, @NonNull MemberEntity member){
+        putMembersToCache(chatId, List.of(member));
     }
 
     private void putMembersToCache(long chatId, @NonNull List<MemberEntity> membersToPut){
@@ -337,9 +364,7 @@ public class MemberService {
                 .get(chatId,k-> new ConcurrentHashMap<>());
 
         for(MemberEntity currentMember: membersToPut){
-            if(currentMember!=null){
                memberCache.put(currentMember.getUserId(), Optional.of(memberMapper.toMemberDto(currentMember)));
-            }
         }
     }
 
@@ -357,6 +382,8 @@ public class MemberService {
             }
         }
     }
+
+
 }
 
 

@@ -134,7 +134,7 @@ public class EventEditCommand implements ChatCommand {
                 boolean remove = args[2].equalsIgnoreCase(REMOVE_ARGUMENT);
                 if(remove&&notEnoughArgs(args,4,sendMessage)) return;
 
-                Long memberId = parseMember(args[remove?3:2],sendMessage);
+                Long memberId = parseMember(chatId, args[remove?3:2],sendMessage);
                 if(memberId==null) return;
                 try{
                     if(remove){
@@ -156,7 +156,7 @@ public class EventEditCommand implements ChatCommand {
             case PERSONAL_EVENT -> {
                 // !редивент 1 толькодля @durov
 
-                Long memberId = parseMember(args[2],sendMessage);
+                Long memberId = parseMember(chatId, args[2],sendMessage);
                 if(memberId==null) return;
                 try{
                     editedEvent = eventService.setMemberToTrigger(eventEntityId, memberId, fromId);
@@ -302,8 +302,8 @@ public class EventEditCommand implements ChatCommand {
         return period.get();
     }
 
-    private Long parseMember(String input, SendMessageDto dto) throws ClientException, ApiException{
-        Optional<Long> member = userInputResolver.getMemberIdByStringInput(input);
+    private Long parseMember(long chatId, String input, SendMessageDto dto) throws ClientException, ApiException{
+        Optional<Long> member = userInputResolver.getMemberIdByStringInput(chatId, input);
         if(member.isEmpty()){
             send(dto, MEMBER_LINK_IS_NOT_CORRECT);
             return null;
