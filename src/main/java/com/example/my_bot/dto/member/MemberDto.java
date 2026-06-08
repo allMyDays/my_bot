@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.Optional;
 
 @AllArgsConstructor
 @Setter
@@ -18,10 +19,15 @@ public class MemberDto {
 
     private int rolePriority;
 
+    private Integer immuneRolePriority;
+
     private boolean isChatAdmin;
 
     private MemberPresenceType presenceType;
 
     private Instant firstAppearance;
 
+    public Optional<Integer> getOptionalImmuneRolePriority() {
+        return Optional.ofNullable(immuneRolePriority);
+    }
 }

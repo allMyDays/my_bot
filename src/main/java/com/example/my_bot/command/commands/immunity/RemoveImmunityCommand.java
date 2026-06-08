@@ -1,4 +1,4 @@
-package com.example.my_bot.command.commands.member;
+package com.example.my_bot.command.commands.immunity;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
@@ -27,12 +27,13 @@ import lombok.extern.slf4j.Slf4j;
 import static com.example.my_bot.constant.MessageConstant.MEMBER_ARGUMENT_ABSENTS;
 import static com.example.my_bot.constant.MessageConstant.MEMBER_ROLE_HAS_BEEN_CHANGED;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
 @Slf4j
-@Command(mainCommandName = "понизить", alternativeCommandNames = {"demote"}, defaultRole = ADMINISTRATOR, eventable = true)
+@Command(mainCommandName = "снятьиммунитет", alternativeCommandNames = {"снятьиммун", "unimmune"}, defaultRole = SENIOR_MODERATOR, eventable = true)
 @RequiredArgsConstructor
-public class DemoteMemberCommand implements ChatCommand {
+public class RemoveImmunityCommand implements ChatCommand {
 
     @Getter
     private final CommandCooldown cooldown = new CommandCooldown(5,60);
@@ -57,33 +58,27 @@ public class DemoteMemberCommand implements ChatCommand {
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
 
-        long userToAssign;
+        long userToAlter;
         ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(messageDto,0);
         if(parseResult.getMemberId().isPresent()){
-            userToAssign = parseResult.getMemberId().get();
+            userToAlter = parseResult.getMemberId().get();
         }else{
             sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
             vkChatClient.sendText(sendMessage);
             return;
         }
-        AssignMemberResult assignResult;
         try{
-            int targetUserRole = memberService.getMemberRolePriority(chatId, userToAssign);
-            RoleDto newRoleToAssign = roleService.findTheNearestLowestRole(chatId, targetUserRole, false);
-            assignResult = memberService.assignNewRoleToMember(chatId,userToAssign,newRoleToAssign.getRolePriority(),messageDto.getFromId());
-
+            memberService.removeImmunityFromMember(chatId, userToAlter, messageDto.getFromId());
         }catch(RoleException | MemberException | CommandException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return;
         }
-        String username = userService.getUserFullNameInRequiredCase(userToAssign, NameCase.GENITIVE);
+        String username = userService.getUserFullNameInRequiredCase(userToAlter, NameCase.GENITIVE);
 
-        sendMessage.setText(
-                String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,
-                        createMention(userToAssign),username,assignResult.getPreviousRole().getRoleName(), assignResult.getNewRole().getRoleName())
-        );
+        sendMessage.setText("✅ С %s(%s) был успешно снят иммунитет.".formatted(createMention(userToAlter), username));
         vkChatClient.sendText(sendMessage);
+
 
 
     }

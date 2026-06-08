@@ -57,7 +57,7 @@ public class GlobalUserService {
     @Transactional
     public void unBindChatFromUser(long chatToUnbind, long fromId, long userToUnbind){
         if(fromId!=userToUnbind) {
-            memberService.checkMemberInteractionAbility(chatToUnbind, fromId, userToUnbind);
+            memberService.checkMemberInteractionAbility(chatToUnbind, fromId, userToUnbind,true);
         }
         GlobalUserEntity globalUserEntity = globalUserRepository.findById(userToUnbind)
                 .orElseThrow(()->new GlobalGlobalUserNotFoundException(userToUnbind));

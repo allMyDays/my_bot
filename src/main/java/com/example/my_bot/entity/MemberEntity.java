@@ -31,6 +31,9 @@ public class MemberEntity {
     @Column(nullable = false)
     private int rolePriority;
 
+    @Column(nullable = true)
+    private Integer immuneRolePriority;
+
     @Column(nullable = false)
     private boolean isChatAdmin;
 

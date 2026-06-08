@@ -78,18 +78,13 @@ public class PromoteMemberCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
-        if(assignResult!=null){
-            String username = userService.getUserFullNameInRequiredCase(userToAssign, NameCase.GENITIVE);
+        String username = userService.getUserFullNameInRequiredCase(userToAssign, NameCase.GENITIVE);
 
-            sendMessage.setText(
-                    String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,
-                            createMention(userToAssign),username,assignResult.getPreviousRole().getRoleName(), assignResult.getNewRole().getRoleName())
-            );
-            vkChatClient.sendText(sendMessage);
-
-        }else{
-            log.warn("chat {} error: AssignMemberResult is null in PromoteMemberCommand",chatId);
-        }
+        sendMessage.setText(
+                String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,
+                        createMention(userToAssign),username,assignResult.getPreviousRole().getRoleName(), assignResult.getNewRole().getRoleName())
+        );
+        vkChatClient.sendText(sendMessage);
 
 
     }

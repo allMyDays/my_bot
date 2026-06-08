@@ -24,6 +24,9 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
     @Query("SELECT c FROM MemberEntity c WHERE c.chatId = :chatId AND c.rolePriority>0")
     List<MemberEntity> findMembersWithPositiveRole(@Param("chatId") Long chatId);
 
+    @Query("SELECT c FROM MemberEntity c WHERE c.chatId = :chatId AND c.immuneRolePriority IS NOT NULL")
+    List<MemberEntity> findMembersWithImmunity(@Param("chatId") Long chatId);
+
     @Query("SELECT c FROM MemberEntity c WHERE c.chatId = :chatId AND c.rolePriority=:rolePriority")
     List<MemberEntity> findMembersWithRequiredRole(@Param("chatId") Long chatId,@Param("rolePriority") Long rolePriority);
 
@@ -135,8 +138,7 @@ public interface MemberRepository extends JpaRepository<MemberEntity, Long> {
             "FROM MemberEntity m JOIN GlobalUserEntity u ON m.userId = u.userId " +
             "WHERE m.chatId = :chatId AND m.presenceType = 'IN_CHAT' " +
             "AND u.fullNameInNom LIKE CONCAT('%', :name, '%')")
-    Optional<MemberIdAndNameProjection> findCurrentMemberByFullName(@Param("chatId") Long chatId,
-                                                                    @Param("name") String fullName);
+    List<MemberIdAndNameProjection> findCurrentMemberByFullName(@Param("chatId") Long chatId, @Param("name") String fullName, Pageable pageable);
 
 
 

@@ -299,7 +299,7 @@ public class EventService {
         if(exceptionalSet.size()>=EXCEPTIONAL_MEMBERS_MAX_LIMIT){
             throw new TooManyExceptionalMembersException();
         }
-        memberService.checkMemberInteractionAbility(event.getChatId(), fromId, memberToAdd);
+        memberService.checkMemberInteractionAbility(event.getChatId(), fromId, memberToAdd,true);
         checkEventAuthorization(event, fromId);
 
         if(exceptionalSet.contains(memberToAdd)){
@@ -325,7 +325,7 @@ public class EventService {
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
-        memberService.checkMemberInteractionAbility(event.getChatId(), fromId, memberToRemove);
+        memberService.checkMemberInteractionAbility(event.getChatId(), fromId, memberToRemove,true);
         checkEventAuthorization(event,fromId);
 
         if(!event.getExceptionalMembers().contains(memberToRemove)){
@@ -348,7 +348,7 @@ public class EventService {
         if(memberToTrigger==fromId){
             throw new CannotApplyThisCommandToYourselfException();
         }
-        memberService.checkMemberInteractionAbility(event.getChatId(), fromId, memberToTrigger);
+        memberService.checkMemberInteractionAbility(event.getChatId(), fromId, memberToTrigger,true);
         checkEventAuthorization(event, fromId);
         if(memberService.getCachedMemberInfo(event.getChatId(),memberToTrigger).isEmpty()){
             throw new UserNeverBeenInChatException(memberToTrigger);
@@ -538,7 +538,7 @@ public class EventService {
         if(isEventBeingACommandEvent(eventEntity)) return;
         long chatId = eventEntity.getChatId();
         if(eventEntity.getMemberToTrigger()!=null){  // личное событие
-            memberService.checkMemberInteractionAbility(chatId, fromId, eventEntity.getMemberToTrigger());
+            memberService.checkMemberInteractionAbility(chatId, fromId, eventEntity.getMemberToTrigger(),true);
         }else{
             roleService.checkRoleInteractionAbility(chatId, eventEntity.getRolePriority(),fromId);
 

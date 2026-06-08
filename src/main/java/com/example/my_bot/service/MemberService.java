@@ -7,12 +7,11 @@ import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.entity.RoleEntity;
 import com.example.my_bot.enumeration.member.MemberPresenceType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
-import com.example.my_bot.exception.member.MemberAccessDeniedException;
-import com.example.my_bot.exception.member.MemberAlreadyHasThisRoleException;
-import com.example.my_bot.exception.member.UserNeverBeenInChatException;
+import com.example.my_bot.exception.member.*;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.FullNameMapper;
 import com.example.my_bot.mapper.MemberMapper;
@@ -29,6 +28,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -263,8 +263,7 @@ public class MemberService {
         if(memberToAssign.getRolePriority()==newRolePriority){
             throw new MemberAlreadyHasThisRoleException(userToAssign);
         }
-
-        checkMemberInteractionAbility(chatId, fromId, userToAssign);
+        checkMemberInteractionAbility(chatId, fromId, userToAssign,true);
         roleService.checkRoleInteractionAbility(chatId, newRolePriority,fromId);
 
         RoleDto roleToChange = roleService.getRoleByPriority(chatId, memberToAssign.getRolePriority())
@@ -285,15 +284,21 @@ public class MemberService {
         return assignNewRoleToMember(chatId, userToAssign, roleToAssign.getRolePriority(), fromId);
     }
 
-    public void checkMemberInteractionAbility(long chatId, long fromId, long userToInteract){
+    public void checkMemberInteractionAbility(long chatId, long fromId, long userToInteract, boolean compareImmunity){
 
         int callerRole = getMemberRolePriority(chatId, fromId);
-        int targetUserRole = getMemberRolePriority(chatId, userToInteract);
+        Optional<MemberDto> targetUser = getCachedMemberInfo(chatId, userToInteract);
 
-        if(callerRole<=targetUserRole){
-            // никому нельзя наказывать участников с ролью выше или равной своей
+        int targetUserRole = targetUser.map(MemberDto::getRolePriority)
+                .orElse(MEMBER.getRolePriority());
+
+        Integer targetUserImmunityRole = targetUser.map(MemberDto::getImmuneRolePriority)
+                .orElse(null);
+
+        if((callerRole<=targetUserRole)||(compareImmunity&&targetUserImmunityRole!=null&&callerRole<=targetUserImmunityRole)){
             throw new MemberAccessDeniedException(userToInteract,fromId);
         }
+
     }
 
     public boolean isChatAdmin(long chatId, long memberId){
@@ -344,14 +349,70 @@ public class MemberService {
 
             if(nominativeFullName.contains(firstNameOrLastName)) return optionalMember.map(MemberDto::getUserId);
         }
+        List<MemberRepository.MemberIdAndNameProjection> foundMembers=
+                memberRepository.findCurrentMemberByFullName(chatId, firstNameOrLastName,  PageRequest.of(0, 1));
         Optional<MemberRepository.MemberIdAndNameProjection> foundMember=
-                memberRepository.findCurrentMemberByFullName(chatId, firstNameOrLastName);
+                Optional.ofNullable(foundMembers.isEmpty()?null:foundMembers.get(0));
+
         foundMember.ifPresent(m-> {
                         ConcurrentHashMap<NameCase, String> fullName = new ConcurrentHashMap<>();
                         fullName.put(NameCase.NOMINATIVE, m.getFullName());
                         fullNameCache.put(m.getUserId(),fullName);
         });
         return foundMember.map(MemberRepository.MemberIdAndNameProjection::getUserId);
+    }
+
+    public List<MemberEntity> getMembersWithImmunity(long chatId){
+        return memberRepository.findMembersWithImmunity(chatId);
+    }
+
+    @Transactional
+    public RoleDto assignImmunityToMember(long chatId, long userToAlter, int newImmuneRolePriority, long fromId){
+        if(userToAlter==fromId){
+            throw new CannotApplyThisCommandToYourselfException();
+        }
+        MemberEntity memberToAlter = memberRepository.findByChatIdAndUserId(chatId, userToAlter)
+                .orElseThrow(()->new UserNeverBeenInChatException(userToAlter));
+
+        RoleDto newImmuneRole = roleService.getRoleByPriority(chatId, newImmuneRolePriority)
+                .orElseThrow(RoleNotFoundException::new);
+
+        if(Objects.equals(newImmuneRole.getRolePriority(), memberToAlter.getImmuneRolePriority())){
+            throw new MemberAlreadyHasThisImmunityException(userToAlter);
+        }
+        checkMemberInteractionAbility(chatId, fromId, userToAlter,true);
+        roleService.checkRoleInteractionAbility(chatId, newImmuneRolePriority, fromId);
+
+        memberToAlter.setImmuneRolePriority(newImmuneRolePriority);
+        putMemberToCache(chatId,memberRepository.save(memberToAlter));
+
+        return newImmuneRole;
+    }
+
+    @Transactional
+    public RoleDto assignImmunityToMember(long chatId, long userToAlter, @NonNull String newImmuneRoleName, long fromId){
+
+        RoleDto newImmuneRole = roleService.getRoleByNameIgnoreCase(chatId, newImmuneRoleName.trim())
+                .orElseThrow(RoleNotFoundException::new);
+
+        return assignImmunityToMember(chatId,userToAlter,newImmuneRole.getRolePriority(),fromId);
+    }
+
+    @Transactional
+    public void removeImmunityFromMember(long chatId, long userToAlter, long fromId){
+        if(userToAlter==fromId){
+            throw new CannotApplyThisCommandToYourselfException();
+        }
+        MemberEntity memberToAlter = memberRepository.findByChatIdAndUserId(chatId, userToAlter)
+                .orElseThrow(()->new UserNeverBeenInChatException(userToAlter));
+
+        if(memberToAlter.getImmuneRolePriority()==null){
+            throw new MemberHasNoImmunityException(memberToAlter.getUserId());
+        }
+        checkMemberInteractionAbility(chatId, fromId, userToAlter,false);
+
+        memberToAlter.setImmuneRolePriority(null);
+        putMemberToCache(chatId,memberRepository.save(memberToAlter));
     }
 
     private void putMemberToCache(long chatId, @NonNull MemberEntity member){

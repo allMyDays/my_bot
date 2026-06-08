@@ -83,7 +83,7 @@ public class KickFromCommand implements ChatCommand {
 
         if(inviterId!=messageDto.getFromId()){
         try{
-            memberService.checkMemberInteractionAbility(chatId, messageDto.getFromId(), inviterId);
+            memberService.checkMemberInteractionAbility(chatId, messageDto.getFromId(), inviterId,true);
         }catch (MemberException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);

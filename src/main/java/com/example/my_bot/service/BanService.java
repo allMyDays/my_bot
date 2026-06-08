@@ -36,7 +36,7 @@ public class BanService {
         if(memberId==fromId){
             throw new CannotApplyThisCommandToYourselfException();
         }
-        memberService.checkMemberInteractionAbility(chatId, fromId, memberId);
+        memberService.checkMemberInteractionAbility(chatId, fromId, memberId,true);
         Instant now = Instant.now();
         Instant unbanAt=null;
         if(periodInSeconds!=null){
