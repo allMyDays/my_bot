@@ -12,18 +12,17 @@ import java.util.Optional;
 @AllArgsConstructor
 @NoArgsConstructor
 @Setter
-
+@Getter
 public class MemberBanStatus {
 
-    @Getter
     private Long memberId;
 
-    @Getter
     private boolean isBanned;
 
     private Instant bannedUntil;
 
-    public Optional<Instant> getBannedUntil() {
+    public Optional<Instant> getOptionalBannedUntil() {
         return Optional.ofNullable(bannedUntil);
     }
+
 }

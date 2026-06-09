@@ -35,14 +35,12 @@ public class ImmunitiesShowCommand implements ChatCommand {
     private final MemberService memberService;
     private final RoleService roleService;
     private VkChatClient vkChatClient;
-    private final long groupId;
     private final MessageMapper messageMapper;
     private final GlobalUserService globalUserService;
 
-    public ImmunitiesShowCommand(MemberService memberService, RoleService roleService, @Value("${vk.group.id}") long groupId, MessageMapper messageMapper, GlobalUserService globalUserService) {
+    public ImmunitiesShowCommand(MemberService memberService, RoleService roleService, MessageMapper messageMapper, GlobalUserService globalUserService) {
         this.memberService = memberService;
         this.roleService = roleService;
-        this.groupId = groupId;
         this.messageMapper = messageMapper;
         this.globalUserService = globalUserService;
     }

@@ -12,7 +12,9 @@ public enum ChatErrorCode {
     YOU_LEFT_THIS_CHAT(Set.of(922)),
     CHAT_FORWARD_DISABLED(Set.of(994)),
     NO_CHAT_ACCESS(Set.of(917,15,7)),
-    CURRENT_MESSAGE_CANNOT_BE_FORWARD(Set.of(969));
+    CURRENT_MESSAGE_CANNOT_BE_FORWARD(Set.of(969)),
+    USER_NOT_FOUND_IN_CHAT(Set.of(935));
+
 
 
 

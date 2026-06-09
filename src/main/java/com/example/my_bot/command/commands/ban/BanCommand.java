@@ -33,6 +33,8 @@ import java.util.Optional;
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.utils.TextUtils.createMention;
+import static com.example.my_bot.utils.TimeUtils.getFormattedStringDateTimeWithTimeZone;
+import static com.example.my_bot.vk.enumeration.ChatErrorCode.USER_NOT_FOUND_IN_CHAT;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -110,6 +112,8 @@ public class BanCommand implements ChatCommand {
 
        Optional<Instant> bannedUntil= Optional.empty();
 
+       String userName = globalUserService.getUserFullNameInRequiredCase(memberToBan, NameCase.NOMINATIVE);
+
        try{
            bannedUntil = banService.createMemberBan(chatId, memberToBan, reason, banPeriodInSeconds,fromId);
            vkChatClient.kickOneChatMember(chatId, memberToBan);
@@ -118,16 +122,22 @@ public class BanCommand implements ChatCommand {
            vkChatClient.sendText(sendMessage);
            return;
        } catch (ApiException e){
-           if(e.getCode()!=935){    // 935 - скорее всего дали бан тому, кого в чате никогда не было, чтобы он не смог присоединиться
-             sendMessage.setText("Пользователь забанен, но его не удалось исключить из чата. "+e.getMessage());
+           if(!USER_NOT_FOUND_IN_CHAT.getCodes().contains(e.getCode())){    // 935 - скорее всего дали бан тому, кого в чате никогда не было, чтобы он не смог присоединиться
+             sendMessage.setText(
+                     "%s(%s) забанен, но его не удалось исключить из чата. %s".formatted(createMention(memberToBan),userName, e.getMessage())
+             );
              vkChatClient.sendText(sendMessage);
              return;
            }
        }
 
        TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
-       String message = createMention(memberToBan)+"(✅Пользователь) был забанен в чате "+
-               bannedUntil.map(instant -> "до "+TimeUtils.getFormattedStringDateTimeWithTimeZone(instant, chatTimeZone)).orElse("навечно.");
+       String message = "✅ %s(%s) был забанен в чате %s"
+               .formatted(
+                       createMention(memberToBan),
+                       userName,
+                       bannedUntil.map(instant -> "до "+getFormattedStringDateTimeWithTimeZone(instant, chatTimeZone)).orElse("навечно.")
+               );
 
        if(!messageDto.isEventOrTimerMode()){
            message+="\nМодератор: %s(%s)".formatted(

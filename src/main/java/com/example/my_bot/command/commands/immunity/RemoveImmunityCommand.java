@@ -42,8 +42,6 @@ public class RemoveImmunityCommand implements ChatCommand {
 
     private final MemberService memberService;
 
-    private final RoleService roleService;
-
     private final UserInputResolver userInputResolver;
 
     private final GlobalUserService userService;
@@ -78,8 +76,6 @@ public class RemoveImmunityCommand implements ChatCommand {
 
         sendMessage.setText("✅ С %s(%s) был успешно снят иммунитет.".formatted(createMention(userToAlter), username));
         vkChatClient.sendText(sendMessage);
-
-
 
     }
 

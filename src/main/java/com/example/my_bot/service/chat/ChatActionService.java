@@ -7,9 +7,11 @@ import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.ban.MemberBanStatus;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.member.MemberPresenceType;
+import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.CommandAccessService;
+import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.TimeUtils;
@@ -27,6 +29,7 @@ import java.util.*;
 
 import static com.example.my_bot.enumeration.member.MemberPresenceType.*;
 import static com.example.my_bot.utils.TextUtils.createMention;
+import static com.example.my_bot.utils.TimeUtils.getFormattedStringDateTimeWithTimeZone;
 
 @Slf4j
 @Service
@@ -34,16 +37,13 @@ import static com.example.my_bot.utils.TextUtils.createMention;
 public class ChatActionService {
 
     private final MemberService memberService;
-
     private final ChatService chatService;
-
     private final BanService banService;
-
     private final VkChatClient vkChatClient;
-
     private final CommandAccessService commandAccessService;
-
     private final MessageMapper messageMapper;
+    private final GlobalUserService globalUserService;
+
 
     private static final long AUTO_SYNC_INTERVAL_MINUTES = 90;
 
@@ -109,10 +109,12 @@ public class ChatActionService {
             return false;
         }
             TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
-            Optional<Instant> bannedUntil = banStatus.getBannedUntil();
-            String message = "%s(Этот пользователь) в бане до %s.".formatted(
+            Optional<Instant> bannedUntil = banStatus.getOptionalBannedUntil();
+            String message = "%s(%s) в %s.".formatted(
                     createMention(memberId),
-                    bannedUntil.map(instant -> TimeUtils.getFormattedStringDateTimeWithTimeZone(instant, chatTimeZone)).orElse("∞")
+                    globalUserService.getUserFullNameInRequiredCase(memberId, NameCase.NOMINATIVE),
+                    bannedUntil.map(until -> "бане до "+getFormattedStringDateTimeWithTimeZone(until, chatTimeZone))
+                            .orElse("вечном бане")
             );
 
             if(chatService.isAutoUnban(chatId)&&fromId!=memberId){

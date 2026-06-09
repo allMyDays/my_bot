@@ -4,6 +4,7 @@ import com.example.my_bot.cache.key.ChatIdAndMemberIdKey;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.ban.MemberBanStatus;
 import com.example.my_bot.entity.BanEntity;
+import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.exception.ban.UserHasNotBannedException;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.repository.BanRepository;
@@ -12,6 +13,8 @@ import jakarta.transaction.Transactional;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -32,24 +35,21 @@ public class BanService {
 
 
     @Transactional
-    public Optional<Instant> createMemberBan(long chatId, long memberId, @Nullable String reason, @Nullable Long periodInSeconds, long fromId){
+    public Optional<Instant> createMemberBan(long chatId, long memberId, @Nullable String reason, @Nullable Long timePeriodSec, long fromId){
         if(memberId==fromId){
             throw new CannotApplyThisCommandToYourselfException();
         }
         memberService.checkMemberInteractionAbility(chatId, fromId, memberId,true);
         Instant now = Instant.now();
         Instant unbanAt=null;
-        if(periodInSeconds!=null){
-            if(periodInSeconds<MIN_BAN_PERIOD_IN_SECONDS){
-                periodInSeconds = MIN_BAN_PERIOD_IN_SECONDS;
-         }if(periodInSeconds>MAX_BAN_PERIOD_IN_SECONDS){
-                periodInSeconds = MAX_BAN_PERIOD_IN_SECONDS;
-            }
-            unbanAt = now.plusSeconds(periodInSeconds);
+        if(timePeriodSec!=null){
+            if(timePeriodSec<MIN_BAN_PERIOD_IN_SECONDS) timePeriodSec = MIN_BAN_PERIOD_IN_SECONDS;
+            if(timePeriodSec>MAX_BAN_PERIOD_IN_SECONDS) timePeriodSec = MAX_BAN_PERIOD_IN_SECONDS;
+            unbanAt = now.plusSeconds(timePeriodSec);
         }
         if(reason!=null){
-            reason = reason.trim();
-            reason = reason.isEmpty()?null:reason;
+            reason= reason.trim();
+            reason= reason.isEmpty()?null:reason;
         }
         BanEntity newBan = banRepository.findByChatIdAndMemberId(chatId, memberId)
                 .orElse(new BanEntity());
@@ -61,11 +61,12 @@ public class BanService {
         if(newBan.getId()==null){     // сущность новая
             newBan.setMemberId(memberId);
             newBan.setChatId(chatId);
-        }newBan = banRepository.save(newBan);
+        }
+        newBan = banRepository.save(newBan);
         putBanToCache(newBan);
         return Optional.ofNullable(unbanAt);
-
     }
+
     @Transactional
     public void deleteMemberBan(long chatId, long memberId){
         if(!getMemberBanStatus(chatId,memberId).isBanned()){
@@ -73,19 +74,30 @@ public class BanService {
         }
         cacheManager.getBanCache().invalidate(new ChatIdAndMemberIdKey(chatId, memberId));
         banRepository.deleteByChatIdAndMemberId(chatId, memberId);
-
     }
 
     public MemberBanStatus getMemberBanStatus(long chatId, long memberId){
         ChatIdAndMemberIdKey key = new ChatIdAndMemberIdKey(chatId, memberId);
-        return cacheManager.getBanCache().asMap().computeIfAbsent(key,k->{
-            BanEntity memberBan = banRepository.findByChatIdAndMemberId(chatId, memberId).orElse(null);
-            if(memberBan==null||(memberBan.getBannedUntil()!=null&&!memberBan.getBannedUntil().isAfter(Instant.now()))){
-                // либо бана никакого нет, либо есть истёкший временный бан
-                return new MemberBanStatus(memberId, false, null);
-            } return new MemberBanStatus(memberId, true, memberBan.getBannedUntil());
 
+        MemberBanStatus banStatus = cacheManager.getBanCache().get(key,k->{
+            Optional<BanEntity> memberBan = banRepository.findByChatIdAndMemberId(k.chatId(),k.memberId());
+            return memberBan.map(ban -> new MemberBanStatus(k.memberId(), true, ban.getBannedUntil()))
+                    .orElseGet(() -> new MemberBanStatus(k.memberId(), false, null));
         });
+
+        Instant bannedUntil = banStatus.getBannedUntil();
+        if(bannedUntil!=null&&!Instant.now().isBefore(bannedUntil)){
+            // бан истёк
+            return new MemberBanStatus(memberId, false, null);
+        } return new MemberBanStatus(banStatus.getMemberId(),banStatus.isBanned(),banStatus.getBannedUntil());
+    }
+
+    public Page<BanEntity> getAllChatPermanentBans(long chatId, int limit){
+        return banRepository.getAllChatPermanentBans(chatId, PageRequest.of(0,limit));
+    }
+
+    public Page<BanEntity> getAllChatTemporaryBans(long chatId, int limit){
+        return banRepository.getAllChatTemporaryBans(chatId, Instant.now(), PageRequest.of(0,limit));
     }
 
     @Scheduled(fixedRate = 1_800_000)
