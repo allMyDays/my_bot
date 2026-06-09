@@ -14,9 +14,8 @@ import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ApiExtendedException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.base.BoolInt;
-import com.vk.api.sdk.objects.base.MessageError;
-import com.vk.api.sdk.objects.base.NameCase;
 import com.vk.api.sdk.objects.base.responses.BoolResponse;
+import com.vk.api.sdk.objects.messages.ConversationMember;
 import com.vk.api.sdk.objects.messages.DeleteFullResponseItem;
 import com.vk.api.sdk.objects.messages.Forward;
 import com.vk.api.sdk.objects.messages.responses.DeleteFullResponse;
@@ -33,7 +32,13 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Type;
 import java.util.*;
@@ -54,6 +59,7 @@ public class VkChatClient{
     private MessageLogService messageLogService;
 
     private static final Gson GSON = new Gson();
+    private final RestTemplate restTemplate = new RestTemplate();
 
     public VkChatClient(VkApiClient vkApiClient, GroupActor groupActor) {
         this.vkApiClient = vkApiClient;
@@ -139,9 +145,8 @@ public class VkChatClient{
                                 LAST_NAME_NOM, LAST_NAME_GEN, LAST_NAME_DAT, LAST_NAME_ACC, LAST_NAME_INS, LAST_NAME_ABL
                         )
                         .execute();
-
-
     }
+
     public void changeChatTitle(long chatId, String newTitle) throws ClientException, ApiException {
         vkApiClient.messages().editChat(groupActor)
                 .chatId((int)chatId)
@@ -172,7 +177,6 @@ public class VkChatClient{
 
         }return  Optional.empty();
     }
-
 
     public void kickOneChatMember(long chatId, long memberId) throws ClientException, ApiException{
 
@@ -281,36 +285,48 @@ public class VkChatClient{
             return false;
         }
     }
-    public Set<Integer> deleteChatMessages(long chatId, @NonNull List<Integer> conversationMessageIds) throws ClientException, ApiException{
-            if(conversationMessageIds.isEmpty()) return Collections.emptySet();
-
-            List<DeleteFullResponse> response = vkApiClient.messages()
-                    .deleteFull(groupActor)
-                    .peerId(convertToPeerId(chatId))
-                    .cmids(conversationMessageIds)
-                    .deleteForAll(true)
-                    .execute();
-
-            if(response==null){
-                log.warn("vk method deleteFull returned response is null");
-                return Collections.emptySet();
-            }
-            Set<Integer> deletedMessages = response.stream()
-                    .filter(DeleteFullResponseItem::isResponse)
-                    .map(DeleteFullResponseItem::getConversationMessageId)
-                    .collect(Collectors.toSet());
-
-            messageLogService.markMessagesAsDeleted(chatId, deletedMessages);
-            return deletedMessages;
-        }
 
      public void getFullConversationMessage(long chatId, int conversationMessageId) throws ClientException, ApiException {
-       GetByConversationMessageIdResponse response = vkApiClient.messages().getByConversationMessageId(groupActor)
-                .peerId(convertToPeerId(chatId))
-                .conversationMessageIds(conversationMessageId)
+         GetByConversationMessageIdResponse response = vkApiClient.messages().getByConversationMessageId(groupActor)
+                 .peerId(convertToPeerId(chatId))
+                 .conversationMessageIds(conversationMessageId)
+                 .execute();
+     }
+
+    public String changeChatMemberRestrictions(long chatId, long memberId, long seconds, boolean mute){
+        String url = "https://api.vk.com/method/messages.changeConversationMemberRestrictions";
+
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("peer_id", String.valueOf(convertToPeerId(chatId)));
+        body.add("member_ids", String.valueOf(memberId));
+        if(mute){
+            body.add("action", "ro");
+            body.add("for", String.valueOf(seconds));
+        }else{
+            body.add("action", "rw");
+        }
+        body.add("access_token", groupActor.getAccessToken());
+        body.add("v", "5.199");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        HttpEntity<MultiValueMap<String, String>> request =
+                new HttpEntity<>(body, headers);
+
+        return restTemplate.postForObject(url, request, String.class);
+    }
+
+    public Set<Long> getMembersWithWriteRestriction(long chatId) throws ClientException, ApiException{
+        GetConversationMembersResponse response = vkApiClient.messages()
+                .getConversationMembers(groupActor, convertToPeerId(chatId))
                 .execute();
 
-     }
+        return response.getItems().stream()
+                .filter(ConversationMember::getIsRestrictedToWrite)
+                .map(ConversationMember::getMemberId)
+                .collect(Collectors.toSet());
+    }
 
     public Set<Integer> batchDeleteMessages(long chatId, @NonNull List<Integer> messagesToDelete) throws ApiException, ClientException {
         if (messagesToDelete.isEmpty()) return Collections.emptySet();

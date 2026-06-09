@@ -71,7 +71,6 @@ public class KickCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
-
         try{
             memberService.checkMemberInteractionAbility(chatId, messageDto.getFromId(), memberToRemove,true);
         }catch (MemberAccessDeniedException e){
