@@ -1,14 +1,16 @@
 package com.example.my_bot.client;
 
 import com.example.my_bot.dto.SendMessageDto;
-import com.example.my_bot.dto.user.UserFullNameInEachCase;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.MessageLogService;
 import com.example.my_bot.vk.VkSendResponse;
+import com.example.my_bot.vk.enumeration.WriteRestrictionAction;
+import com.example.my_bot.vk.transport.CustomVkApiClient;
+import com.example.my_bot.vk.transport.write_restriction.MessageChangeChatMemberRestrictionQuery;
+import com.example.my_bot.vk.transport.write_restriction.ChangeChatMemberRestrictionResponse;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.vk.api.sdk.client.AbstractQueryBuilder;
-import com.vk.api.sdk.client.VkApiClient;
 import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ApiExtendedException;
@@ -27,17 +29,12 @@ import com.vk.api.sdk.objects.utils.responses.ResolveScreenNameResponse;
 import com.vk.api.sdk.queries.execute.ExecuteBatchQuery;
 import com.vk.api.sdk.queries.messages.MessagesDeleteQueryWithFull;
 import com.vk.api.sdk.queries.messages.MessagesRemoveChatUserQuery;
-import com.vk.api.sdk.queries.messages.MessagesSendQueryWithDeprecated;
+import com.vk.api.sdk.queries.messages.MessagesSendQueryWithUserIds;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Type;
@@ -52,7 +49,7 @@ import static com.vk.api.sdk.objects.users.Fields.*;
 @Component
 @Slf4j
 public class VkChatClient{
-    private final VkApiClient vkApiClient;
+    private final CustomVkApiClient vkApiClient;
     private final GroupActor groupActor;
     private final long theBotId;
     private MemberService memberService;
@@ -61,7 +58,7 @@ public class VkChatClient{
     private static final Gson GSON = new Gson();
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public VkChatClient(VkApiClient vkApiClient, GroupActor groupActor) {
+    public VkChatClient(CustomVkApiClient vkApiClient, GroupActor groupActor) {
         this.vkApiClient = vkApiClient;
         this.groupActor = groupActor;
         this.theBotId = groupActor.getGroupId();
@@ -103,8 +100,8 @@ public class VkChatClient{
 
         long peerId = sendMessageDto.getPeerId();
 
-        MessagesSendQueryWithDeprecated query = vkApiClient.messages()
-                .sendDeprecated(groupActor)
+        MessagesSendQueryWithUserIds query = vkApiClient.messages()
+                .sendUserIds(groupActor)
                 .peerIds(peerId)
                 .message(sendMessageDto.getText())
                 .disableMentions(!sendMessageDto.isAbleMentions())
@@ -255,9 +252,8 @@ public class VkChatClient{
                     .userId(userId)
                     .execute();
 
-            // is_allowed == true → писать можно, false → нельзя
             BoolInt boolInt =  response.getIsAllowed();
-            return boolInt.getValue()==1;
+            return boolInt==BoolInt.YES;
         } catch (ApiException | ClientException e) {
             log.error("Ошибка при проверке разрешения для user {}: {}", userId, e.getMessage());
             return false;
@@ -293,28 +289,20 @@ public class VkChatClient{
                  .execute();
      }
 
-    public String changeChatMemberRestrictions(long chatId, long memberId, long seconds, boolean mute){
-        String url = "https://api.vk.com/method/messages.changeConversationMemberRestrictions";
+    public boolean changeChatMemberRestrictions(long chatId, long memberId, long seconds, boolean mute) throws ClientException, ApiException {
 
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("peer_id", String.valueOf(convertToPeerId(chatId)));
-        body.add("member_ids", String.valueOf(memberId));
+        MessageChangeChatMemberRestrictionQuery query = vkApiClient.messages().changeChatMemberRestrictions(groupActor)
+                .peerId(convertToPeerId(chatId))
+                .memberIds(List.of(memberId));
         if(mute){
-            body.add("action", "ro");
-            body.add("for", String.valueOf(seconds));
+            query.action(WriteRestrictionAction.READ_ONLY);
+            query.timePeriodSec((int) seconds);
         }else{
-            body.add("action", "rw");
+            query.action(WriteRestrictionAction.READ_AND_WRITE);
         }
-        body.add("access_token", groupActor.getAccessToken());
-        body.add("v", "5.199");
+        ChangeChatMemberRestrictionResponse response = query.execute();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        HttpEntity<MultiValueMap<String, String>> request =
-                new HttpEntity<>(body, headers);
-
-        return restTemplate.postForObject(url, request, String.class);
+        return !response.getFailedMemberIds().contains(memberId);
     }
 
     public Set<Long> getMembersWithWriteRestriction(long chatId) throws ClientException, ApiException{
@@ -362,7 +350,6 @@ public class VkChatClient{
 
         messageLogService.markMessagesAsDeleted(chatId, justDeletedByTheBot);
         return justDeletedByTheBot;
-
     }
 
     private <T> List<List<T>> partitionList(List<T> list, int size) {

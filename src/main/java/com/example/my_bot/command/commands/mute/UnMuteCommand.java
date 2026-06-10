@@ -99,11 +99,17 @@ public class UnMuteCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
-        vkChatClient.changeChatMemberRestrictions(chatId, memberToUnMute, -1, false);
+        boolean success = vkChatClient.changeChatMemberRestrictions(chatId, memberToUnMute, -1, false);
 
         String userName = globalUserService.getUserFullNameInRequiredCase(memberToUnMute, NameCase.GENITIVE);
 
-       String message = "✅С %s(%s) был снят запрет на отправку сообщений."
+        if(!success){
+            sendMessage.setText("Не удалось разрешить %s(%s) писать сообщения в чате.".formatted(createMention(memberToUnMute), userName));
+            vkChatClient.sendText(sendMessage);
+            return;
+        }
+
+        String message = "✅С %s(%s) был снят запрет на отправку сообщений."
                .formatted(
                        createMention(memberToUnMute),
                        userName

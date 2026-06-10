@@ -139,13 +139,18 @@ public class MuteCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
-        vkChatClient.changeChatMemberRestrictions(chatId, memberToMute, muteTimePeriodSec, true);
+        boolean success = vkChatClient.changeChatMemberRestrictions(chatId, memberToMute, muteTimePeriodSec, true);
+        String userName = globalUserService.getUserFullNameInRequiredCase(memberToMute, NameCase.DATIVE);
+        if(!success){
+            sendMessage.setText("Не удалось выдать %s(%s) запрет на отправку сообщений.".formatted(createMention(memberToMute), userName));
+            vkChatClient.sendText(sendMessage);
+            return;
+        }
 
         String [] rows = messageDto.getAllRows();
         if(rows.length>=2) reason = rows[1];
 
        Instant mutedUntil= Instant.now().plusSeconds(muteTimePeriodSec);
-       String userName = globalUserService.getUserFullNameInRequiredCase(memberToMute, NameCase.DATIVE);
 
 
        TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
