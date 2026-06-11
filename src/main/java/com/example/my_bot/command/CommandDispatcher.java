@@ -6,7 +6,9 @@ import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.cooldown.CooldownResult;
+import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.exception.command.ForbiddenCommandForCurrentModeException;
+import com.example.my_bot.exception.command.ThisCommandOnlyForConversationsException;
 import com.example.my_bot.exception.command.UnknownCommandException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.*;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 
 
+import static com.example.my_bot.utils.ChatUtils.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.utils.TextUtils.*;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
@@ -39,6 +42,7 @@ public class CommandDispatcher {
 
 
     public void dispatch(CommandMessageDto messageDto) throws ClientException, ApiException {
+             SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
 
              long fromId = messageDto.getFromId();
 
@@ -50,16 +54,20 @@ public class CommandDispatcher {
              if(commandOptional.isEmpty()) return;
              String commandName = commandOptional.get();
 
-             long chatId = messageDto.getChatId();
+             Long chatId = messageDto.getChatId();
 
-             Optional<Character> chatPrefix = chatService.getChatPrefix(chatId);
+             Optional<Character> chatPrefix = chatId==null
+                     ? Optional.of(DEFAULT_CHAT_PREFIX)
+                     : chatService.getChatPrefix(chatId);
 
              if(!messageDto.isEventOrTimerMode()){   // в событиях/таймерах все команды обязаны быть без префикса
                  boolean mustCutPrefix=true;
                  if(chatPrefix.isPresent()){
+                   // префикс включён - строгое соответствие префиксу
                    if(commandName.charAt(0)!=chatPrefix.get()) return;
                  }else{
-                    if(commandName.charAt(0)!=ChatUtils.DEFAULT_CHAT_PREFIX){
+                     // префикс отключен - либо дефолтный префикс, либо без префикса
+                    if(commandName.charAt(0)!= DEFAULT_CHAT_PREFIX){
                      mustCutPrefix=false;
                     }
                  }
@@ -79,19 +87,28 @@ public class CommandDispatcher {
             ChatCommand mainCommand = cmdOptional.get();
             Command cmdAnnotation = commandRegistry.getCommandAnnotation(finalCommandName)
                     .orElseThrow(()->new RuntimeException("Cannot find required init-annotation @Command for "+ finalCommandName));
+
             if(messageDto.isEventOrTimerMode()&&!cmdAnnotation.eventable()){
                 throw new ForbiddenCommandForCurrentModeException(finalCommandName);
             }
+            if(cmdAnnotation.onlyForConversations()&&chatId==null){
+                sendMessage.setText(
+                        "Команду «%s» можно использовать только в конференциях.".formatted(cmdAnnotation.mainCommandName())
+                );
+                vkChatClient.sendText(sendMessage);
+                return;
+            }
 
-            int userRolePriority = memberService.getMemberRolePriority(chatId, fromId);
+           int userRolePriority = chatId==null
+                   ? DefaultRole.MEMBER.getRolePriority()
+                   : memberService.getMemberRolePriority(chatId, fromId);
 
-            boolean canExecute = commandAccessService.checkCommandAuthorization(
-                    chatId, cmdAnnotation.mainCommandName(),userRolePriority,fromId);
+            boolean canExecute = (chatId==null||
+                    commandAccessService.checkCommandAuthorization(chatId, cmdAnnotation.mainCommandName(),userRolePriority,fromId));
 
-            SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
             if(canExecute){
-                CooldownResult cooldownResult = commandAccessService.checkCommandRateLimit(
-                        chatId, cmdAnnotation.mainCommandName(),userRolePriority,fromId);
+                CooldownResult cooldownResult =
+                        commandAccessService.checkCommandRateLimit(chatId, cmdAnnotation.mainCommandName(),userRolePriority,fromId);
                 if(!cooldownResult.canExecuteCommand()){
                   if(cooldownResult.canSendCDMessageToUser()){
                     sendMessage.setText(

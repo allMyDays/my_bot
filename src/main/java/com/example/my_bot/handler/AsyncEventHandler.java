@@ -24,12 +24,14 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.UNKNOWN_ERROR_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.WELCOME_MESSAGE;
 import static com.example.my_bot.utils.ChatUtils.*;
 import static com.example.my_bot.vk.enumeration.ChatErrorCode.*;
+import static java.util.Objects.requireNonNull;
 
 @Component
 @Slf4j
@@ -81,13 +83,10 @@ public class AsyncEventHandler {
         long fromId = message.getFromId();
         VkAction action = message.getAction();
 
-        long chatId;
+        Long chatId;
 
         if(isPersonalChat(peerId)){
-            Optional<Long> boundChat = userService.getOrCreateUser(fromId).getOptionalBoundChat();
-            if(boundChat.isEmpty()) return;
-            else chatId=boundChat.get();
-
+            chatId = userService.getOrCreateUser(fromId).getBoundChat();
         }else{
             chatId = extractConversationId(peerId);
             if (hasTheBotJustBeenAdded(action)){
@@ -99,16 +98,16 @@ public class AsyncEventHandler {
             }
         }
         try{
-            ChatDetailsDto currentChat = chatService.getCachedChatDetails(chatId, true);
-            commandDispatcher.dispatch(messageMapper.toCommandMessageDto(chatId, message, currentChat.isMessageReplying()));
+            ChatDetailsDto currentChat = chatId==null?null:chatService.getCachedChatDetails(chatId, true);
+            commandDispatcher.dispatch(messageMapper.toCommandMessageDto(chatId, message, currentChat!=null&&currentChat.isMessageReplying()));
 
             if(!isPersonalChat(peerId)){
-                chatActionService.handleChatAction(chatId,fromId,action);
+                chatActionService.handleChatAction(requireNonNull(chatId),fromId,action);
                 messageLogService.saveNewMessageLog(peerId, fromId, conversationMessageId, action, message.getText(),false);
-                handleMessageForLogChat(currentChat, message);
+                handleMessageForLogChat(requireNonNull(currentChat), message);
                 eventExecutionService.executeRequiredChatEvents(chatId,fromId,conversationMessageId,action,message.getAttachments(),message.getText(),message.getFwdMessages(),message.getReplyMessage(),null,message.getExpireTTL()!=null);
             }
-            chatActionService.checkLastChatSynchronizationAndExecute(chatId);
+            if(chatId!=null) chatActionService.checkLastChatSynchronizationAndExecute(chatId);
 
         }catch (Exception e) {
             log.error("Произошла ошибка: ",e);

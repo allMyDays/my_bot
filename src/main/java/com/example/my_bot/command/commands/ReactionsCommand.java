@@ -20,7 +20,7 @@ import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 
 @Slf4j
-@Command(mainCommandName = "реакции", alternativeCommandNames = {"reactions"}, defaultRole = ADMINISTRATOR, eventable = true)
+@Command(mainCommandName = "реакции", alternativeCommandNames = {"reactions"}, defaultRole = ADMINISTRATOR, eventable = true, onlyForConversations = false)
 @RequiredArgsConstructor
 public class ReactionsCommand implements ChatCommand {
 

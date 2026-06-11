@@ -17,4 +17,5 @@ public @interface Command {
     String[] alternativeCommandNames();
     DefaultRole defaultRole();
     boolean eventable();
+    boolean onlyForConversations() default true;
 }

@@ -15,6 +15,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
 import com.google.common.collect.ImmutableMap;
+import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -152,7 +153,7 @@ public class CommandAccessService {
 
     }
 
-    public CooldownResult checkCommandRateLimit(long chatId, String userCommand, int userRolePriority, long fromId) {
+    public CooldownResult checkCommandRateLimit(@Nullable Long chatId, String userCommand, int userRolePriority, long fromId){
 
         ChatCommand chatCommand = commandRegistry.getCommand(userCommand)
                 .orElseThrow(() -> new UserCommandNotFoundException(userCommand));
@@ -171,7 +172,10 @@ public class CommandAccessService {
         String defaultKey = DEFAULT_COOLDOWN.buildDefaultCDKey(chatId, fromId, normalizedCommand);
         CooldownInfo defaultInfo = probeCooldown(defaultKey, defaultCooldown.getSeconds(), defaultCooldown.getMaxUses(), now);
 
-        Optional<RoleRateLimitDto> roleLimit = getRoleLimit(chatId, normalizedCommand, userRolePriority);
+        Optional<RoleRateLimitDto> roleLimit = chatId==null
+                ? Optional.empty()
+                : getRoleLimit(chatId, normalizedCommand, userRolePriority);
+
         CooldownInfo customInfo = null;
         String customKey = null;
 

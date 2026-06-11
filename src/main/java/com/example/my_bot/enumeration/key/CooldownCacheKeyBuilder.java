@@ -1,5 +1,6 @@
 package com.example.my_bot.enumeration.key;
 
+import jakarta.annotation.Nullable;
 import lombok.NonNull;
 
 public enum CooldownCacheKeyBuilder {
@@ -12,11 +13,11 @@ public enum CooldownCacheKeyBuilder {
         this.prefix=prefix;
     }
 
-    public String buildDefaultCDKey(long chatId, long userId, @NonNull String normalizedCommand) {
+    public String buildDefaultCDKey(@Nullable Long chatId, long userId, @NonNull String normalizedCommand) {
         if (this != DEFAULT_COOLDOWN) {
             throw new UnsupportedOperationException("buildDefaultCDKey поддерживается только для DEFAULT_COOLDOWN");
         }
-        return prefix + chatId +":user"+userId+":"+normalizedCommand;
+        return prefix + (chatId==null?"ls":chatId) +":user"+userId+":"+normalizedCommand;
     }
 
     public String buildRolePersonalKey(long chatId, long userId, @NonNull String normalizedCommand, long limitEntityId) {

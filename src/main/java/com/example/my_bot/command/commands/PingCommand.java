@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Lazy;
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 
 @Slf4j
-@Command(mainCommandName = "пинг", alternativeCommandNames = {"ping"}, defaultRole = MEMBER, eventable = true)
+@Command(mainCommandName = "пинг", alternativeCommandNames = {"ping"}, defaultRole = MEMBER, eventable = true, onlyForConversations = false)
 @RequiredArgsConstructor
 public class PingCommand implements ChatCommand {
 

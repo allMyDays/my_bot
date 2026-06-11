@@ -21,7 +21,7 @@ public class CommandMessageDto{
     private int conversationMessageId;
 
     @Getter
-    private long chatId;
+    private Long chatId;
 
     @Getter
     private long fromId;

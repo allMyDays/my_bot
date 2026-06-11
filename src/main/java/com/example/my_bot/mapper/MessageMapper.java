@@ -18,7 +18,7 @@ public abstract class MessageMapper {
 
 
 
-    public CommandMessageDto toCommandMessageDto(long chatId, @NonNull VkMessage message, boolean replyToMessageId){
+    public CommandMessageDto toCommandMessageDto(@Nullable Long chatId, @NonNull VkMessage message, boolean replyToMessageId){
 
         CommandMessageDto commandMessageDto = toCommandMessageDto(chatId, message.getFromId(), message.getText(), message.getConversationMessageId(),replyToMessageId,false);
         commandMessageDto.setPeerId(message.getPeerId());
@@ -29,13 +29,13 @@ public abstract class MessageMapper {
         } return commandMessageDto;
 
     }
-    public CommandMessageDto toCommandMessageDto(long chatId, long fromId, @Nullable String fullMessage, int conversationMessageId, boolean replyToMessageId, boolean eventOrTimerMode){
+    public CommandMessageDto toCommandMessageDto(@Nullable Long chatId, long fromId, @Nullable String fullMessage, int conversationMessageId, boolean replyToMessageId, boolean eventOrTimerMode){
 
         CommandMessageDto commandMessageDto = new CommandMessageDto();
         commandMessageDto.setUserText(fullMessage);
         commandMessageDto.setFromId(fromId);
         commandMessageDto.setChatId(chatId);
-        commandMessageDto.setPeerId(ChatUtils.convertToPeerId(chatId));
+        commandMessageDto.setPeerId(chatId==null?fromId:ChatUtils.convertToPeerId(chatId));
         commandMessageDto.setEventOrTimerMode(eventOrTimerMode);
         commandMessageDto.setConversationMessageId(conversationMessageId);
         commandMessageDto.setReplyToMessageId(replyToMessageId);
