@@ -8,6 +8,7 @@ import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.enumeration.chat.SwitchChatSettingResult;
 import com.example.my_bot.enumeration.member.MemberPresenceType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
@@ -419,6 +420,22 @@ public class MemberService {
         putMemberToCache(chatId,memberRepository.save(memberToAlter));
     }
 
+    @Transactional
+    public void setDmResponsesSetting(long chatId, long memberId, boolean isEnabled){
+
+        MemberEntity member = memberRepository.findByChatIdAndUserId(chatId, memberId)
+                .orElseThrow(()->new MemberNotFoundException(memberId, chatId));
+
+        member.setDmResponsesEnabled(isEnabled);
+        putMemberToCache(chatId, member);
+    }
+
+    public boolean isDmResponsesEnabled(long chatId, long memberId){
+        return getCachedMemberInfo(chatId, memberId)
+                .map(MemberDto::isDmResponsesEnabled)
+                .orElse(false);
+    }
+
     private void putMemberToCache(long chatId, @NonNull MemberEntity member){
         putMembersToCache(chatId, List.of(member));
     }
@@ -429,7 +446,9 @@ public class MemberService {
                 .get(chatId,k-> new ConcurrentHashMap<>());
 
         for(MemberEntity currentMember: membersToPut){
-               memberCache.put(currentMember.getUserId(), Optional.of(memberMapper.toMemberDto(currentMember)));
+               memberCache.compute(currentMember.getUserId(), (k,v)->
+                       Optional.of(memberMapper.toMemberDto(currentMember))
+               );
         }
     }
 

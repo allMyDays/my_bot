@@ -47,6 +47,8 @@ public class MemberEntity {
     @Column(nullable = false)
     private Instant firstAppearance;
 
+    private boolean isDmResponsesEnabled;
+
     public MemberEntity(Long chatId, Long userId, int rolePriority, boolean isChatAdmin, MemberPresenceType presenceType, Long invitedById, Instant firstAppearance) {
         this.chatId = chatId;
         this.userId = userId;

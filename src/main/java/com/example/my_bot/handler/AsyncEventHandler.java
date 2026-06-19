@@ -13,6 +13,7 @@ import com.example.my_bot.dto.user.GlobalUserDetailsDto;
 import com.example.my_bot.enumeration.event.ReactionType;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
+import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.MessageLogService;
 import com.example.my_bot.service.submanager.SubmanagerBindingService;
 import com.example.my_bot.service.submanager.SubmanagerService;
@@ -64,7 +65,7 @@ public class AsyncEventHandler {
 
     private final GroupActor theMainBotGroupActor;
     private final long theMainBotId;
-
+    private final MemberService memberService;
 
 
     public AsyncEventHandler(CommandDispatcher commandDispatcher,
@@ -77,7 +78,7 @@ public class AsyncEventHandler {
                              MessageLogService messageLogService,
                              SubmanagerService submanagerService, SubmanagerBindingService submanagerBindingService, CaffeineCacheManager cacheManager,
                              @Qualifier("theMainBotGroupActor") GroupActor theMainBotGroupActor,
-                             @Value("${vk.main-bot.id}") long theMainBotId) {
+                             @Value("${vk.main-bot.id}") long theMainBotId, MemberService memberService) {
         this.commandDispatcher = commandDispatcher;
         this.vkChatClient = vkChatClient;
         this.messageMapper = messageMapper;
@@ -91,6 +92,7 @@ public class AsyncEventHandler {
         this.cacheManager = cacheManager;
         this.theMainBotGroupActor = theMainBotGroupActor;
         this.theMainBotId = theMainBotId;
+        this.memberService = memberService;
     }
 
     @Async
@@ -172,8 +174,8 @@ public class AsyncEventHandler {
 
     private Optional<CommandRoutingData> validateVkEventAndBuildRoutingData(long groupId, long peerId, long fromId, @Nullable String secretKey, @Nullable VkAction action, @Nullable String messageText, boolean isCallback){
 
-        CommandRoutingData commandRoutingData = new CommandRoutingData();
-        commandRoutingData.setOriginalEventPeerId(peerId);
+        CommandRoutingData routingData = new CommandRoutingData();
+        routingData.setOriginalEventPeerId(peerId);
 
         if(isCallback){
             // пришло событие от субменеджера
@@ -188,6 +190,7 @@ public class AsyncEventHandler {
                 log.warn("came callback event from submanager {}, but secret keys don't match. peerId {}",peerId, groupId);
                 return Optional.empty();
             }
+            routingData.setReceivedEventBot(subInfo.getGroupActor());
             long submanagerChatId = extractConversationId(peerId);
 
             if(submanagerBindingService.tryHandleSubmanagerBinding(groupId, fromId, submanagerChatId, subInfo, messageText)) return Optional.empty();
@@ -202,11 +205,11 @@ public class AsyncEventHandler {
                 log.info("came callback event from submanager {}, but required chat {} has bound submanager {}",groupId, chatDetails.getChatId(), boundSubmanager);
                 return Optional.empty();
             }
-            commandRoutingData.setDataBaseChatId(chatDetails.getChatId());  // над каким чатом бот будет работать
-            commandRoutingData.setVkApiChatId(submanagerChatId);  // тот же самый чат, но со стороны субменеджера
-            commandRoutingData.setResponsePeerId(peerId);  // куда бот будет отвечать
-            commandRoutingData.setExecutorBot(subInfo.getGroupActor()); // кто выполнит действие
-            commandRoutingData.setResponderBot(subInfo.getGroupActor());  // кто ответит
+            routingData.setDataBaseChatId(chatDetails.getChatId());  // над каким чатом бот будет работать
+            routingData.setVkApiChatId(submanagerChatId);  // тот же самый чат, но со стороны субменеджера
+            routingData.setResponsePeerId(peerId);  // куда бот будет отвечать
+            routingData.setExecutorBot(subInfo.getGroupActor()); // кто выполнит действие
+            routingData.setResponderBot(subInfo.getGroupActor());  // кто ответит
         }
         else{
             // пришло событие от основной группы чат-менеджера
@@ -214,16 +217,17 @@ public class AsyncEventHandler {
             if(groupId!=theMainBotId){  // longpoll только для основного бота
                 log.warn("foreign group {} came in longpoll event. peerId {}", groupId, peerId);
                 return Optional.empty();
-            }
+            } routingData.setReceivedEventBot(theMainBotGroupActor);
+
             if(isPersonalChat(peerId)){
                 // личные сообщения чат-менеджера
-                commandRoutingData.setResponsePeerId(fromId);  // чат-менеджер отправит ответ в личные сообщения того же юзера
-                commandRoutingData.setResponderBot(theMainBotGroupActor);
+                routingData.setResponsePeerId(fromId);  // чат-менеджер отправит ответ в личные сообщения того же юзера
+                routingData.setResponderBot(theMainBotGroupActor);
 
                 Long boundChat = caller.getBoundChat();  // чат, который привязан к личным сообщениям пользователя
                 if(boundChat!=null){
                     ChatDetailsDto chatDetails = chatService.getCachedChatDetails(boundChat, true);
-                    commandRoutingData.setDataBaseChatId(boundChat);
+                    routingData.setDataBaseChatId(boundChat);
 
                     Long boundSubmanager = chatDetails.getBoundSubmanagerId();
                     if(boundSubmanager!=null){
@@ -231,16 +235,16 @@ public class AsyncEventHandler {
                         SubmanagerDto subInfo = submanagerService.getSubmanagerOrThrowIfAbsents(boundSubmanager);
                         long submanagerChatId = chatService.getSubmanagerChatIdByMainChatId(boundSubmanager, boundChat);
 
-                        commandRoutingData.setExecutorBot(subInfo.getGroupActor());
-                        commandRoutingData.setVkApiChatId(submanagerChatId);
+                        routingData.setExecutorBot(subInfo.getGroupActor());
+                        routingData.setVkApiChatId(submanagerChatId);
                     }else{
                         // у чата, который привязан к лс пользователя, нет субменеджера
-                        commandRoutingData.setExecutorBot(theMainBotGroupActor);
-                        commandRoutingData.setVkApiChatId(boundChat);
+                        routingData.setExecutorBot(theMainBotGroupActor);
+                        routingData.setVkApiChatId(boundChat);
                     }
 
                 }else{ // к личным сообщениям пользователя никакой чат не привязан
-                    commandRoutingData.setExecutorBot(theMainBotGroupActor);
+                    routingData.setExecutorBot(theMainBotGroupActor);
                 }
             }
             else{  // многопользовательская беседа с основной группой чат-менеджера
@@ -254,17 +258,19 @@ public class AsyncEventHandler {
                 if(tryHandleTheMainBotChatAdding(action, chatId)){
                     return Optional.empty();
                 }
-                commandRoutingData.setResponsePeerId(peerId);
-                commandRoutingData.setDataBaseChatId(chatId);
-                commandRoutingData.setVkApiChatId(chatId);
-                commandRoutingData.setExecutorBot(theMainBotGroupActor);
-                commandRoutingData.setResponderBot(theMainBotGroupActor);
+                routingData.setResponsePeerId(peerId);
+                routingData.setDataBaseChatId(chatId);
+                routingData.setVkApiChatId(chatId);
+                routingData.setExecutorBot(theMainBotGroupActor);
+                routingData.setResponderBot(theMainBotGroupActor);
             }
         }
-        return Optional.of(commandRoutingData);
+        if(routingData.getDataBaseChatId()!=null&&memberService.isDmResponsesEnabled(routingData.getDataBaseChatId(), fromId)){
+            routingData.setResponderBot(theMainBotGroupActor);
+            routingData.setResponsePeerId(fromId);
+        }
+        return Optional.of(routingData);
     }
-
-
 
     /**
      * @return true, если данный бот был добавлен в чат

@@ -27,6 +27,8 @@ public class MemberDto {
 
     private Instant firstAppearance;
 
+    private boolean isDmResponsesEnabled;
+
     public Optional<Integer> getOptionalImmuneRolePriority() {
         return Optional.ofNullable(immuneRolePriority);
     }

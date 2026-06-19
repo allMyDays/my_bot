@@ -98,7 +98,7 @@ public class VkChatClient{
                 .disableMentions(!sendMessage.isAbleMentions())
                 .randomId((int) System.currentTimeMillis());
 
-        if(sendMessage.isReplyToMessageId()&&sendMessage.getConversationMessageId()!=null){
+        if(sendMessage.isReplyToMessageId()&&sendMessage.getConversationMessageId()!=null&&!isPersonalChat(responsePeerId)){
             Forward forward = new Forward();
             forward.setConversationMessageIds(List.of(sendMessage.getConversationMessageId()));
             forward.setPeerId(responsePeerId);

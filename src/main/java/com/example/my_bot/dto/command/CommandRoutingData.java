@@ -21,6 +21,8 @@ public class CommandRoutingData {
 
     private GroupActor responderBot;  // какой бот пишет ответ
 
+    private GroupActor receivedEventBot;  // какой бот принял событие
+
     private long originalEventPeerId;  // изначальный peerId из события нового сообщения
 
     public CommandRoutingData(@NonNull CommandRoutingData other){
