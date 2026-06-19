@@ -41,12 +41,12 @@ public class EventDeleteCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
 
         if(args.length<1){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
@@ -67,7 +67,7 @@ public class EventDeleteCommand implements ChatCommand {
             return;
         }
         try{
-            eventService.deleteEventById(events.get(outerEventId-1).getId(), messageDto.getFromId());
+            eventService.deleteEventById(events.get(outerEventId-1).getId(), commandMessage.getFromId());
         }catch (EventException | RoleException | MemberException e){
           sendMessage.setText(e.getMessage());
           vkChatClient.sendText(sendMessage);

@@ -6,13 +6,14 @@ import com.example.my_bot.cache.key.GroupIdAndUserIdKey;
 import com.example.my_bot.cache.value.MessageCounter;
 import com.example.my_bot.cache.value.TimePeriodAndCallQuantity;
 import com.example.my_bot.client.VkChatClient;
+import com.example.my_bot.client.VkCommunityClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.dto.event.DataForEventExecution;
 import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.MyEventType;
-import com.example.my_bot.enumeration.event.ReactionType;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.BanService;
@@ -21,7 +22,6 @@ import com.example.my_bot.service.MessageLogService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.TextUtils;
-import com.example.my_bot.vk.VkAction;
 import com.example.my_bot.vk.attachment.Video;
 import com.example.my_bot.vk.attachment.VkMessageAttachment;
 import com.example.my_bot.vk.enumeration.VideoType;
@@ -31,7 +31,6 @@ import com.github.benmanes.caffeine.cache.*;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.vk.api.sdk.objects.messages.*;
-import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +52,6 @@ import static com.example.my_bot.enumeration.event.ChatEventType.*;
 import static com.example.my_bot.enumeration.event.EventArgumentType.INTEGER;
 import static com.example.my_bot.enumeration.event.MyEventType.*;
 import static com.example.my_bot.service.event.EventService.getMaxPeriodForAdvancedEvents;
-import static com.example.my_bot.utils.ChatUtils.convertToPeerId;
 import static com.example.my_bot.utils.TextUtils.*;
 import static com.example.my_bot.utils.TextUtils.isMostlyCaps;
 import static com.example.my_bot.utils.TextUtils.isZalgo;
@@ -69,6 +67,7 @@ public class EventExecutionService {
    private final BanService banService;
    private final MessageMapper messageMapper;
    private final VkChatClient vkChatClient;
+   private final VkCommunityClient vkCommunityClient;
    private final ChatService chatService;
    private final MessageLogService messageLogService;
    private CommandDispatcher commandDispatcher;
@@ -164,16 +163,10 @@ public class EventExecutionService {
         this.commandDispatcher = commandDispatcher;
     }
 
-    public void executeRequiredChatEvents(long chatId,
-                                          long fromId,
-                                          int conversationMessageId,
-                                          @Nullable VkAction action,
-                                          @Nullable List<VkMessageAttachment> attachments,
-                                          @Nullable String userText,
-                                          @Nullable List<ForeignMessage> fwMessages,
-                                          @Nullable ForeignMessage replyMessage,
-                                          @Nullable ReactionType userReaction,
-                                          boolean isSelfDestructing){
+    public void executeRequiredChatEvents(@NonNull DataForEventExecution data){
+
+        long chatId = data.getDataBaseChatId();
+        long fromId = data.getFromId();
 
         int callerRole = memberService.getMemberRolePriority(chatId, fromId);
         ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventsCache = eventService.getCachedChatEvents(chatId);
@@ -181,35 +174,31 @@ public class EventExecutionService {
         LocalTime currentDailyTime = LocalTime.now(chatTimeZone.getZoneOffset());
         Instant nowInstant = Instant.now();
 
-        Long fwdMessageOwnerId= replyMessage!=null
-                ? replyMessage.getFromId()
-                : (fwMessages!=null&&!fwMessages.isEmpty()) ? fwMessages.get(0).getFromId() : null;
-
         ImmutableSet<EventDto> requiredEvents;
         Consumer<EventDto> eventExecutor=null;
 
         for(ChatEventType chatEventType: ChatEventType.values()){
             switch (chatEventType){
                 case ACTION -> {
-                    if(action==null) continue;
-                    eventExecutor = (newEvent) -> handleActionEvent(newEvent,action,fromId,chatId,conversationMessageId);
+                    if(data.getAction()==null) continue;
+                    eventExecutor = (newEvent) -> handleActionEvent(newEvent, data);
                 }case TEXT -> {
-                    if(userText==null||userText.isEmpty()) continue;
-                    eventExecutor = (newEvent) -> handleTextEvent(newEvent,userText.trim(),attachments,fromId,chatId,conversationMessageId,isSelfDestructing,fwdMessageOwnerId);
+                    if(data.getUserText()==null||data.getUserText().isEmpty()) continue;
+                    eventExecutor = (newEvent) -> handleTextEvent(newEvent, data);
 
                 }case ATTACHMENTS -> {
-                    if(attachments==null||attachments.isEmpty()) continue;
-                    var attachmentMap = attachments
+                    if(data.getAttachments()==null||data.getAttachments().isEmpty()) continue;
+                    var attachmentMap = data.getAttachments()
                             .stream()
                             .collect(Collectors.groupingBy(VkMessageAttachment::getType));
-                    eventExecutor = (newEvent) -> handleAttachmentEvent(newEvent,attachments,attachmentMap,fromId,chatId,conversationMessageId,fwdMessageOwnerId);
+                    eventExecutor = (newEvent) -> handleAttachmentEvent(newEvent, data, attachmentMap);
 
                 }case FORWARDS -> {
-                    if(fwMessages==null||fwMessages.isEmpty()) continue;
-                    eventExecutor = (newEvent) -> handleFwdEvent(newEvent,fwMessages,fromId,chatId,conversationMessageId,fwdMessageOwnerId);
+                    if(data.getFwMessages()==null||data.getFwMessages().isEmpty()) continue;
+                    eventExecutor = (newEvent) -> handleFwdEvent(newEvent, data);
                 }case REACTION -> {
-                    if(userReaction==null) continue;
-                    eventExecutor = (newEvent) -> handleReactionEvent(newEvent,userReaction,fromId,chatId,conversationMessageId);
+                    if(data.getUserReaction()==null) continue;
+                    eventExecutor = (newEvent) -> handleReactionEvent(newEvent, data);
                 }
             }
             requiredEvents = eventsCache.get(chatEventType);
@@ -220,8 +209,8 @@ public class EventExecutionService {
                         continue;
                     }
                     if(currentEvent.getType()==ANY_MESSAGE){
-                        if(action==null&&userReaction==null){
-                            executeEvent(chatId, fromId, null, currentEvent, 1, conversationMessageId, fwdMessageOwnerId,userText);
+                        if(data.getAction()==null&&data.getUserReaction()==null){
+                            executeEvent(currentEvent, data, 1);
                         }continue;
                     }
                     if(eventExecutor!=null){
@@ -235,11 +224,12 @@ public class EventExecutionService {
               }
         }
     }
-    private void handleActionEvent(@NonNull EventDto eventDto,@NonNull VkAction action, long fromId, long chatId, int chatMessageId){
+    private void handleActionEvent(@NonNull EventDto eventDto, @NonNull DataForEventExecution data){
         MyEventType eventType = eventDto.getType();
         if(eventType.getChatEventType()!=ACTION) return;
+        long fromId = data.getFromId();;
 
-        VkActionType actionType = action.getType();
+        VkActionType actionType = data.getAction().getType();
          Optional<Set<VkActionType>> actionsToExecuteEvent = eventType.getVkActionTypeSet();
          if(actionsToExecuteEvent.isEmpty()){
              log.warn("action event {} returned empty Optional<Set<MessageActionStatus>>.",eventType);
@@ -248,14 +238,14 @@ public class EventExecutionService {
          if(!actionsToExecuteEvent.get().contains(actionType)){
              return;
          }
-         Long memberId = action.getMemberId();
+         Long memberId = data.getAction().getMemberId();
          boolean selfAction = Objects.equals(fromId, memberId);
          switch (eventType){
              case INVITE_ANOTHER, KICK_ANOTHER -> {
                  if(selfAction) return;
              }
              case INVITE_BANNED -> {
-                 if(selfAction||!banService.getMemberBanStatus(chatId, memberId).isBanned()) return;
+                 if(selfAction||!banService.getMemberBanStatus(data.getDataBaseChatId(), memberId).isBanned()) return;
              }
              case INVITE_GROUP -> {
                  if(selfAction||!ChatUtils.isGroupId(memberId)) return;
@@ -268,7 +258,7 @@ public class EventExecutionService {
                  GroupIdAndUserIdKey key = new GroupIdAndUserIdKey(Long.parseLong(eventDto.getArgument()), fromId);
                  boolean isMember = Boolean.TRUE.equals(COMMUNITY_SUBSCRIPTIONS_CACHE.get(key, k ->{
                          try {
-                             return vkChatClient.isCommunityMember(k.groupId(), k.userId());
+                             return vkCommunityClient.isCommunityMember(k.groupId(), k.userId());
                          } catch (Exception e){
                              log.warn("error execute method isCommunityMember, group: {}; user {}", eventDto.getArgument(), k.userId());
                              return false;
@@ -279,10 +269,10 @@ public class EventExecutionService {
                  }
              }
          }
-         executeEvent(chatId, fromId, memberId, eventDto, 1, chatMessageId,null,null);
+         executeEvent(eventDto, data, 1);
      }
 
-     private void handleAttachmentEvent(@NonNull EventDto eventDto, @NonNull List <VkMessageAttachment> allAttachmentsList, @NonNull Map<VkMessageAttachmentType, List<VkMessageAttachment>> allAttachmentsMap, long fromId, long chatId, int chatMessageId, @Nullable Long fwdMessageOwnerId){
+     private void handleAttachmentEvent(@NonNull EventDto eventDto, @NonNull DataForEventExecution data, @NonNull Map<VkMessageAttachmentType, List<VkMessageAttachment>> allAttachmentsMap){
         MyEventType eventType = eventDto.getType();
         if(eventType.getChatEventType()!=ATTACHMENTS) return;
 
@@ -295,7 +285,7 @@ public class EventExecutionService {
 
         List<VkMessageAttachment> currentTypeAttachments;
         if (eventType==ATTACHMENT_QUANTITY){
-            currentTypeAttachments = allAttachmentsList;
+            currentTypeAttachments = data.getAttachments();
         }else{
             if(vkTypeToExecute==null){
                 log.warn("attachment event {} returned empty Optional<MessageAttachmentType>", eventType);
@@ -317,7 +307,7 @@ public class EventExecutionService {
                 }else{
                     if(duration<=intArg) return;
                 }
-                executeEvent(chatId, fromId, null, eventDto,1, chatMessageId,fwdMessageOwnerId,null);
+                executeEvent(eventDto, data,1);
                 return;
             }
             case VIDEO_MESSAGE, VK_CLIP-> {
@@ -328,7 +318,7 @@ public class EventExecutionService {
                 }else{
                     if(videoType!=VideoType.SHORT_VIDEO) return;
                 }
-                executeEvent(chatId, fromId, null, eventDto, 1, chatMessageId,fwdMessageOwnerId,null);
+                executeEvent( eventDto, data, 1);
                 return;
             }
             case VIDEO -> {
@@ -340,21 +330,20 @@ public class EventExecutionService {
                 return;   // вложения искомого типа есть, но их недостаточно
             }
         }
-        executeEvent(chatId, fromId, null, eventDto, currentTypeAttachments.size(), chatMessageId,fwdMessageOwnerId,null);
+        executeEvent(eventDto, data, currentTypeAttachments.size());
     }
 
-    private void handleTextEvent(@NonNull EventDto eventDto, @NonNull String userText, @Nullable List<VkMessageAttachment> attachments, long fromId, long chatId, int chatMessageId, boolean isSelfDestructing, @Nullable Long fwdMessageOwnerId){
+    private void handleTextEvent(@NonNull EventDto eventDto, @NonNull DataForEventExecution data){
         MyEventType eventType = eventDto.getType();
-        if(eventType.getChatEventType()!=TEXT) return;
+        if(eventType.getChatEventType()!=TEXT||data.getUserText()==null) return;
+        String userText = data.getUserText().trim();
 
         String arg = eventDto.getArgument();
         Integer intArg = arg!=null&&eventType.getArgumentType()==INTEGER?Integer.parseInt(arg):null;
         boolean isAdvancedEvent = eventDto.getAEMaxUsage()!=null;
 
         int callQuantity = 0;
-        if(attachments==null){
-            attachments=Collections.emptyList();
-        }
+        List<VkMessageAttachment> attachments = data.getAttachments();
 
         switch (eventType){
             case WORD_FILTER -> {
@@ -377,7 +366,7 @@ public class EventExecutionService {
                         if(!isAdvancedEvent) break;
                 }
             }case SHORT_MESSAGE ->{
-                if(!attachments.isEmpty()||userText.length()>=intArg) return;
+                if((attachments!=null&&!attachments.isEmpty())||userText.length()>=intArg) return;
                 callQuantity = 1;
 
             }case MAXIMUM_SYMBOLS -> {
@@ -438,7 +427,7 @@ public class EventExecutionService {
                 }
             }
             case SELF_DESTRUCTING_MESSAGE -> {
-                if (!isSelfDestructing) return;
+                if (!data.isSelfDestructingMessage()) return;
                 callQuantity=1;
             }
             case ANY_PUSH_QUANTITY -> {
@@ -448,7 +437,7 @@ public class EventExecutionService {
                 }
             }
             case SAME_MESSAGES -> {
-                EventIdAndMemberIdKey key = new EventIdAndMemberIdKey(eventDto.getId(), fromId);
+                EventIdAndMemberIdKey key = new EventIdAndMemberIdKey(eventDto.getId(), data.getFromId());
                 MessageCounter value = SAME_MESSAGES_CACHE.asMap().compute(key, (k, existing) -> {
                     if(existing==null){
                         return new MessageCounter(userText, 1);
@@ -464,33 +453,37 @@ public class EventExecutionService {
         if(eventType!=SHORT_MESSAGE){
             if(!isAdvancedEvent&&intArg!=null&&callQuantity<intArg) return;
         }
-        executeEvent(chatId, fromId, null, eventDto,callQuantity, chatMessageId,fwdMessageOwnerId,userText);
+        executeEvent(eventDto, data, callQuantity);
     }
 
-    private void handleFwdEvent(@NonNull EventDto eventDto,@NonNull List<ForeignMessage> fwdMessages, long fromId, long chatId, int chatMessageId, @Nullable Long fwdMessageOwnerId){
+    private void handleFwdEvent(@NonNull EventDto eventDto,@NonNull DataForEventExecution data){
         MyEventType eventType = eventDto.getType();
-        if(eventType.getChatEventType()!= FORWARDS) return;
+        if(eventType.getChatEventType()!= FORWARDS||data.getFwMessages()==null) return;
         boolean isAdvancedEvent = eventDto.getAEMaxUsage()!=null;
 
         if(eventType==FWD_QUANTITY){
-            int fwdQuantity = countForwardedMessages(fwdMessages);
+            int fwdQuantity = countForwardedMessages(data.getFwMessages());
             if(!isAdvancedEvent&&fwdQuantity<Integer.parseInt(eventDto.getArgument())) return;
-            executeEvent(chatId, fromId, null, eventDto, fwdQuantity, chatMessageId, fwdMessageOwnerId,null);
-            return;
+
+            executeEvent(eventDto, data, fwdQuantity);
         }
     }
-    private void handleReactionEvent(@NonNull EventDto eventDto, ReactionType userReaction,long fromId, long chatId, int chatMessageId){
+    private void handleReactionEvent(@NonNull EventDto eventDto, @NonNull DataForEventExecution data){
         MyEventType eventType = eventDto.getType();
-        if(eventType.getChatEventType()!= REACTION||userReaction==null) return;
+        if(eventType.getChatEventType()!= REACTION||data.getUserReaction()==null) return;
 
         if(eventType==REACTION_FILTER){
-            if(userReaction.getReactionId()!=Integer.parseInt(eventDto.getArgument())) return;
+            if(data.getUserReaction().getReactionId()!=Integer.parseInt(eventDto.getArgument())) return;
         }
-        executeEvent(chatId, fromId, null, eventDto, 1, chatMessageId, null,null);
+        executeEvent(eventDto, data,1);
     }
 
-   private void executeEvent(long chatId, long fromId, @Nullable Long memberId, @NonNull EventDto eventDto, int callQuantity, int chatMessageId, @Nullable Long fwdMessageOwnerId, @Nullable String userText){
+   private void executeEvent(@NonNull EventDto eventDto, @NonNull DataForEventExecution data, int callQuantity){
        if(callQuantity<=0) return;
+       long fromId = data.getFromId();
+       long chatId = data.getDataBaseChatId();
+       int conversationMessageId = data.getConversationMessageId();
+
        EventIdAndMemberIdKey eventKey=null;
 
        if(eventDto.getAEMaxUsage()!=null){
@@ -498,7 +491,7 @@ public class EventExecutionService {
 
            int allEventCalls = advancedEventCallCounters.get(eventKey, k-> new AtomicInteger()).addAndGet(callQuantity);
            advancedEventCalls.put(
-                   new EventIdAndMemberIdAndUniqueIdKey(eventKey, chatMessageId),
+                   new EventIdAndMemberIdAndUniqueIdKey(eventKey, conversationMessageId),
                    new TimePeriodAndCallQuantity(eventDto.getAEPeriodSec(),callQuantity)
            );
            if(allEventCalls<eventDto.getAEMaxUsage()){
@@ -517,32 +510,37 @@ public class EventExecutionService {
        }
        ChatEventType vkType = eventDto.getType().getChatEventType();
        if(eventDto.getFullCommand()!=null){
-           String fullCommand = insertRequiredMemberIntoTheCommand(chatId, fromId, memberId, eventDto, fwdMessageOwnerId,chatMessageId, userText);
+           String fullCommand = insertRequiredMemberIntoTheCommand(eventDto, data);
            try{
-               CommandMessageDto commandDto = messageMapper.toCommandMessageDto(chatId,
-                       eventService.isEventBeingACommandEvent(eventDto)?fromId:eventDto.getCreatorId(),
+              CommandMessageDto commandMessage = messageMapper.toCommandMessageDto(
+                       data.getCommandRoutingData(),
+                       eventService.isEventACommandEvent(eventDto)? fromId: eventDto.getCreatorId(),  // в событиях-командах, события вызываются от имени того кто вызвал событие, а не от имени создателя события
                        fullCommand,
-                       chatMessageId,
+                       conversationMessageId,
                        eventDto.isReply()&&vkType!=ACTION,
-                       true);
-               commandDto.setDoNotSendMessage(eventDto.isSilent());
-               commandDispatcher.dispatch(commandDto);
+                       true
+              );
+              commandMessage.setDoNotSendTheMessage(eventDto.isSilent());
+              commandDispatcher.dispatch(commandMessage);
+
            }catch (Exception e){
                log.warn("error while execution event {} in chat {}.", eventDto.getId(), chatId, e);
                try {
                    String message = "Ваше событие с командой «%s» завершилось с ошибкой. Возможно, вам следует его удалить."
                            .formatted(eventDto.getFullCommand());
-                   vkChatClient.sendText(messageMapper.toSendMessageDto(message, convertToPeerId(chatId)));
+                   vkChatClient.sendText(messageMapper.toSendMessageDto(message, data.getCommandRoutingData()));
                } catch (Exception ex) {
                    log.warn("chat {}: Failed to send notification about error while execution event {}", chatId, eventDto.getId(), ex);
                }
            }
 
-       }if(eventDto.isDelete()&&vkType!=ACTION/*&&!memberService.isChatAdmin(chatId,fromId)*/){
+       }if(eventDto.isDelete()&&vkType!=ACTION&&!data.isTheMessageBeenDeleted()){
                try {
-                   vkChatClient.batchDeleteMessages(chatId, List.of(chatMessageId));
+                   data.setTheMessageBeenDeleted(
+                           vkChatClient.deleteOneMessage(data.getCommandRoutingData(), conversationMessageId)
+                   );
                } catch (Exception e) {
-                   log.warn("chat {} error: could not delete not-chat-admin message {}",chatId,chatMessageId, e);
+                   log.warn("chat {} error: could not delete not-chat-admin message. cmid: {}",chatId, conversationMessageId, e);
                }
        }
    }
@@ -604,33 +602,35 @@ public class EventExecutionService {
     private boolean isNewMember(@NonNull Instant now, @NonNull Instant memberJoinDate, int period){
         return !memberJoinDate.isBefore(now.minusSeconds(period));
     }
-    private String insertRequiredMemberIntoTheCommand(long chatId, long fromId, @Nullable Long memberId, @NonNull EventDto eventDto, @Nullable Long fwdMessageOwnerId, int chatMessageId, @Nullable String userText){
+    private String insertRequiredMemberIntoTheCommand(@NonNull EventDto eventDto, @NonNull DataForEventExecution data){
         String fullEventCommand = eventDto.getFullCommand();
         if(fullEventCommand==null) return null;
         MyEventType eventType = eventDto.getType();
 
         fullEventCommand = FROM_ID_PATTERN
                 .matcher(fullEventCommand)
-                .replaceFirst(createMemberLink(fromId));
+                .replaceFirst(createMemberLink(data.getFromId()));
+
+        Long memberId = data.getAction()==null?null:data.getAction().getMemberId();
 
         if(memberId!=null){
             fullEventCommand = MEMBER_ID_PATTERN
                     .matcher(fullEventCommand)
                     .replaceFirst(createMemberLink(memberId));
         }
-        if(eventService.isEventBeingACommandEvent(eventDto)){
+        if(eventService.isEventACommandEvent(eventDto)){
             // специальное событие-команда
             Matcher matcher = ARG_1_PATTERN.matcher(fullEventCommand);
             if(matcher.find()){
                 String replacement=null;
-                if(fwdMessageOwnerId!=null){
-                    replacement = createMemberLink(fwdMessageOwnerId);
+                if(data.getFwdMessageOwnerId()!=null){
+                    replacement = createMemberLink(data.getFwdMessageOwnerId());
                 }else if(eventType==REACTION_FILTER||eventType==ANY_REACTION){
-                     Long reactionOwnerId =messageLogService.getMessageOwnerId(chatId, chatMessageId).orElse(null);
+                     Long reactionOwnerId =messageLogService.getMessageOwnerId(data.getDataBaseChatId(), data.getConversationMessageId()).orElse(null);
                      if(reactionOwnerId!=null) replacement = createMemberLink(reactionOwnerId);
 
-                }else if(userText!=null){
-                    replacement = UserInputResolver.getRequiredCommandArgument(userText,2).orElse(null);
+                }else if(data.getUserText()!=null){
+                    replacement = UserInputResolver.getRequiredCommandArgument(data.getUserText(),2).orElse(null);
                 }
                 if(replacement!=null){
                    fullEventCommand = matcher.replaceFirst(replacement);

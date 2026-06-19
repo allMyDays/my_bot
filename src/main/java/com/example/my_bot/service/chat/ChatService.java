@@ -1,28 +1,24 @@
 package com.example.my_bot.service.chat;
 
-import com.example.my_bot.annotation.Command;
-import com.example.my_bot.command.commands.LogChatCommand;
+import com.example.my_bot.cache.key.GroupIdAndChatIdKey;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.entity.ChatEntity;
-import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.chat.SwitchChatSettingResult;
 import com.example.my_bot.exception.LogChatException;
 import com.example.my_bot.exception.chat.ChatEntityAlreadyExistsException;
 import com.example.my_bot.exception.chat.ChatEntityNotFoundException;
 import com.example.my_bot.exception.chat.ForbiddenPrefixException;
+import com.example.my_bot.exception.submanager.CannotFindSubmanagerChatIdByMainChatIdException;
 import com.example.my_bot.mapper.ChatMapper;
 import com.example.my_bot.repository.ChatRepository;
 import com.example.my_bot.service.BanService;
-import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.ChatUtils;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -84,6 +80,28 @@ public class ChatService {
             } else {
                 throw new ChatEntityNotFoundException(id);
             }
+        });
+    }
+
+    public Optional<ChatDetailsDto> getMainChatDataBySubmanagerChatId(long submanagerId, long submanagerChatId){
+        GroupIdAndChatIdKey key = new GroupIdAndChatIdKey(submanagerId, submanagerChatId);
+
+        Optional<Long> mainChatId =  cacheManager.getMainChatIdBySubmanagerChatIdCache().get(key, k->
+                chatRepository.findMainChatIdBySubmanagerChatId(submanagerId, submanagerChatId)
+        );
+        return mainChatId.map(id->getCachedChatDetails(id, true));
+
+    }
+
+    public long getSubmanagerChatIdByMainChatId(long submanagerId, long mainChatId){
+        GroupIdAndChatIdKey key = new GroupIdAndChatIdKey(submanagerId, mainChatId);
+
+        Optional<Long> submanagerChatId= cacheManager.getSubmanagerChatIdByMainChatIdCache().get(key, k->
+                chatRepository.findSubmanagerChatIdByMainChatId(submanagerId, mainChatId)
+        );
+        return submanagerChatId.orElseThrow(()->{
+            log.warn("cannot find submanager chat id by the main chat id {}. Submanager group id: {}", mainChatId, submanagerId);
+            return new CannotFindSubmanagerChatIdByMainChatIdException(submanagerId, mainChatId);
         });
     }
 
@@ -252,15 +270,16 @@ public class ChatService {
             }
         }
     }
-    private ChatDetailsDto putChatToCache( @NonNull ChatEntity chat){
 
-        ChatDetailsDto chatDto = chatMapper.toChatDetailsDto(chat);
+    private ChatDetailsDto putChatToCache(@NonNull ChatEntity chat){
+        ChatDetailsDto chatDetails = chatMapper.toChatDetailsDto(chat);
 
-        cacheManager.getChatDetailsCache().put(chat.getChatId(), chatDto);
-
-        return chatDto;
-
+        cacheManager.getChatDetailsCache().asMap().compute(chat.getChatId(),(k,v)->{
+            return chatDetails;
+        });
+        return chatDetails;
     }
+
     @Transactional
     public void makeLogChat(@NonNull String currentChatCode, long targetChatId, long fromId){
 
@@ -289,10 +308,8 @@ public class ChatService {
         if(existsByBoundLogChat(currentChat.getChatId())){
             throw new LogChatException("Указанный вами чат уже является логчатом. Нельзя создать логчат для беседы, которая уже является логчатом.");
         }
-        try{
-            memberService.synchronizeChatMembers(currentChat.getChatId());
-        }catch(Exception e){
-            throw new LogChatException("Не удалось произвести обновление указанного вами чата. Убедитесь, что я там есть и мне там выданы права администратора.");
+        if(!Objects.equals(targetChat.getBoundSubmanagerId(), currentChat.getBoundSubmanagerId())){  // если в обоих чатах 2 основных сообщества, то null.equals(null)
+            throw new LogChatException("Логчат может быть установлен только при условии, что в двух чатах работают одинаковые группы (либо субменеджер и тот же субменеджер, либо основное сообщество и основное сообщество).");
         }
         currentChat.setBoundLogChat(targetChat.getChatId());
         putChatToCache(currentChat);
@@ -314,13 +331,37 @@ public class ChatService {
         putChatToCache(chat);
     }
 
+    @Transactional
+    public void bindSubmanagerToAChat(long dataBaseChatId, long submanagerId, long submanagerChatId){
+        submanagerId = Math.abs(submanagerId);
+        ChatEntity chat= findByChatIdOrThrow(dataBaseChatId);
+        chat.setBoundSubmanagerId(Math.abs(submanagerId));
+        chat.setSubmanagerChatId(submanagerChatId);
+        putChatToCache(chat);
 
+        cacheManager.getMainChatIdBySubmanagerChatIdCache().asMap().compute(
+                new GroupIdAndChatIdKey(submanagerId,submanagerChatId), (k,v)-> Optional.of(dataBaseChatId)
+        );
+        cacheManager.getSubmanagerChatIdByMainChatIdCache().asMap().compute(
+                new GroupIdAndChatIdKey(submanagerId, dataBaseChatId), (k,v)-> Optional.of(submanagerChatId)
+        );
+    }
 
+    @Transactional
+    public void unbindSubmanagerFromAChat(long dataBaseChatId, long submanagerId, long submanagerChatId){
+        submanagerId = Math.abs(submanagerId);
+        ChatEntity chat= findByChatIdOrThrow(dataBaseChatId);
+        chat.setBoundSubmanagerId(null);
+        chat.setSubmanagerChatId(null);
+        putChatToCache(chat);
 
-
-
-
-
+        cacheManager.getMainChatIdBySubmanagerChatIdCache().asMap().compute(
+                new GroupIdAndChatIdKey(submanagerId,submanagerChatId), (k,v)-> Optional.empty()
+        );
+        cacheManager.getSubmanagerChatIdByMainChatIdCache().asMap().compute(
+                new GroupIdAndChatIdKey(submanagerId, dataBaseChatId), (k,v)-> Optional.empty()
+        );
+    }
 
 
 }

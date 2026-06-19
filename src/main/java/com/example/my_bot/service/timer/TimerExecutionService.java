@@ -3,10 +3,16 @@ package com.example.my_bot.service.timer;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.config.CaffeineCacheManager;
+import com.example.my_bot.dto.ChatDetailsDto;
+import com.example.my_bot.dto.command.CommandRoutingData;
+import com.example.my_bot.dto.submanager.SubmanagerDto;
 import com.example.my_bot.entity.TimerEntity;
 import com.example.my_bot.exception.timer.TimerHasReachedExecutionLimitException;
 import com.example.my_bot.mapper.MessageMapper;
+import com.example.my_bot.service.submanager.SubmanagerService;
+import com.example.my_bot.service.chat.ChatService;
 import com.github.benmanes.caffeine.cache.Cache;
+import com.vk.api.sdk.client.actors.GroupActor;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +38,7 @@ public class TimerExecutionService {
     private final static int CORE_POOL_SIZE = 3;
     private final static long MAX_SECONDS_BETWEEN_NOW_AND_EXECUTION = 30*60;
     private final static int CONVERSATION_MESSAGE_ID = 0;
+    private final GroupActor theMainBotGroupActor;
 
     private TimerService timerService;
     private CommandDispatcher commandDispatcher;
@@ -39,6 +46,8 @@ public class TimerExecutionService {
     private final CaffeineCacheManager cacheManager;
     private final ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(CORE_POOL_SIZE);
     private final VkChatClient vkChatClient;
+    private final ChatService chatService;
+    private final SubmanagerService submanagerService;
 
     {
         scheduler.setRemoveOnCancelPolicy(true);
@@ -84,52 +93,70 @@ public class TimerExecutionService {
     }
     private Runnable generateTask(@NonNull TimerEntity timer){
         return () -> {
-            long chatId = timer.getChatId();
+            long dataBaseChatId = timer.getChatId();
+            long vkApiChatId = dataBaseChatId;
             long timerId = timer.getId();
-                try{
-                    commandDispatcher.dispatch(
-                            messageMapper.toCommandMessageDto(chatId, timer.getCreatorId(), timer.getFullCommand(), CONVERSATION_MESSAGE_ID,false,true)
-                    );
-                }catch (Exception e) {
-                    log.warn("error while execution timer {} in chat {}, the timer is gonna be deleted.",timerId,chatId, e);
-                    deleteTimerAndSendNotification(timerId, timer.getFullCommand(), chatId,
-                            "Ваш таймер с командой «%s» завершился с ошибкой, поэтому был удалён.");
-                    return;
-                }
-                try{
-                    if (timer.getType() == ONCE) {
-                        timerService.deleteTimerById(timerId); // удаляю одноразовый таймер
+            GroupActor executorBot = theMainBotGroupActor;
 
-                    }else{     // обновляю дату следующего срабатывания для многоразового таймера
-                        Instant newNextExecution = timerService.incrementNextExecutionAndExecutionCounter(timerId);
-                        if(Duration.between(Instant.now(), newNextExecution).toHours()>=12){
-                            // отменяю многоразовый таймер потому-что следующий вызов только через 12 часов и более
-                            cancelTaskAndRemoveFromCache(timerId);
-                        }
+            CommandRoutingData commandRoutingData = new CommandRoutingData();
+            commandRoutingData.setDataBaseChatId(dataBaseChatId);
+
+            ChatDetailsDto currentChat = chatService.getCachedChatDetails(dataBaseChatId, false);
+            if(currentChat.getBoundSubmanagerId()!=null){
+                SubmanagerDto subInfo = submanagerService.getSubmanagerOrThrowIfAbsents(currentChat.getBoundSubmanagerId());
+                vkApiChatId = chatService.getSubmanagerChatIdByMainChatId(currentChat.getBoundSubmanagerId(), dataBaseChatId);
+                executorBot = subInfo.getGroupActor();
+            }
+            commandRoutingData.setOriginalEventPeerId(convertToPeerId(vkApiChatId));
+            commandRoutingData.setResponsePeerId(convertToPeerId(vkApiChatId));
+            commandRoutingData.setVkApiChatId(vkApiChatId);
+            commandRoutingData.setExecutorBot(executorBot);
+            commandRoutingData.setResponderBot(executorBot);
+
+            try{
+                commandDispatcher.dispatch(
+                        messageMapper.toCommandMessageDto(commandRoutingData, timer.getCreatorId(), timer.getFullCommand(), CONVERSATION_MESSAGE_ID,false,true)
+                );
+            }catch (Exception e) {
+                log.warn("error while execution timer {} in chat {}, the timer is gonna be deleted.",timerId,dataBaseChatId, e);
+                deleteTimerAndSendNotification(
+                        timerId, timer.getFullCommand(), dataBaseChatId, "Ваш таймер с командой «%s» завершился с ошибкой, поэтому был удалён.", commandRoutingData
+                );
+                return;
+            }
+            try{
+                if(timer.getType()==ONCE){
+                    timerService.deleteTimerById(timerId); // удаляю одноразовый таймер
+                }else{     // обновляю дату следующего срабатывания для многоразового таймера
+                    Instant newNextExecution = timerService.incrementNextExecutionAndExecutionCounter(timerId);
+                    if(Duration.between(Instant.now(), newNextExecution).toHours()>=12){
+                        // отменяю многоразовый таймер потому-что следующий вызов только через 12 часов и более
+                        cancelTaskAndRemoveFromCache(timerId);
                     }
-                } catch(TimerHasReachedExecutionLimitException e){
-                    deleteTimerAndSendNotification(timerId, timer.getFullCommand(), chatId,
-                            "Ваш таймер с командой «%s» достиг конца своего жизненного цикла и был удалён.");
-
-                } catch (Exception e) {
-                    log.error("error updating timer {} info after it's just been executed in chat {}: ",timerId,chatId, e);
-                    deleteTimerAndSendNotification(timerId, timer.getFullCommand(), chatId,
-                            "Таймер с командой «%s» сломан и был удалён.");
-
                 }
+            }catch(TimerHasReachedExecutionLimitException e){
+                deleteTimerAndSendNotification(
+                        timerId, timer.getFullCommand(), dataBaseChatId, "Ваш таймер с командой «%s» достиг конца своего жизненного цикла и был удалён.", commandRoutingData
+                );
 
+            }catch (Exception e){
+                log.error("error updating timer {} info after it's just been executed in chat {}: ",timerId,dataBaseChatId, e);
+                deleteTimerAndSendNotification(
+                        timerId, timer.getFullCommand(), dataBaseChatId, "Таймер с командой «%s» сломан и был удалён.", commandRoutingData
+                );
+            }
         };
     }
-    private void deleteTimerAndSendNotification(long timerId, String command, long chatId, String messageTemplate) {
+    private void deleteTimerAndSendNotification(long timerId, String command, long chatId, String messageTemplate, CommandRoutingData commandRoutingData) {
         try {
             timerService.deleteTimerById(timerId);
         } catch (Exception e) {
-            log.warn("Failed to delete timer {} after error", timerId, e);
+            log.warn("chatId {}: Failed to delete timer {} after error", chatId, timerId, e);
         }
         try {
-            vkChatClient.sendText(messageMapper.toSendMessageDto(messageTemplate.formatted(command), convertToPeerId(chatId)));
+            vkChatClient.sendText(messageMapper.toSendMessageDto(messageTemplate.formatted(command),commandRoutingData));
         } catch (Exception e) {
-            log.warn("Failed to send notification about timer {} deletion after error", timerId, e);
+            log.warn("chatId {}: Failed to send notification about timer {} deletion after error", chatId, timerId, e);
         }
     }
 

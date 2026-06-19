@@ -62,13 +62,13 @@ public class KickNewCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", commandMessage);
 
-        String[] args = messageDto.getFirstRowArguments();
+        String[] args = commandMessage.getFirstRowArguments();
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
@@ -90,16 +90,18 @@ public class KickNewCommand implements ChatCommand {
 
         Instant kickAfter = Instant.now().minusSeconds(periodInSeconds);
 
-        TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
+        TimeZoneType chatTimeZone = chatService.getChatTimeZone(dataBaseChatId);
 
         String dateToShow = TimeUtils.getFormattedStringDateTimeWithTimeZone(kickAfter, chatTimeZone);
-        Page<MemberEntity> allRequiredMembers = memberService.getNotKickedNewMembersWithRoleLessThan(chatId,kickAfter,KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(), MEMBERS_LIMIT_AT_ONE_USAGE);
+        Page<MemberEntity> allRequiredMembers = memberService.getNotKickedNewMembersWithRoleLessThan(dataBaseChatId,kickAfter,KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(), MEMBERS_LIMIT_AT_ONE_USAGE);
 
-        Set<Long> kickedCommunities = vkChatClient.kickManyChatMembers(chatId,
+        Set<Long> kickedCommunities = vkChatClient.kickManyChatMembers(
+                commandMessage.getCommandRoutingData(),
                 allRequiredMembers.getContent().stream()
                         .filter(m->!m.isChatAdmin())
                         .map(MemberEntity::getUserId)
-                        .toList());
+                        .toList()
+        );
 
         sendMessage.setText("✅Было исключено %d из %d новичков с ролью ниже чем «%s», впервые появившихся в чате после %s"
                 .formatted(kickedCommunities.size(), allRequiredMembers.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName(), dateToShow));

@@ -14,7 +14,6 @@ import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.message.MessageException;
 import com.example.my_bot.mapper.MessageMapper;
-import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.MessageLogService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.TimeUtils;
@@ -44,8 +43,6 @@ public class KickInactiveCommand implements ChatCommand {
 
     private VkChatClient vkChatClient;
 
-    private final MemberService memberService;
-
     private final ChatService chatService;
 
     private final MessageMapper messageMapper;
@@ -64,12 +61,12 @@ public class KickInactiveCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
+        long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", commandMessage);
 
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
@@ -86,17 +83,18 @@ public class KickInactiveCommand implements ChatCommand {
 
         InactiveMembersResult membersResult;
         try{
-            membersResult= messageLogService.findCurrentInactiveChatMembers(chatId, periodSec,false, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(),MEMBERS_LIMIT_AT_ONE_USAGE);
+            membersResult= messageLogService.findCurrentInactiveChatMembers(dataBaseChatId, periodSec,false, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(),MEMBERS_LIMIT_AT_ONE_USAGE);
         }catch(MemberException | MessageException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return;
         }
-        TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
+        TimeZoneType chatTimeZone = chatService.getChatTimeZone(dataBaseChatId);
 
         String dateToShow = TimeUtils.getFormattedStringDateTimeWithTimeZone(membersResult.getThresholdDate(), chatTimeZone);
 
-        Set<Long> kickedMembers = vkChatClient.kickManyChatMembers(chatId,
+        Set<Long> kickedMembers = vkChatClient.kickManyChatMembers(
+                commandMessage.getCommandRoutingData(),
                 membersResult.getInactiveMembers().stream()
                         .map(InactiveMemberDto::getUserId)
                         .toList()

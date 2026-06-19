@@ -44,12 +44,12 @@ public class SynchronizeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
 
         try{
-            memberService.synchronizeChatMembers(messageDto.getChatId());
+            memberService.synchronizeChatMembers(commandMessage.getCommandRoutingData());
         }catch (ApiException e){
             if(NO_CHAT_ACCESS.getCodes().contains(e.getCode())){
                 sendMessage.setText(THE_BOT_HAS_NO_CHAT_ACCESS_ERROR);
@@ -61,7 +61,7 @@ public class SynchronizeCommand implements ChatCommand {
         }
 
         vkChatClient.sendText(
-                messageMapper.toSendMessageDto("✅Текущие участники чата были синхронизированы с моей базой данных.",messageDto));
+                messageMapper.toSendMessageDto("✅Текущие участники чата были синхронизированы с моей базой данных.",commandMessage));
 
     }
 }

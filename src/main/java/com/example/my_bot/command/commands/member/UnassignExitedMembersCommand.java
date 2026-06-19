@@ -36,16 +36,17 @@ public class UnassignExitedMembersCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long fromId = messageDto.getFromId();
+        long fromId = commandMessage.getFromId();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        RoleDto callerRole = memberService.removePositiveRoleFromExitedMembers(messageDto.getChatId(),fromId);
+        RoleDto callerRole = memberService.removePositiveRoleFromExitedMembers(chatId,fromId);
 
         String message = "✅%s(Вы) успешно разжаловали всех вышедших и исключенных участников, чья роль ниже вашей («%s» с приоритетом %d)."
                 .formatted(createMention(fromId),callerRole.getRoleName(), callerRole.getRolePriority());
 
-        vkChatClient.sendText(messageMapper.toSendMessageDto(message,messageDto));
+        vkChatClient.sendText(messageMapper.toSendMessageDto(message,commandMessage));
 
     }
 

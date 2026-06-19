@@ -42,17 +42,22 @@ public class TitleChangeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException{
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException{
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
+        long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        if(messageDto.getFirstRowArguments().length==0){
+        if(commandMessage.getFirstRowArguments().length==0){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
             return;
         }
         try{
-            vkChatClient.changeChatTitle(messageDto.getChatId(), String.join(" ", messageDto.getFirstRowArguments()));
+            vkChatClient.changeChatTitle(
+                    commandMessage.getCommandRoutingData().getExecutorBot(),
+                    commandMessage.getCommandRoutingData().getVkApiChatId(),
+                    String.join(" ", commandMessage.getFirstRowArguments())
+            );
         } catch (ApiException e) {
             if(YOU_ARE_RESTRICTED_TO_WRITE.getCodes().contains(e.getCode())){
                 sendMessage.setText(THE_BOT_IS_RESTRICTED_TO_WRITE_ERROR );

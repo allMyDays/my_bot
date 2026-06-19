@@ -7,7 +7,6 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.dto.member.AssignMemberResult;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
@@ -24,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import static com.example.my_bot.constant.MessageConstant.*;
-import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.utils.TextUtils.*;
 
@@ -48,12 +46,12 @@ public class AssignImmunityCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
 
         // варианты:
         // !иммунитет @durov администратор
@@ -67,7 +65,7 @@ public class AssignImmunityCommand implements ChatCommand {
         long userToAlter;
         String immuneRoleToGive;
 
-        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(messageDto,0);
+        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(commandMessage,0);
         if(parseResult.getMemberId().isPresent()){
             userToAlter = parseResult.getMemberId().get();
         }else{
@@ -95,9 +93,9 @@ public class AssignImmunityCommand implements ChatCommand {
         RoleDto newImmuneRole;
         try{
          if(isNumber(immuneRoleToGive)){
-            newImmuneRole= memberService.assignImmunityToMember(chatId, userToAlter,Integer.parseInt(immuneRoleToGive), messageDto.getFromId());
+            newImmuneRole= memberService.assignImmunityToMember(chatId, userToAlter,Integer.parseInt(immuneRoleToGive), commandMessage.getFromId());
          }else{
-            newImmuneRole = memberService.assignImmunityToMember(chatId, userToAlter,immuneRoleToGive, messageDto.getFromId());
+            newImmuneRole = memberService.assignImmunityToMember(chatId, userToAlter,immuneRoleToGive, commandMessage.getFromId());
          }
         }catch(MemberException | RoleException | CommandException e){
             sendMessage.setText(e.getMessage());

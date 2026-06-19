@@ -64,12 +64,12 @@ public class ShowInactiveCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", commandMessage);
 
         Optional<Long> optionalPeriodSec;
 

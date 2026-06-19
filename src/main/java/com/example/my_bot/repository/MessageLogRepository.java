@@ -41,13 +41,10 @@ public interface MessageLogRepository extends JpaRepository<MessageLogEntity, Lo
     List<MemberStatsProjection> getChatMembersStat(@Param("chatId") long chatId, @Param("start") Instant start, @Param("end") Instant end);
 
     @Query("SELECT m.conversationMessageId FROM MessageLogEntity m " +
-            "WHERE m.chatId = :chatId AND m.fromId = :fromId " +
-            "AND m.isDeleted = false AND m.isForwardedToLogChat = :isForwardedToLogChat " +
+            "WHERE m.chatId = :logChatId " +
+            "AND m.isDeleted = false AND m.isForwardedToLogChat = true " +
             "ORDER BY m.createdAt DESC")
-    List<Integer> findLastNUndeletedMemberMessageIds(@Param("chatId") long chatId,
-                                                     @Param("fromId") long fromId,
-                                                     @Param("isForwardedToLogChat") boolean isForwardedToLogChat,
-                                                     Pageable pageable);
+    List<Integer> findLastNUndeletedMessagesForwardedToLogChat(@Param("logChatId") long logChatId, Pageable pageable);
 
     @Query("SELECT m.conversationMessageId FROM MessageLogEntity m " +
             "WHERE m.chatId = :chatId AND m.fromId = :fromId " +

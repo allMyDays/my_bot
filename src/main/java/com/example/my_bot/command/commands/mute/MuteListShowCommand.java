@@ -5,8 +5,6 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.entity.BanEntity;
-import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.BanService;
@@ -16,15 +14,12 @@ import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.data.domain.Page;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.utils.TextUtils.createMention;
-import static com.example.my_bot.utils.TimeUtils.getFormattedStringDateTime;
 
 @Command(mainCommandName = "мутлист", alternativeCommandNames = {"mutelist"}, defaultRole = MODERATOR, eventable = true)
 public class MuteListShowCommand implements ChatCommand {
@@ -48,13 +43,14 @@ public class MuteListShowCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
-
-        long chatId = messageDto.getChatId();
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         StringBuilder sb = new StringBuilder();
 
-        Set<Long> membersWithMute = vkChatClient.getMembersWithWriteRestriction(chatId);
+        Set<Long> membersWithMute = vkChatClient.getMembersWithWriteRestriction(
+                commandMessage.getCommandRoutingData().getExecutorBot(),
+                commandMessage.getCommandRoutingData().getVkApiChatId()
+        );
 
         Map<Long, String> memberNamesMap = globalUserService.getUserFullNamesInRequiredCase(membersWithMute, NameCase.NOMINATIVE);
 
@@ -66,7 +62,7 @@ public class MuteListShowCommand implements ChatCommand {
             sb.append("\n");
         }
 
-        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),messageDto));
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
 
     }
 

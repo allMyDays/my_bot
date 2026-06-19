@@ -165,7 +165,7 @@ public class EventService {
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
-        if(isEventBeingACommandEvent(event)){
+        if(isEventACommandEvent(event)){
             throw new CannotApplyThisFunctionToCommandEventException();
         }
         if(event.getAEMaxUsage()!=null){
@@ -201,7 +201,7 @@ public class EventService {
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
-        if(isEventBeingACommandEvent(event)){
+        if(isEventACommandEvent(event)){
             throw new CannotApplyThisFunctionToCommandEventException();
         }
         checkEventAuthorization(event, fromId);
@@ -232,7 +232,7 @@ public class EventService {
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
-        if(isEventBeingACommandEvent(event)){
+        if(isEventACommandEvent(event)){
             throw new CannotApplyThisFunctionToCommandEventException();
         }
         if(event.getCDPeriodSec()!=null){
@@ -255,7 +255,7 @@ public class EventService {
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
-        if(isEventBeingACommandEvent(event)){
+        if(isEventACommandEvent(event)){
             throw new CannotApplyThisFunctionToCommandEventException();
         }
         if(event.getMemberToTrigger()!=null){
@@ -289,7 +289,7 @@ public class EventService {
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
-        if(isEventBeingACommandEvent(event)){
+        if(isEventACommandEvent(event)){
             throw new CannotApplyThisFunctionToCommandEventException();
         }
         if(event.getMemberToTrigger()!=null){
@@ -386,7 +386,7 @@ public class EventService {
 
         EventEntity event = eventRepository.findById(eventId)
                 .orElseThrow(()->new EventNotFoundException(eventId));
-        if(isEventBeingACommandEvent(event)){
+        if(isEventACommandEvent(event)){
             throw new CannotApplyThisFunctionToCommandEventException();
         }
         RoleDto newRole = roleService.getRoleByNameIgnoreCase(event.getChatId(), newRoleName)
@@ -535,7 +535,7 @@ public class EventService {
     }
 
     private void checkEventAuthorization(@NonNull EventEntity eventEntity, long fromId){
-        if(isEventBeingACommandEvent(eventEntity)) return;
+        if(isEventACommandEvent(eventEntity)) return;
         long chatId = eventEntity.getChatId();
         if(eventEntity.getMemberToTrigger()!=null){  // личное событие
             memberService.checkMemberInteractionAbility(chatId, fromId, eventEntity.getMemberToTrigger(),true);
@@ -561,10 +561,10 @@ public class EventService {
             throw new CommandAccessDeniedException(fromId,userCommand);
         }
     }
-    public boolean isEventBeingACommandEvent(@NonNull EventEntity event){
+    public boolean isEventACommandEvent(@NonNull EventEntity event){
         return Objects.equals(event.getRolePriority(), CHAT_MANAGER_ROLE_PRIORITY);
     }
-    public boolean isEventBeingACommandEvent(@NonNull EventDto event){
+    public boolean isEventACommandEvent(@NonNull EventDto event){
         return Objects.equals(event.getRolePriority(), CHAT_MANAGER_ROLE_PRIORITY);
     }
 }

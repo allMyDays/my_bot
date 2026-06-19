@@ -9,11 +9,17 @@ import lombok.Setter;
 @Setter
 public class VkMessageNew {
 
+    @SerializedName("group_id")
+    private long groupId;
+
     @SerializedName("type")
     private VkEventType type;
 
     @SerializedName("object")
     private VkMessageObject messageObject;
+
+    @SerializedName("secret")
+    private String secretKey;
 
 
 

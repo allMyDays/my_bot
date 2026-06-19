@@ -2,12 +2,12 @@ package com.example.my_bot.service;
 
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.config.CaffeineCacheManager;
+import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.dto.member.AssignMemberResult;
 import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
 import com.example.my_bot.entity.MemberEntity;
-import com.example.my_bot.entity.RoleEntity;
 import com.example.my_bot.enumeration.member.MemberPresenceType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
@@ -28,7 +28,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,7 +53,7 @@ public class MemberService {
     private final FullNameMapper fullNameMapper;
     private final RoleService roleService;
     private final GlobalUserService globalUserService;
-    private final long groupId;
+    private final long theMainBotId;
 
 
     public MemberService(
@@ -66,7 +65,7 @@ public class MemberService {
             FullNameMapper fullNameMapper,
             @Lazy RoleService roleService,
             @Lazy GlobalUserService globalUserService,
-            @Value("${vk.group.id}") long groupId) {
+            @Value("${vk.main-bot.id}") long theMainBotId) {
         this.memberRepository = memberRepository;
         this.vkChatClient = vkChatClient;
         this.memberMapper = memberMapper;
@@ -75,13 +74,18 @@ public class MemberService {
         this.fullNameMapper = fullNameMapper;
         this.roleService = roleService;
         this.globalUserService = globalUserService;
-        this.groupId = groupId;
+        this.theMainBotId = theMainBotId;
     }
 
     @Transactional
-    public void synchronizeChatMembers(long chatId) throws ClientException, ApiException{
+    public void synchronizeChatMembers(@NonNull CommandRoutingData commandRoutingData) throws ClientException, ApiException{
 
-        GetConversationMembersResponse response= vkChatClient.getAllConversationMembersWithAllNameCases(chatId);
+        long dataBaseChatId = commandRoutingData.getDataBaseChatId();
+
+        GetConversationMembersResponse response= vkChatClient.getAllConversationMembersWithAllNameCases(
+                commandRoutingData.getExecutorBot(),
+                commandRoutingData.getVkApiChatId()
+        );
 
         List<UserFullNameInEachCase> userFullNames = fullNameMapper.mapProfileNames(response.getProfiles());
         userFullNames.addAll(fullNameMapper.mapGroupNames(response.getGroups()));
@@ -92,9 +96,9 @@ public class MemberService {
                 .map(ConversationMember::getMemberId)
                 .collect(Collectors.toSet());
 
-        memberRepository.setUnknownLeaveAndChatAdminFalseForMembersNotInList(chatId, vkUserIds);
+        memberRepository.setUnknownLeaveAndChatAdminFalseForMembersNotInList(dataBaseChatId, vkUserIds);
 
-        Map<Long, MemberEntity> currentChatMemberMap =  memberRepository.findByChatIdAndUserIdIn(chatId, vkUserIds).stream()
+        Map<Long, MemberEntity> currentChatMemberMap =  memberRepository.findByChatIdAndUserIdIn(dataBaseChatId, vkUserIds).stream()
                 .collect(Collectors.toMap(MemberEntity::getUserId, Function.identity()));
 
         List<MemberEntity> newMembers = new ArrayList<>();
@@ -107,7 +111,7 @@ public class MemberService {
             if(entity== null){
                 entity = new MemberEntity();
                 entity.setUserId(memberId);
-                entity.setChatId(chatId);
+                entity.setChatId(dataBaseChatId);
                 entity.setFirstAppearance(now);
                 newMembers.add(entity);
                 entity.setInvitedById(vkMember.getInvitedBy());
@@ -124,7 +128,7 @@ public class MemberService {
                 entity.setChatAdmin(true);
             } else {
                 entity.setChatAdmin(false);
-            }if(memberId==(groupId*-1)){
+            }if(memberId==(theMainBotId *-1)){
                 entity.setRolePriority(CHAT_MANAGER_ROLE_PRIORITY);
                 // даю боту роль выше чем у создателя, чтобы его никто не мог наказывать
             }
@@ -132,8 +136,8 @@ public class MemberService {
         if(!newMembers.isEmpty()) {
             memberRepository.saveAll(newMembers);
         }
-        chatService.setLastSyncToNow(chatId);
-        invalidateMemberCache(chatId);
+        chatService.setLastSyncToNow(dataBaseChatId);
+        invalidateMemberCache(dataBaseChatId);
     }
 
     public int getMemberRolePriority(long chatId, long userId){

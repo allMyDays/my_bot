@@ -55,9 +55,9 @@ public class AllTimersShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
         List<TimerEntity> timers = timerService.getChatTimersSortedByIdAsc(chatId);
 
@@ -92,7 +92,7 @@ public class AllTimersShowCommand implements ChatCommand {
                     sb.append("\n");
 
         }
-        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),messageDto));
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
 
     }
 }

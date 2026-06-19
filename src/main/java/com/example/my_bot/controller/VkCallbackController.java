@@ -1,76 +1,92 @@
 package com.example.my_bot.controller;
 
+import com.example.my_bot.cache.value.callback.SecretKeyAndConfirmationCodeAndCompletableFuture;
+import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.handler.AsyncEventHandler;
+import com.example.my_bot.vk.VkCallbackEventBaseInfo;
 import com.example.my_bot.vk.VkMessageNew;
 import com.example.my_bot.vk.VkMessageReactionEvent;
-import com.example.my_bot.vk.enumeration.VkEventType;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.concurrent.CompletableFuture;
 
 import static com.example.my_bot.vk.enumeration.VkEventType.*;
 
 
 @RestController
 @Slf4j
-@ConditionalOnProperty(
-        prefix = "vk",
-        name = "mode",
-        havingValue = "callback"
-)
 public class VkCallbackController {
 
     private static final Gson GSON = new Gson();
-
-    private final String confirmationCode;
     private final AsyncEventHandler asyncEventHandler;
+    private final CaffeineCacheManager cacheManager;
 
-    public VkCallbackController(
-            @Value("${vk.group.confirmation}") String confirmationCode,
-            AsyncEventHandler asyncEventHandler) {
+    private final static String OK_STRING_RESPONSE = "ok";
 
-        this.confirmationCode = confirmationCode;
+    public VkCallbackController(AsyncEventHandler asyncEventHandler, CaffeineCacheManager cacheManager){
         this.asyncEventHandler = asyncEventHandler;
+        this.cacheManager = cacheManager;
     }
 
     @PostMapping("/callback")
     public ResponseEntity<String> handle(@RequestBody String body){
         try{
-            JsonObject update = GSON.fromJson(body, JsonObject.class);
-            JsonElement typeElement = update.get("type");
-            if(typeElement == null){
-                return ResponseEntity.badRequest()
-                        .body("Missing type field");
-            }
-            String type= typeElement.getAsString();
+            VkCallbackEventBaseInfo baseInfo = GSON.fromJson(body, VkCallbackEventBaseInfo.class);
 
-            if(MESSAGE_NEW.getValue().equals(type)){
-                VkMessageNew event = GSON.fromJson(update, VkMessageNew.class);
-                if(event!=null){
-                    asyncEventHandler.handleNewMessageEvent(event);
-                }
-            }else if(MESSAGE_REACTION_EVENT.getValue().equals(type)){
-                VkMessageReactionEvent event = GSON.fromJson(update, VkMessageReactionEvent.class);
-                if(event!=null){
-                    asyncEventHandler.handleNewReactionEvent(event);
-                }
-            }else if(CONFIRMATION.getValue().equals(type)){
-                log.info("confirmation event came");
-                return ResponseEntity.ok(confirmationCode);
+            if(baseInfo==null||baseInfo.getType()==null||baseInfo.getGroupId()==null||baseInfo.getSecretKey()==null){
+                log.info("came callback event without important fields: {}", body);
+                return ResponseEntity.ok(OK_STRING_RESPONSE);
             }
-            return ResponseEntity.ok("ok");
+
+            switch (baseInfo.getType()){
+                case MESSAGE_NEW -> {
+                    VkMessageNew event= GSON.fromJson(body, VkMessageNew.class);
+                    if(event!=null){
+                        asyncEventHandler.handleNewMessageEvent(event, true);
+                    }
+                }
+                case MESSAGE_REACTION_EVENT-> {
+                    VkMessageReactionEvent event = GSON.fromJson(body, VkMessageReactionEvent.class);
+                    if(event!=null){
+                        asyncEventHandler.handleNewReactionEvent(event, true);
+                    }
+                }
+                case CONFIRMATION -> {
+                    log.info("callback confirmation event came: {}", body);
+                    SecretKeyAndConfirmationCodeAndCompletableFuture confirmation =
+                            cacheManager.getConfirmationCallbackUrlCache().getIfPresent(baseInfo.getGroupId());
+                    if(confirmation==null){
+                        log.warn("came callback confirmation event, but there's no data in cache to confirm: {}", body);
+                        return ResponseEntity.notFound()
+                                .build();
+                    }
+                    if(!confirmation.getSecretKey().equals(baseInfo.getSecretKey())){
+                        log.warn("came callback confirmation event, but secret keys don't match: {},{}", confirmation.getSecretKey(),body);
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                .build();
+                    }
+                    CompletableFuture<Boolean> futureResult=  confirmation.getFutureConfirmationResult();
+                    if(!futureResult.isDone()){
+                        futureResult.complete(true);
+                    }
+                    return ResponseEntity.ok(confirmation.getConfirmationCode());
+                }
+            }
+
+            return ResponseEntity.ok(OK_STRING_RESPONSE);
 
         }catch (Exception e){
-            log.error("Ошибка обработки callback", e);
-            return ResponseEntity.internalServerError()
-                    .body("error");
+            log.error("Ошибка обработки callback запроса", e);
+            return ResponseEntity.ok(OK_STRING_RESPONSE);
         }
     }
 }

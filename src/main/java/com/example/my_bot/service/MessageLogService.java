@@ -38,7 +38,7 @@ public class MessageLogService{
     private final MemberService memberService;
     private final MessageLogRepository messageRepository;
     private final RoleService roleService;
-    private final long theBotId;
+    private final long theMainBotId;
 
     private final ConcurrentMap<Long, Set<MessageLogEntity>> temporaryMessagesCache = new ConcurrentHashMap<>();
 
@@ -52,18 +52,16 @@ public class MessageLogService{
 
     private final static long FINDING_MESSAGES_MAX_TIME_PERIOD_SEC = 630_720_000;
 
-    public MessageLogService(MemberService memberService, MessageLogRepository messageRepository, RoleService roleService, @Value("${vk.group.id}") long theBotId){
+    public MessageLogService(MemberService memberService, MessageLogRepository messageRepository, RoleService roleService, @Value("${vk.main-bot.id}") long theMainBotId){
         this.memberService = memberService;
         this.messageRepository = messageRepository;
         this.roleService = roleService;
-        this.theBotId = theBotId;
+        this.theMainBotId = theMainBotId;
     }
 
 
-    public void saveNewMessageLog(long peerId, long fromId, int conversationMessageId, @Nullable VkAction action, @Nullable String text, boolean isForwardedToLogChat){
-        if(isPersonalChat(peerId)) return;
+    public void saveNewMessageLog(long chatId, long fromId, int conversationMessageId, @Nullable VkAction action, @Nullable String text, boolean isForwardedToLogChat){
         if(action!=null) return;
-        long chatId = extractConversationId(peerId);
         int symbolsQuantity = text!=null?text.length():0;
 
         MessageLogEntity newEntity = new MessageLogEntity(chatId, fromId, conversationMessageId, Instant.now(), symbolsQuantity,false);
@@ -125,7 +123,7 @@ public class MessageLogService{
         loadRequiredChatMessagesIntoTheDatabase(logChatId);
 
         Pageable limit = PageRequest.of(0, msgQuantity);
-        return messageRepository.findLastNUndeletedMemberMessageIds(logChatId, -theBotId,true,limit);
+        return messageRepository.findLastNUndeletedMessagesForwardedToLogChat(logChatId, limit);
     }
 
     public InactiveMembersResult findCurrentInactiveChatMembers(long chatId, long timePeriodSec, boolean sort, @Nullable Integer roleLessThan, @Nullable Integer memberLimit){
@@ -213,19 +211,20 @@ public class MessageLogService{
         return result;
     }
 
-    public Page<Integer> findNotDeletedMessageIdsOfNotAChatAdminOwner(long chatId, long memberId, long timePeriodSec, int messageLimit){
+    public Page<Integer> findNotDeletedMessageIdsOfNotAChatAdminOwner(long chatId, long memberId, long timePeriodSec, int messageLimit, long currentBotId){
         if(timePeriodSec>FINDING_MESSAGES_MAX_TIME_PERIOD_SEC){
             throw new FindingMessageIntervalOutOfBoundsException();
         }
-        if(memberId!=-theBotId&&memberService.isChatAdmin(chatId, memberId)) return Page.empty();
+        if(memberId!=-theMainBotId&&memberId!=-currentBotId&&memberService.isChatAdmin(chatId, memberId)) return Page.empty();
         loadRequiredChatMessagesIntoTheDatabase(chatId);
 
         Instant after = Instant.now().minusSeconds(timePeriodSec<=0?1:timePeriodSec);
         Pageable limit = PageRequest.of(0, messageLimit<=0?1:messageLimit);
+
         return messageRepository.findFreshNotDeletedMemberMessageIds(chatId, memberId, after, limit);
     }
 
-    public Page<Integer> findNotDeletedMessageIdsOfNotChatAdminOwners(long chatId, long timePeriodSec, int messageLimit){
+    public Page<Integer> findNotDeletedMessageIdsOfNotChatAdminOwners(long chatId, long timePeriodSec, int messageLimit, long currentBotId){
         if(timePeriodSec>FINDING_MESSAGES_MAX_TIME_PERIOD_SEC){
             throw new FindingMessageIntervalOutOfBoundsException();
         }
@@ -233,8 +232,9 @@ public class MessageLogService{
 
         Instant after = Instant.now().minusSeconds(timePeriodSec<=0?1:timePeriodSec);
         Pageable limit = PageRequest.of(0, messageLimit<=0?1:messageLimit);
+
         List<Long> chatAdmins = memberService.getAllChatAdmins(chatId).stream()
-                .filter(a->a!=-theBotId)
+                .filter(a->a!=-theMainBotId&&a!=-currentBotId)
                 .toList();
 
         return messageRepository.findFreshNotDeletedMessageIdsOfOwnersNotIn(chatId, chatAdmins, after, limit);

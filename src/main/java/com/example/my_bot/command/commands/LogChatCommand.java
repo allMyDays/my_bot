@@ -65,14 +65,14 @@ public class LogChatCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException{
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException{
 
-        String[] args = messageDto.getFirstRowArguments();
-        long chatId = messageDto.getChatId();
-        long fromId = messageDto.getFromId();
+        String[] args = commandMessage.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        long fromId = commandMessage.getFromId();
 
         ChatDetailsDto currentChat = chatService.getCachedChatDetails(chatId,false);
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
 
         String fullSetCommand = "%c%s %s %s".formatted(DEFAULT_CHAT_PREFIX,logChatMainCommand, FOR_ARGUMENT,currentChat.getChatCode());
 
@@ -140,12 +140,18 @@ public class LogChatCommand implements ChatCommand {
                 vkChatClient.sendText(sendMessage);
                 return;
             }
+            long logChatApiId = currentChat.getBoundLogChat();
+            ChatDetailsDto logChat= chatService.getCachedChatDetails(currentChat.getBoundLogChat(), false);
+
+            if(logChat.getBoundSubmanagerId()!=null){
+                logChatApiId = chatService.getSubmanagerChatIdByMainChatId(logChat.getBoundSubmanagerId(), currentChat.getBoundLogChat());
+            }
             List<Integer> requiredMessageIds =
                     messageLogService.findLastMessagesForwardedToLogChat(currentChat.getBoundLogChat(), Integer.parseInt(args[0]));
 
             Forward forward = new Forward();
             forward.setConversationMessageIds(requiredMessageIds);
-            forward.setPeerId(convertToPeerId(currentChat.getBoundLogChat()));
+            forward.setPeerId(convertToPeerId(logChatApiId));
             sendMessage.setForward(forward);
             sendMessage.setText("Последние [%d] сообщений из привязанного логчата:".formatted(requiredMessageIds.size()));
             vkChatClient.sendText(sendMessage);
@@ -177,19 +183,6 @@ public class LogChatCommand implements ChatCommand {
                         .formatted(userChatCode)
         );
         vkChatClient.sendText(sendMessage);
-
-       Optional<ChatEntity> targetChat = chatService.findByChatCode(userChatCode);
-       if(targetChat.isPresent()){
-           sendMessage.setReplyToMessageId(false);
-           sendMessage.setPeerId(convertToPeerId(targetChat.get().getChatId()));
-           sendMessage.setText(
-                   "%s(%s) установил логчат для данной беседы. Если хотите удалить логчат, используйте команду «%c%s %s»."
-                           .formatted(createMention(fromId),globalUserService.getUserFullNameInRequiredCase(fromId, NameCase.NOMINATIVE),
-                                   DEFAULT_CHAT_PREFIX,logChatMainCommand,REMOVE_ARGUMENT)
-           );
-           vkChatClient.sendText(sendMessage);
-
-       }
 
     }
 }

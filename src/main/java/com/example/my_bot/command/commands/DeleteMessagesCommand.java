@@ -15,6 +15,7 @@ import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MessageLogService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.TimeUtils;
+import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.ForeignMessage;
@@ -51,9 +52,9 @@ public class DeleteMessagesCommand implements ChatCommand {
     public static final String DELETING_MESSAGES_GUIDE = """
             ⚙ Справка по использованию
             1) !удаление и [пересланные сообщения];
-            2) !удаление @durov -- удалит все сообщения данного участника за неделю;
-            3) !удаление @durov 5 часов -- удалит все сообщения данного участника за указанный период времени;
-            4) !чистка 3 дня - удалит все сообщения не-администраторов за данный срок;
+            2) !удаление @durov — удалит все сообщения данного участника за неделю;
+            3) !удаление @durov 5 часов — удалит все сообщения данного участника за указанный период времени;
+            4) !удаление 3 дня — удалит все сообщения не-администраторов за данный срок;
             5) Для событий: &delete. Например, «!ивент сообщение 100 !&delete» будет удалять все сообщения.
             """;
     private MessageLogService messageLogService;
@@ -67,11 +68,12 @@ public class DeleteMessagesCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
-        long fromId = messageDto.getFromId();
+        long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
+        long fromId = commandMessage.getFromId();
+        GroupActor executorBot = commandMessage.getCommandRoutingData().getExecutorBot();
 
         Long targetMember=null;
         Long timePeriodSec;
@@ -83,7 +85,7 @@ public class DeleteMessagesCommand implements ChatCommand {
         // !чистка @durov 2 часа - удалит сообщения участника за последние 2 часа
         // !чистка 3 дня - удалит все сообщения не-администраторов за данный срок
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
 
         List<Integer> messagesToDelete;
         long totalMessagesQuantity;
@@ -91,12 +93,12 @@ public class DeleteMessagesCommand implements ChatCommand {
 
         if(args.length==0){
             // !чистка
-            if(messageDto.getReplyOrFwdMessages().isEmpty()){
+            if(commandMessage.getReplyOrFwdMessages().isEmpty()){
                 sendMessage.setText(DELETING_MESSAGES_GUIDE);
                 vkChatClient.sendText(sendMessage);
                 return;
             }else{
-                messagesToDelete = messageDto.getReplyOrFwdMessages().stream()
+                messagesToDelete = commandMessage.getReplyOrFwdMessages().stream()
                         .map(ForeignMessage::getConversationMessageId)
                         .toList();
                 totalMessagesQuantity = messagesToDelete.size();
@@ -104,7 +106,7 @@ public class DeleteMessagesCommand implements ChatCommand {
         }
         else if(args.length!=2){
             // либо [!чистка @durov] либо [!чистка @durov 2 часа]
-            targetMember = userInputResolver.getMemberIdByStringInput(chatId, args[0]).orElse(null);
+            targetMember = userInputResolver.getMemberIdByStringInput(dataBaseChatId, args[0]).orElse(null);
             if(targetMember==null){
                 sendMessage.setText(MEMBER_LINK_IS_NOT_CORRECT);
                 vkChatClient.sendText(sendMessage);
@@ -123,7 +125,7 @@ public class DeleteMessagesCommand implements ChatCommand {
                }
             }
             try{
-                Page<Integer> result = messageLogService.findNotDeletedMessageIdsOfNotAChatAdminOwner(chatId, targetMember, timePeriodSec, MESSAGE_LIMIT_AT_ONE_USAGE);
+                Page<Integer> result = messageLogService.findNotDeletedMessageIdsOfNotAChatAdminOwner(dataBaseChatId, targetMember, timePeriodSec, MESSAGE_LIMIT_AT_ONE_USAGE, executorBot.getGroupId());
                 messagesToDelete = result.getContent();
                 totalMessagesQuantity = result.getTotalElements();
             }catch (MemberException | MessageException e){
@@ -141,7 +143,7 @@ public class DeleteMessagesCommand implements ChatCommand {
                 return;
             }
             try{
-                Page<Integer> result = messageLogService.findNotDeletedMessageIdsOfNotChatAdminOwners(chatId, timePeriodSec, MESSAGE_LIMIT_AT_ONE_USAGE);
+                Page<Integer> result = messageLogService.findNotDeletedMessageIdsOfNotChatAdminOwners(dataBaseChatId, timePeriodSec, MESSAGE_LIMIT_AT_ONE_USAGE, executorBot.getGroupId());
                 messagesToDelete = result.getContent();
                 totalMessagesQuantity = result.getTotalElements();
             }catch (MemberException | MessageException e){
@@ -158,7 +160,10 @@ public class DeleteMessagesCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
         }
 
-        Set<Integer> deletedMessages = vkChatClient.batchDeleteMessages(chatId, messagesToDelete);
+        Set<Integer> deletedMessages = vkChatClient.batchDeleteMessagesInAConversation(
+                commandMessage.getCommandRoutingData(),
+                messagesToDelete
+        );
 
         StringBuilder sb = new StringBuilder("✅Было успешно удалено %d из %d сообщений.\n".formatted(deletedMessages.size(), messagesToDelete.size()));
         if(deletedMessages.size()<messagesToDelete.size()){

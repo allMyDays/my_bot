@@ -9,7 +9,7 @@ import com.example.my_bot.entity.MemberPermissionEntity;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
-import com.example.my_bot.repository.MemberPermissionRepository;
+import com.example.my_bot.repository.permission.MemberPermissionRepository;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.TextUtils;

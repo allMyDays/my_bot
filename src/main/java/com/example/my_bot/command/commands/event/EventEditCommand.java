@@ -66,13 +66,13 @@ public class EventEditCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
-        long fromId = messageDto.getFromId();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
+        long fromId = commandMessage.getFromId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
 
         if(notEnoughArgs(args,3,sendMessage)) return;  // самый минимум: <номер события> <тип для редактирования> <аргумент>
 

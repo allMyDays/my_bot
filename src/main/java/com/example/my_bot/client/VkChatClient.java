@@ -1,11 +1,12 @@
 package com.example.my_bot.client;
 
 import com.example.my_bot.dto.SendMessageDto;
+import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.MessageLogService;
 import com.example.my_bot.vk.VkSendResponse;
 import com.example.my_bot.vk.enumeration.WriteRestrictionAction;
-import com.example.my_bot.vk.transport.CustomVkApiClient;
+import com.example.my_bot.vk.CustomVkApiClient;
 import com.example.my_bot.vk.transport.write_restriction.MessageChangeChatMemberRestrictionQuery;
 import com.example.my_bot.vk.transport.write_restriction.ChangeChatMemberRestrictionResponse;
 import com.google.gson.*;
@@ -13,17 +14,13 @@ import com.google.gson.reflect.TypeToken;
 import com.vk.api.sdk.client.AbstractQueryBuilder;
 import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
-import com.vk.api.sdk.exceptions.ApiExtendedException;
 import com.vk.api.sdk.exceptions.ClientException;
-import com.vk.api.sdk.objects.base.BoolInt;
-import com.vk.api.sdk.objects.base.responses.BoolResponse;
 import com.vk.api.sdk.objects.messages.ConversationMember;
 import com.vk.api.sdk.objects.messages.DeleteFullResponseItem;
 import com.vk.api.sdk.objects.messages.Forward;
 import com.vk.api.sdk.objects.messages.responses.DeleteFullResponse;
 import com.vk.api.sdk.objects.messages.responses.GetByConversationMessageIdResponse;
 import com.vk.api.sdk.objects.messages.responses.GetConversationMembersResponse;
-import com.vk.api.sdk.objects.messages.responses.IsMessagesFromGroupAllowedResponse;
 import com.vk.api.sdk.objects.utils.DomainResolvedType;
 import com.vk.api.sdk.objects.utils.responses.ResolveScreenNameResponse;
 import com.vk.api.sdk.queries.execute.ExecuteBatchQuery;
@@ -32,55 +29,45 @@ import com.vk.api.sdk.queries.messages.MessagesRemoveChatUserQuery;
 import com.vk.api.sdk.queries.messages.MessagesSendQueryWithUserIds;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.member.MemberPresenceType.KICKED;
+import static com.example.my_bot.enumeration.member.MemberPresenceType.SELF_LEAVE;
 import static com.example.my_bot.utils.ChatUtils.*;
-import static com.example.my_bot.vk.enumeration.CommunityErrorCode.NO_GROUP_MEMBERS_ACCESS;
 import static com.vk.api.sdk.objects.users.Fields.*;
 
 @Component
 @Slf4j
 public class VkChatClient{
     private final CustomVkApiClient vkApiClient;
-    private final GroupActor groupActor;
-    private final long theBotId;
-    private MemberService memberService;
-    private MessageLogService messageLogService;
+    private final GroupActor theMainBotGroupActor;
+    private final long theMainBotId;
+    private final MemberService memberService;
+    private final MessageLogService messageLogService;
 
     private static final Gson GSON = new Gson();
-    private final RestTemplate restTemplate = new RestTemplate();
 
-    public VkChatClient(CustomVkApiClient vkApiClient, GroupActor groupActor) {
+    public VkChatClient(CustomVkApiClient vkApiClient, @Qualifier("theMainBotGroupActor") GroupActor theMainBotGroupActor, @Lazy MemberService memberService, @Lazy MessageLogService messageLogService) {
         this.vkApiClient = vkApiClient;
-        this.groupActor = groupActor;
-        this.theBotId = groupActor.getGroupId();
-    }
-
-
-    @Autowired
-    @Lazy
-    public void setMemberService(MemberService memberService){
+        this.theMainBotGroupActor = theMainBotGroupActor;
+        this.theMainBotId = theMainBotGroupActor.getGroupId();
         this.memberService = memberService;
-    }
-
-    @Autowired
-    @Lazy
-    public void setMessageLogService(MessageLogService messageLogService){
         this.messageLogService = messageLogService;
     }
 
-    public void sendText(@NonNull SendMessageDto sendMessageDto) throws ClientException, ApiException{
+   // возвращает cmid отправленных сообщений
+    public List<Integer> sendText(@NonNull SendMessageDto sendMessageDto) throws ClientException, ApiException{
 
-     if(sendMessageDto.isDoNotSendMessage()) return;
+     if(sendMessageDto.isDoNotSendTheMessage()) return Collections.emptyList();
      String text = sendMessageDto.getText();
+
+     Set<Integer> sentMessages = new HashSet<>();
 
       while (text.length()>MAX_MESSAGE_LENGTH){
           int cutIndex=text.lastIndexOf(" ", MAX_MESSAGE_LENGTH);
@@ -89,54 +76,59 @@ public class VkChatClient{
           }
           String part = text.substring(0, cutIndex);
           sendMessageDto.setText(part);
-          sendNotLongText(sendMessageDto);
+          sentMessages.add(sendTextWithLimitedLength(sendMessageDto));
           text = text.substring(cutIndex).trim();
       }
       sendMessageDto.setText(text);
-      sendNotLongText(sendMessageDto);
+      sentMessages.add(sendTextWithLimitedLength(sendMessageDto));
+
+      return sentMessages.stream()
+              .filter(Objects::nonNull)
+              .toList();
   }
 
-    private void sendNotLongText(@NonNull SendMessageDto sendMessageDto) throws ClientException, ApiException{
+    private Integer sendTextWithLimitedLength(@NonNull SendMessageDto sendMessage) throws ClientException {
 
-        long peerId = sendMessageDto.getPeerId();
+        long responsePeerId = sendMessage.getResponsePeerId();
 
         MessagesSendQueryWithUserIds query = vkApiClient.messages()
-                .sendUserIds(groupActor)
-                .peerIds(peerId)
-                .message(sendMessageDto.getText())
-                .disableMentions(!sendMessageDto.isAbleMentions())
+                .sendUserIds(sendMessage.getResponderBot())
+                .peerIds(responsePeerId)
+                .message(sendMessage.getText())
+                .disableMentions(!sendMessage.isAbleMentions())
                 .randomId((int) System.currentTimeMillis());
 
-        if(sendMessageDto.isReplyToMessageId()&&sendMessageDto.getConversationMessageId()!=null){
+        if(sendMessage.isReplyToMessageId()&&sendMessage.getConversationMessageId()!=null){
             Forward forward = new Forward();
-            forward.setConversationMessageIds(List.of(sendMessageDto.getConversationMessageId()));
-            forward.setPeerId(peerId);
+            forward.setConversationMessageIds(List.of(sendMessage.getConversationMessageId()));
+            forward.setPeerId(responsePeerId);
             forward.setIsReply(true);
 
             query.forward(forward);
         }
-        if(sendMessageDto.getForward()!=null){
-            query.forward(sendMessageDto.getForward());
+        if(sendMessage.getForward()!=null){
+            query.forward(sendMessage.getForward());
         }
 
         String jsonResponse = query.executeAsString();
-
-        if(!isPersonalChat(peerId)){
-            VkSendResponse resp = GSON.fromJson(jsonResponse, VkSendResponse.class);
-            if(resp==null||resp.response==null||resp.response.isEmpty()){
-                log.warn("cannot get cmid of just sent message cause vk sent not full response {} ",resp);
-                return;
-            }
-            int cmId = resp.response.get(0).conversationMessageId;
-            messageLogService.saveNewMessageLog(peerId, -theBotId, cmId, null, sendMessageDto.getText(), sendMessageDto.isForwardedToLogChat());
+        VkSendResponse resp = GSON.fromJson(jsonResponse, VkSendResponse.class);
+        if(resp==null||resp.response==null||resp.response.isEmpty()){
+            log.warn("cannot get cmid of just sent message cause vk sent not full response {} ",resp);
+            return null;
         }
+        int cmid = resp.response.get(0).conversationMessageId;
+
+        if(!isPersonalChat(responsePeerId)){
+            messageLogService.saveNewMessageLog(sendMessage.getDataBaseChatId(), -sendMessage.getResponderBot().getGroupId(), cmid, null, sendMessage.getText(), sendMessage.isLogChatForward());
+        }
+        return cmid;
 
     }
 
-    public GetConversationMembersResponse getAllConversationMembersWithAllNameCases(long chatId) throws ClientException, ApiException {
+    public GetConversationMembersResponse getAllConversationMembersWithAllNameCases(@NonNull GroupActor executorBot, long vkApiChatId) throws ClientException, ApiException {
 
         return vkApiClient.messages()
-                        .getConversationMembers(groupActor, convertToPeerId(chatId))
+                        .getConversationMembers(executorBot, convertToPeerId(vkApiChatId))
                         .fields(
                                 FIRST_NAME_NOM, FIRST_NAME_GEN, FIRST_NAME_DAT, FIRST_NAME_ACC, FIRST_NAME_INS, FIRST_NAME_ABL,
                                 LAST_NAME_NOM, LAST_NAME_GEN, LAST_NAME_DAT, LAST_NAME_ACC, LAST_NAME_INS, LAST_NAME_ABL
@@ -144,22 +136,22 @@ public class VkChatClient{
                         .execute();
     }
 
-    public void changeChatTitle(long chatId, String newTitle) throws ClientException, ApiException {
-        vkApiClient.messages().editChat(groupActor)
-                .chatId((int)chatId)
+    public void changeChatTitle(@NonNull GroupActor executorBot, long vkApiChatId, String newTitle) throws ClientException, ApiException {
+        vkApiClient.messages().editChat(executorBot)
+                .chatId((int)vkApiChatId)
                 .title(newTitle)
                 .execute();
     }
 
-    public Optional<Long> getMemberIdByScreenName(@NonNull String nickName){
+    public Optional<Long> getMemberIdByScreenName(@NonNull String screenName){
 
         ResolveScreenNameResponse response = null;
         try {
             response = vkApiClient.utils()
-                    .resolveScreenName(groupActor, nickName)
+                    .resolveScreenName(theMainBotGroupActor, screenName)
                     .execute();
         } catch (ApiException| ClientException e) {
-           log.warn("Ошибка при попытке получить Id участника по короткому адресу: {}", nickName, e);
+           log.warn("Ошибка при попытке получить Id участника по короткому адресу: {}", screenName, e);
            return Optional.empty();
         }
         if (response != null) {
@@ -175,20 +167,50 @@ public class VkChatClient{
         }return  Optional.empty();
     }
 
-    public void kickOneChatMember(long chatId, long memberId) throws ClientException, ApiException{
+    public void kickOneChatMember(@NonNull CommandRoutingData commandRoutingData, long memberId) throws ClientException, ApiException{
 
-        if(memberId==-theBotId){
+        long dataBaseChatId = commandRoutingData.getDataBaseChatId();
+        long vkApiChatId = commandRoutingData.getVkApiChatId();
+
+        if(memberId==-commandRoutingData.getExecutorBot().getGroupId()){
             return;
         }
-        vkApiClient.messages().removeChatUser(groupActor)
-                .chatId((int)chatId)
+        vkApiClient.messages().removeChatUser(commandRoutingData.getExecutorBot())
+                .chatId((int)vkApiChatId)
                 .memberId(memberId)
                 .execute();
 
-        memberService.setPresenceTypeToMember(chatId, memberId, KICKED, true);
+        memberService.setPresenceTypeToMember(dataBaseChatId, memberId, KICKED, true);
     }
 
-    public Set<Long> kickManyChatMembers(long chatId, @NonNull List<Long> allMemberIds) throws ClientException, ApiException{
+    public void kickOneChatMember(long databaseChatId, long vkApiChatId, @NonNull GroupActor executorBot, long memberId) throws ClientException, ApiException{
+
+        if(memberId==-executorBot.getGroupId()){
+            return;
+        }
+        vkApiClient.messages().removeChatUser(executorBot)
+                .chatId((int)vkApiChatId)
+                .memberId(memberId)
+                .execute();
+
+        memberService.setPresenceTypeToMember(databaseChatId, memberId, KICKED, true);
+    }
+
+    public void selfLeave(long databaseChatId, long vkApiChatId, @NonNull GroupActor executorBot) throws ClientException, ApiException{
+
+        vkApiClient.messages().removeChatUser(executorBot)
+                .chatId((int)vkApiChatId)
+                .memberId(-executorBot.getGroupId())
+                .execute();
+
+        memberService.setPresenceTypeToMember(databaseChatId, -executorBot.getGroupId(), SELF_LEAVE, true);
+    }
+
+    public Set<Long> kickManyChatMembers(@NonNull CommandRoutingData commandRoutingData, @NonNull List<Long> allMemberIds) throws ClientException, ApiException{
+
+        GroupActor executorBot = commandRoutingData.getExecutorBot();
+        long dataBaseChatId = commandRoutingData.getDataBaseChatId();
+        long vkApiChatId = commandRoutingData.getVkApiChatId();
 
         final int maxBatchSize = 25;
         List<AbstractQueryBuilder> batchQueries = new ArrayList<>();
@@ -200,14 +222,14 @@ public class VkChatClient{
 
             for (Long memberId : batch) {
                 if (memberId == null) {
-                    log.error("chat {} error: memberId is null in method kickManyChatMembers", chatId);
+                    log.error("chat {} error: memberId is null in method kickManyChatMembers", dataBaseChatId);
                     continue;
                 }
-                if (memberId.equals(-theBotId)) {
+                if(memberId.equals(-executorBot.getGroupId())){
                     continue;
                 }
                 MessagesRemoveChatUserQuery removeQuery = vkApiClient.messages()
-                        .removeChatUser(groupActor, (int) chatId)
+                        .removeChatUser(executorBot, (int) vkApiChatId)
                         .memberId(memberId);
                 batchQueries.add(removeQuery);
                 batchMemberIds.add(memberId);
@@ -215,7 +237,7 @@ public class VkChatClient{
 
             if (!batchQueries.isEmpty()) {
                 JsonElement batchResponse = vkApiClient.execute()
-                        .batch(groupActor, batchQueries)
+                        .batch(executorBot, batchQueries)
                         .execute();
 
                 JsonArray results = batchResponse.getAsJsonArray();
@@ -226,7 +248,7 @@ public class VkChatClient{
                         kickedMembers.add(batchMemberIds.get(j));
                     } else {
                         log.error("chat {} error: could not kick member {} in method kickManyChatMembers: {}",
-                                chatId, batchMemberIds.get(j), res);
+                                dataBaseChatId, batchMemberIds.get(j), res);
                     }
                 }
 
@@ -239,59 +261,24 @@ public class VkChatClient{
                 }
             }
         }
-        memberService.setPresenceTypeToMembers(chatId, kickedMembers,KICKED, true);
+        memberService.setPresenceTypeToMembers(dataBaseChatId, kickedMembers,KICKED, true);
 
         return kickedMembers;
     }
 
-    public boolean canTheBotWriteToUser(long userId) {
-        try {
-            IsMessagesFromGroupAllowedResponse response = vkApiClient.messages()
-                    .isMessagesFromGroupAllowed(groupActor)
-                    .groupId(groupActor.getGroupId())
-                    .userId(userId)
-                    .execute();
-
-            BoolInt boolInt =  response.getIsAllowed();
-            return boolInt==BoolInt.YES;
-        } catch (ApiException | ClientException e) {
-            log.error("Ошибка при проверке разрешения для user {}: {}", userId, e.getMessage());
-            return false;
-        }
-    }
-
-    public boolean isCommunityMember(long groupId, long userId) throws ClientException, ApiException {
-
-        if(isGroupId(userId)) return false;
-        try{
-            BoolResponse response = vkApiClient.groups()
-                    .isMember(groupActor)
-                    .groupId(String.valueOf(Math.abs(groupId)))
-                    .userId(userId)
-                    .execute();
-
-            return response!=null&&response.getValue()==1;
-
-        }catch(ApiExtendedException ex){
-            int errorCode = ex.getErrorRaw().getErrorCode();
-            if(NO_GROUP_MEMBERS_ACCESS.getCodes().contains(errorCode)){
-                // доступ к списку участников закрыт или группа заблокирована
-                return false;
-            }
-            return false;
-        }
-    }
-
      public void getFullConversationMessage(long chatId, int conversationMessageId) throws ClientException, ApiException {
-         GetByConversationMessageIdResponse response = vkApiClient.messages().getByConversationMessageId(groupActor)
+         GetByConversationMessageIdResponse response = vkApiClient.messages().getByConversationMessageId(theMainBotGroupActor)
                  .peerId(convertToPeerId(chatId))
                  .conversationMessageIds(conversationMessageId)
                  .execute();
      }
 
-    public boolean changeChatMemberRestrictions(long chatId, long memberId, long seconds, boolean mute) throws ClientException, ApiException {
+    public boolean changeChatMemberRestrictions(@NonNull GroupActor executorBot, long chatId, long memberId, long seconds, boolean mute) throws ClientException, ApiException {
 
-        MessageChangeChatMemberRestrictionQuery query = vkApiClient.messages().changeChatMemberRestrictions(groupActor)
+        if(memberId==-executorBot.getGroupId()){
+            return false;
+        }
+        MessageChangeChatMemberRestrictionQuery query = vkApiClient.messages().changeChatMemberRestrictions(executorBot)
                 .peerId(convertToPeerId(chatId))
                 .memberIds(List.of(memberId));
         if(mute){
@@ -305,9 +292,9 @@ public class VkChatClient{
         return !response.getFailedMemberIds().contains(memberId);
     }
 
-    public Set<Long> getMembersWithWriteRestriction(long chatId) throws ClientException, ApiException{
+    public Set<Long> getMembersWithWriteRestriction(@NonNull GroupActor executorBot, long chatId) throws ClientException, ApiException{
         GetConversationMembersResponse response = vkApiClient.messages()
-                .getConversationMembers(groupActor, convertToPeerId(chatId))
+                .getConversationMembers(executorBot, convertToPeerId(chatId))
                 .execute();
 
         return response.getItems().stream()
@@ -316,7 +303,47 @@ public class VkChatClient{
                 .collect(Collectors.toSet());
     }
 
-    public Set<Integer> batchDeleteMessages(long chatId, @NonNull List<Integer> messagesToDelete) throws ApiException, ClientException {
+    public boolean deleteOneMessage(@NonNull CommandRoutingData commandRoutingData, int conversationMessageId) throws ClientException, ApiException {
+        List<DeleteFullResponse> response = vkApiClient.messages()
+                .deleteFull(commandRoutingData.getExecutorBot())
+                .peerId(convertToPeerId(commandRoutingData.getVkApiChatId()))
+                .cmids(conversationMessageId)
+                .deleteForAll(true)
+                .execute();
+
+        if(response==null){
+            log.warn("deleteFull method returned null List<DeleteFullResponse>");
+            return false;
+        }
+        Optional<Integer> cimd = response.stream().filter(DeleteFullResponseItem::isResponse)
+                .map(DeleteFullResponseItem::getConversationMessageId)
+                .findFirst();
+
+        cimd.ifPresent(id-> messageLogService.markMessagesAsDeleted(commandRoutingData.getDataBaseChatId(), Set.of(id)));
+        return cimd.isPresent();
+    }
+    public boolean deleteOneMessageInTheMainBotPrivateMessages(long userId, int conversationMessageId) throws ClientException, ApiException {
+        List<DeleteFullResponse> response = vkApiClient.messages()
+                .deleteFull(theMainBotGroupActor)
+                .peerId(userId)
+                .cmids(conversationMessageId)
+                .deleteForAll(true)
+                .execute();
+
+        if(response==null){
+            log.warn("deleteFull method returned null List<DeleteFullResponse>");
+            return false;
+        }
+        return response.stream().filter(DeleteFullResponseItem::isResponse)
+                .map(DeleteFullResponseItem::getConversationMessageId)
+                .findFirst()
+                .isPresent();
+    }
+
+    public Set<Integer> batchDeleteMessagesInAConversation(@NonNull CommandRoutingData commandRoutingData, @NonNull List<Integer> messagesToDelete) throws ApiException, ClientException {
+        long dataBaseChatId = commandRoutingData.getDataBaseChatId();
+        long vkApiChatId = commandRoutingData.getVkApiChatId();
+
         if (messagesToDelete.isEmpty()) return Collections.emptySet();
 
         List<MessagesDeleteQueryWithFull> deleteQueries = new ArrayList<>();
@@ -325,8 +352,8 @@ public class VkChatClient{
 
         for(List<Integer> batchCmids : cmidBatches){
             MessagesDeleteQueryWithFull query = vkApiClient.messages()
-                    .deleteFull(groupActor)
-                    .peerId(convertToPeerId(chatId))
+                    .deleteFull(commandRoutingData.getExecutorBot())
+                    .peerId(convertToPeerId(vkApiChatId))
                     .cmids(batchCmids)
                     .deleteForAll(true);
             deleteQueries.add(query);
@@ -334,10 +361,10 @@ public class VkChatClient{
             if(deleteQueries.size()>=MAX_QUERIES_IN_ONE_BATCH) break;
         }
 
-        ExecuteBatchQuery batchQuery = vkApiClient.execute().batch(groupActor, deleteQueries.toArray(new MessagesDeleteQueryWithFull[0]));
+        ExecuteBatchQuery batchQuery = vkApiClient.execute().batch(commandRoutingData.getExecutorBot(), deleteQueries.toArray(new MessagesDeleteQueryWithFull[0]));
 
         JsonElement batchResponse = batchQuery.execute();
-        log.info("chat {}: batch deletion messages execute result: {}",chatId, batchResponse);
+        log.info("chat {}: batch deletion messages execute result: {}",dataBaseChatId, batchResponse);
 
         Type type = new TypeToken<List<List<DeleteFullResponse>>>(){}.getType();
         List<List<DeleteFullResponse>> nested = GSON.fromJson(batchResponse, type);
@@ -348,9 +375,12 @@ public class VkChatClient{
                 .map(DeleteFullResponseItem::getConversationMessageId)
                 .collect(Collectors.toSet());
 
-        messageLogService.markMessagesAsDeleted(chatId, justDeletedByTheBot);
+        messageLogService.markMessagesAsDeleted(dataBaseChatId, justDeletedByTheBot);
         return justDeletedByTheBot;
     }
+
+
+
 
     private <T> List<List<T>> partitionList(List<T> list, int size) {
         List<List<T>> partitions = new ArrayList<>();

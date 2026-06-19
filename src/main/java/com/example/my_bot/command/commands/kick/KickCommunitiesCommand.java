@@ -51,20 +51,22 @@ public class KickCommunitiesCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        Page<MemberEntity> allRequiredCommunities = memberService.getNotKickedCommunitiesWithRoleLessThan(chatId, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(), MEMBERS_LIMIT_AT_ONE_USAGE);
+        Page<MemberEntity> allRequiredCommunities = memberService.getNotKickedCommunitiesWithRoleLessThan(dataBaseChatId, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(), MEMBERS_LIMIT_AT_ONE_USAGE);
 
-        Set<Long> kickedCommunities = vkChatClient.kickManyChatMembers(chatId,
+        Set<Long> kickedCommunities = vkChatClient.kickManyChatMembers(
+                commandMessage.getCommandRoutingData(),
                 allRequiredCommunities.getContent().stream()
                         .filter(m->!m.isChatAdmin())
                         .map(MemberEntity::getUserId)
-                        .toList());
+                        .toList()
+        );
 
         vkChatClient.sendText(messageMapper.toSendMessageDto("✅Было исключено %d из %d сообществ с ролью ниже чем «%s»."
-                .formatted(kickedCommunities.size(), allRequiredCommunities.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName()),messageDto));
+                .formatted(kickedCommunities.size(), allRequiredCommunities.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName()),commandMessage));
 
 
 

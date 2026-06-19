@@ -49,15 +49,15 @@ public class KickCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
 
         long memberToRemove;
 
-        ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(messageDto, 0);
+        ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
         if(inputResult.getMemberId().isPresent()){
             memberToRemove = inputResult.getMemberId().get();
         }else{
@@ -66,13 +66,13 @@ public class KickCommand implements ChatCommand {
             return;
         }
 
-        if(memberToRemove==messageDto.getFromId()){
+        if(memberToRemove==commandMessage.getFromId()){
             sendMessage.setText(new CannotApplyThisCommandToYourselfException().getMessage());
             vkChatClient.sendText(sendMessage);
             return;
         }
         try{
-            memberService.checkMemberInteractionAbility(chatId, messageDto.getFromId(), memberToRemove,true);
+            memberService.checkMemberInteractionAbility(dataBaseChatId, commandMessage.getFromId(), memberToRemove,true);
         }catch (MemberAccessDeniedException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
@@ -81,7 +81,7 @@ public class KickCommand implements ChatCommand {
 
 
        try{
-           vkChatClient.kickOneChatMember(chatId, memberToRemove);
+           vkChatClient.kickOneChatMember(commandMessage.getCommandRoutingData(), memberToRemove);
        }catch (ApiException e){
            sendMessage.setText("Не удалось исключить пользователя. "+e.getMessage());
            vkChatClient.sendText(sendMessage);

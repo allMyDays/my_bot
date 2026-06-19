@@ -38,12 +38,12 @@ public class RoleCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
 
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
@@ -59,7 +59,7 @@ public class RoleCreateCommand implements ChatCommand {
 
         RoleEntity createdRole;
         try{
-            createdRole =  roleService.createRole(chatId, messageDto.getFromId(), Integer.parseInt(args[0]),
+            createdRole =  roleService.createRole(chatId, commandMessage.getFromId(), Integer.parseInt(args[0]),
                    String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
 
         }catch (RoleException e){

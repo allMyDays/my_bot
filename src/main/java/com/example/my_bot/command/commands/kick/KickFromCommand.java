@@ -63,15 +63,15 @@ public class KickFromCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
         long inviterId;
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
 
-        ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(messageDto, 0);
+        ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
         if(inputResult.getMemberId().isPresent()){
             inviterId = inputResult.getMemberId().get();
         }else{
@@ -81,9 +81,9 @@ public class KickFromCommand implements ChatCommand {
         }
 
 
-        if(inviterId!=messageDto.getFromId()){
+        if(inviterId!=commandMessage.getFromId()){
         try{
-            memberService.checkMemberInteractionAbility(chatId, messageDto.getFromId(), inviterId,true);
+            memberService.checkMemberInteractionAbility(dataBaseChatId, commandMessage.getFromId(), inviterId,true);
         }catch (MemberException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
@@ -91,13 +91,15 @@ public class KickFromCommand implements ChatCommand {
           }
         }
 
-        Page<MemberEntity> allRequiredMembers = memberService.getNotKickedMembersInvitedByAndWithRoleLessThan(chatId, inviterId, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(), MEMBERS_LIMIT_AT_ONE_USAGE);
+        Page<MemberEntity> allRequiredMembers = memberService.getNotKickedMembersInvitedByAndWithRoleLessThan(dataBaseChatId, inviterId, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(), MEMBERS_LIMIT_AT_ONE_USAGE);
 
-        Set<Long> kickedMembers = vkChatClient.kickManyChatMembers(chatId,
+        Set<Long> kickedMembers = vkChatClient.kickManyChatMembers(
+                commandMessage.getCommandRoutingData(),
                 allRequiredMembers.getContent().stream()
                         .filter(m->!m.isChatAdmin())
                         .map(MemberEntity::getUserId)
-                        .toList());
+                        .toList()
+        );
 
         String memberName = globalUserService.getUserFullNameInRequiredCase(inviterId, NameCase.INSTRUMENTAL);
 

@@ -38,7 +38,7 @@ public class ReactionsCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         ReactionType[] reactions =ReactionType.values();
 
@@ -53,7 +53,7 @@ public class ReactionsCommand implements ChatCommand {
         }
         sb.append("Слева указаны эмоджи, справа — ID реакции. Каждый тип можно использовать в событии.");
 
-        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),messageDto));
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
 
     }
 }

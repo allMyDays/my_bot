@@ -6,7 +6,6 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.exception.chat.ForbiddenPrefixException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.TimeUtils;
@@ -43,13 +42,13 @@ public class BanPeriodChangeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        String[] args = messageDto.getFirstRowArguments();
-        long chatId = messageDto.getChatId();
+        String[] args = commandMessage.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         final String banCommandName = BanCommand.class.getAnnotation(Command.class).mainCommandName();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
 
 
 

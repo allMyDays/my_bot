@@ -39,12 +39,12 @@ public class RoleRenameCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        String[] args = messageDto.getFirstRowArguments();
-        long chatId = messageDto.getChatId();
+        String[] args = commandMessage.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
 
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
@@ -61,9 +61,9 @@ public class RoleRenameCommand implements ChatCommand {
         try{
             String newRoleName = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
             if(isNumber(args[0])){
-                editedRole = roleService.renameRole(chatId, messageDto.getFromId(), Integer.parseInt(args[0]),newRoleName);
+                editedRole = roleService.renameRole(chatId, commandMessage.getFromId(), Integer.parseInt(args[0]),newRoleName);
             }else{
-                editedRole = roleService.renameRole(chatId, messageDto.getFromId(), args[0], newRoleName);
+                editedRole = roleService.renameRole(chatId, commandMessage.getFromId(), args[0], newRoleName);
             }
 
         } catch (RoleException e){

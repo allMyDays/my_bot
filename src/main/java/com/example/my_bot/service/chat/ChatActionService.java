@@ -5,6 +5,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.commands.ban.UnbanCommand;
 import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.ban.MemberBanStatus;
+import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.member.MemberPresenceType;
 import com.example.my_bot.enumeration.user.NameCase;
@@ -14,11 +15,12 @@ import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.ChatUtils;
-import com.example.my_bot.utils.TimeUtils;
 import com.example.my_bot.vk.VkAction;
 import com.example.my_bot.vk.enumeration.VkActionType;
+import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,7 @@ import java.time.Instant;
 import java.util.*;
 
 import static com.example.my_bot.enumeration.member.MemberPresenceType.*;
+import static com.example.my_bot.utils.ChatUtils.convertToPeerId;
 import static com.example.my_bot.utils.TextUtils.createMention;
 import static com.example.my_bot.utils.TimeUtils.getFormattedStringDateTimeWithTimeZone;
 
@@ -49,9 +52,10 @@ public class ChatActionService {
 
 
 
-    public void handleChatAction(long chatId, long fromId, VkAction action){
+    public void handleChatAction(@NonNull CommandRoutingData commandRoutingData, long fromId, VkAction action){
 
-        if(action==null){
+        Long chatId = commandRoutingData.getDataBaseChatId();
+        if(chatId==null||action==null){
             return;
         }
         VkActionType type = action.getType();
@@ -60,13 +64,13 @@ public class ChatActionService {
 
         switch (type){
             case CHAT_INVITE_USER_BY_LINK->{
-                hasBeenKicked = handleBannedMemberOnJoin(chatId, fromId, fromId);
+                hasBeenKicked = handleBannedMemberOnJoin(commandRoutingData, fromId, fromId);
                 if(!hasBeenKicked){
                     memberService.createNewMemberOrMarkAsPresent(chatId, fromId,null);
                 }
             }
             case CHAT_INVITE_USER->{
-                hasBeenKicked = handleBannedMemberOnJoin(chatId, fromId, memberId);
+                hasBeenKicked = handleBannedMemberOnJoin(commandRoutingData, fromId, memberId);
                 if(!hasBeenKicked){
                     Long invitedBy = fromId==memberId?null:fromId;  // самостоятельный возврат или приглашение
                     memberService.createNewMemberOrMarkAsPresent(chatId, memberId,invitedBy);
@@ -80,18 +84,19 @@ public class ChatActionService {
         }
     }
 
-    public void checkLastChatSynchronizationAndExecute(long chatId) {
+    public void checkLastChatSynchronizationAndExecute(@NonNull CommandRoutingData commandRoutingData) {
+        long dataBaseChatId = commandRoutingData.getDataBaseChatId();
 
-        ChatDetailsDto chatDto = chatService.getCachedChatDetails(chatId, true);
+        ChatDetailsDto chatDto = chatService.getCachedChatDetails(dataBaseChatId, true);
 
         Optional<Instant> lastSync = chatDto.getOptionalLastSyncTime();
 
         if(lastSync.isEmpty()||Duration.between(lastSync.get(),Instant.now()).toMinutes()>=AUTO_SYNC_INTERVAL_MINUTES){
             try {
-                memberService.synchronizeChatMembers(chatId);
+                memberService.synchronizeChatMembers(commandRoutingData);
             }catch (Exception e){
                 log.warn("chat {} error while auto synchronization",chatDto,e);
-                chatService.setLastSyncToNow(chatId);
+                chatService.setLastSyncToNow(dataBaseChatId);
             }
         }
     }
@@ -99,16 +104,17 @@ public class ChatActionService {
     /**
      @return true, если пользователь был исключён по бизнес-логике
      */
-    private boolean handleBannedMemberOnJoin(long chatId, long fromId, long memberId){
+    private boolean handleBannedMemberOnJoin(@NonNull CommandRoutingData commandRoutingData, long fromId, long memberId){
 
         boolean hasBeenKicked = false;
         boolean isKickRequired = true;
+        long dataBaseChatId = commandRoutingData.getDataBaseChatId();
 
-        MemberBanStatus banStatus = banService.getMemberBanStatus(chatId, memberId);
+        MemberBanStatus banStatus = banService.getMemberBanStatus(dataBaseChatId, memberId);
         if(!banStatus.isBanned()){
             return false;
         }
-            TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
+            TimeZoneType chatTimeZone = chatService.getChatTimeZone(dataBaseChatId);
             Optional<Instant> bannedUntil = banStatus.getOptionalBannedUntil();
             String message = "%s(%s) в %s.".formatted(
                     createMention(memberId),
@@ -117,12 +123,12 @@ public class ChatActionService {
                             .orElse("вечном бане")
             );
 
-            if(chatService.isAutoUnban(chatId)&&fromId!=memberId){
+            if(chatService.isAutoUnban(dataBaseChatId)&&fromId!=memberId){
                 String unbanCommandName = UnbanCommand.class.getAnnotation(Command.class).mainCommandName();
-                int callerRole = memberService.getMemberRolePriority(chatId, fromId);
-                boolean canUnban = commandAccessService.checkCommandAuthorization(chatId, unbanCommandName,callerRole, fromId);
+                int callerRole = memberService.getMemberRolePriority(dataBaseChatId, fromId);
+                boolean canUnban = commandAccessService.checkCommandAuthorization(dataBaseChatId, unbanCommandName,callerRole, fromId);
                 if(canUnban){
-                    banService.deleteMemberBan(chatId, memberId);
+                    banService.deleteMemberBan(dataBaseChatId, memberId);
                     message+="\nНо бан был автоматически снят потому, что пользователя пригласил участник с правом на использование команды «%s»."
                             .formatted(unbanCommandName);
                     isKickRequired = false;
@@ -131,17 +137,17 @@ public class ChatActionService {
             }
             if(isKickRequired){
                 try {
-                    vkChatClient.kickOneChatMember(chatId, memberId);
+                    vkChatClient.kickOneChatMember(commandRoutingData, memberId);
                     hasBeenKicked = true;
                 } catch (ClientException | ApiException e) {
-                    log.warn("chat {} error: cannot remove banned member {} that just has been linked. ",chatId, memberId, e);
+                    log.warn("chat {} error: cannot remove banned member {} that just has been linked. ",dataBaseChatId, memberId, e);
                     message +=" Однако возникла ошибка при попытке исключить этого пользователя: "+e.getMessage();
                 }
             }
             try {
-                vkChatClient.sendText(messageMapper.toSendMessageDto(message,ChatUtils.convertToPeerId(chatId)));
+                vkChatClient.sendText(messageMapper.toSendMessageDto(message, convertToPeerId(commandRoutingData.getVkApiChatId()),dataBaseChatId, commandRoutingData.getExecutorBot()));
             } catch (ClientException | ApiException e) {
-                log.warn("chat {} error: cannot send info about banned member {} that just has been linked. ",chatId, memberId, e);
+                log.warn("chat {} error: cannot send info about banned member {} that just has been linked. ",dataBaseChatId, memberId, e);
             }
         return hasBeenKicked;
     }

@@ -1,5 +1,6 @@
 package com.example.my_bot.dto;
 
+import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.objects.messages.Forward;
 import jakarta.annotation.Nullable;
 import lombok.Getter;
@@ -13,24 +14,29 @@ public class SendMessageDto {
 
     private String text;
 
-    private long peerId;
+    private long responsePeerId;
+
+    private GroupActor responderBot;
 
     private Integer conversationMessageId;
+
+    private Long dataBaseChatId;
 
     private boolean replyToMessageId;
 
     private boolean ableMentions;
 
-    private boolean doNotSendMessage;
+    private boolean doNotSendTheMessage;
 
     private Forward forward;
 
-    private boolean isForwardedToLogChat;
+    private boolean isLogChatForward;
 
 
-    public SendMessageDto(@NonNull String text, long peerId, @Nullable Integer conversationMessageId, boolean replyToMessageId, boolean ableMentions,@Nullable Forward forward) {
+    public SendMessageDto(@NonNull String text, long responsePeerId, @NonNull GroupActor responderBot, @Nullable Integer conversationMessageId, boolean replyToMessageId, boolean ableMentions, @Nullable Forward forward) {
         this.text = text;
-        this.peerId = peerId;
+        this.responsePeerId = responsePeerId;
+        this.responderBot = responderBot;
         this.conversationMessageId = conversationMessageId;
         this.replyToMessageId = replyToMessageId;
         this.ableMentions = ableMentions;

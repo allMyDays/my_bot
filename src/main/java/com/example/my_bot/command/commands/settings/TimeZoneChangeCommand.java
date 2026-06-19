@@ -43,12 +43,12 @@ public class TimeZoneChangeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        String[] args = messageDto.getFirstRowArguments();
-        long chatId = messageDto.getChatId();
+        String[] args = commandMessage.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
 
         TimeZoneType timeZoneToAssign;
 

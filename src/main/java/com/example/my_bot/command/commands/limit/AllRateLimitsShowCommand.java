@@ -39,9 +39,9 @@ public class AllRateLimitsShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
         List<RoleRateLimitDto> roleLimits = roleRateLimitService.getRoleLimitsSortedByEntityId(chatId);
         Map<Integer, String> roleMap = roleService.getAllRolesWithNoSorting(chatId);
@@ -64,6 +64,6 @@ public class AllRateLimitsShowCommand implements ChatCommand {
             );
 
 
-        } vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),messageDto));
+        } vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
     }
 }

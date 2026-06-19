@@ -1,7 +1,6 @@
-package com.example.my_bot.vk.transport;
+package com.example.my_bot.vk;
 
 import com.google.gson.Gson;
-import com.vk.api.sdk.actions.Messages;
 import com.vk.api.sdk.client.TransportClient;
 import com.vk.api.sdk.client.VkApiClient;
 

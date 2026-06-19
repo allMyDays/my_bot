@@ -38,12 +38,12 @@ public class RoleDeleteCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
 
         if(args.length==0){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
@@ -61,9 +61,9 @@ public class RoleDeleteCommand implements ChatCommand {
 
         try{
             if(isNumber(args[0])){
-                assignedRole = roleService.deleteCustomRole(chatId, messageDto.getFromId(), Integer.parseInt(args[0]));
+                assignedRole = roleService.deleteCustomRole(chatId, commandMessage.getFromId(), Integer.parseInt(args[0]));
             }else{
-                assignedRole = roleService.deleteCustomRole(chatId, messageDto.getFromId(), String.join(" ", args));
+                assignedRole = roleService.deleteCustomRole(chatId, commandMessage.getFromId(), String.join(" ", args));
             }
 
         } catch (RoleException e){

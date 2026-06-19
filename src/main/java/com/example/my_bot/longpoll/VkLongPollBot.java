@@ -26,11 +26,6 @@ import static com.example.my_bot.vk.enumeration.VkEventType.MESSAGE_REACTION_EVE
 
 @Service
 @Slf4j
-@ConditionalOnProperty(
-        prefix = "vk",
-        name = "mode",
-        havingValue = "longpoll"
-)
 public class VkLongPollBot {
 
     private static final Gson GSON = new Gson();
@@ -101,12 +96,12 @@ public class VkLongPollBot {
                     if(MESSAGE_NEW.getValue().equals(type)){
                         VkMessageNew event = GSON.fromJson(update, VkMessageNew.class);
                         if(event!=null){
-                            asyncEventHandler.handleNewMessageEvent(event);
+                            asyncEventHandler.handleNewMessageEvent(event, false);
                         }
                     } else if (MESSAGE_REACTION_EVENT.getValue().equals(type)){
                         VkMessageReactionEvent event = GSON.fromJson(update, VkMessageReactionEvent.class);
                         if(event!=null){
-                            asyncEventHandler.handleNewReactionEvent(event);
+                            asyncEventHandler.handleNewReactionEvent(event, false);
                         }
                     }
 

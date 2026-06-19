@@ -56,12 +56,12 @@ public class MemberPermissionCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
 
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
@@ -85,11 +85,11 @@ public class MemberPermissionCreateCommand implements ChatCommand {
         try{
             Set<String> userCommandsToProcess = new HashSet<>();
             userCommandsToProcess.add(args[1].trim());
-                for(int i=1;i<messageDto.getAllRows().length;i++){
-                    userCommandsToProcess.add(messageDto.getAllRows()[i].trim());
+                for(int i=1;i<commandMessage.getAllRows().length;i++){
+                    userCommandsToProcess.add(commandMessage.getAllRows()[i].trim());
                 }
                 permissionResult = memberPermissionService.allowOrForbidCommandForMember(
-                        chatId, messageDto.getFromId(), userCommandsToProcess, targetUserId.get(), allow);
+                        chatId, commandMessage.getFromId(), userCommandsToProcess, targetUserId.get(), allow);
 
         }catch (PermissionException | RoleException | CommandException | MemberException e){
             sendMessage.setText(e.getMessage());

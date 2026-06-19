@@ -10,16 +10,11 @@ import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.MemberDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.enumeration.TimeZoneType;
-import com.example.my_bot.enumeration.member.MemberPresenceType;
 import com.example.my_bot.enumeration.user.NameCase;
-import com.example.my_bot.exception.ban.BanException;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
-import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberAccessDeniedException;
-import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
-import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.chat.ChatService;
@@ -33,7 +28,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import java.time.Instant;
-import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
@@ -41,7 +35,6 @@ import static com.example.my_bot.enumeration.member.MemberPresenceType.IN_CHAT;
 import static com.example.my_bot.utils.TextUtils.createMention;
 import static com.example.my_bot.utils.TimeUtils.getFormattedStringDateTimeWithTimeZone;
 import static com.example.my_bot.utils.TimeUtils.toSecondsFromString;
-import static com.example.my_bot.vk.enumeration.ChatErrorCode.USER_NOT_FOUND_IN_CHAT;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -69,11 +62,11 @@ public class MuteCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
-        long fromId = messageDto.getFromId();
+        long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
+        long fromId = commandMessage.getFromId();
 
         long memberToMute;
         String reason=null;
@@ -85,9 +78,9 @@ public class MuteCommand implements ChatCommand {
         // !мут @durov 2 часа
         // !мут 2 часа (пересланное смс)
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
 
-        ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(messageDto, 0);
+        ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
         if(inputResult.getMemberId().isPresent()){
             memberToMute = inputResult.getMemberId().get();
             if(args.length>=2){ // мут с временными параметрами
@@ -121,25 +114,31 @@ public class MuteCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
-        if(memberToMute==messageDto.getFromId()){
+        if(memberToMute==commandMessage.getFromId()){
             sendMessage.setText(new CannotApplyThisCommandToYourselfException().getMessage());
             vkChatClient.sendText(sendMessage);
             return;
         }
-        MemberDto member = memberService.getCachedMemberInfo(chatId, memberToMute).orElse(null);
+        MemberDto member = memberService.getCachedMemberInfo(dataBaseChatId, memberToMute).orElse(null);
         if(member==null||member.getPresenceType()!=IN_CHAT){
             sendMessage.setText("Выдать мут можно только участникам, которые на данный момент находятся в чате.");
             vkChatClient.sendText(sendMessage);
             return;
         }
         try{
-            memberService.checkMemberInteractionAbility(chatId, messageDto.getFromId(), memberToMute,true);
+            memberService.checkMemberInteractionAbility(dataBaseChatId, commandMessage.getFromId(), memberToMute,true);
         }catch (MemberAccessDeniedException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return;
         }
-        boolean success = vkChatClient.changeChatMemberRestrictions(chatId, memberToMute, muteTimePeriodSec, true);
+        boolean success = vkChatClient.changeChatMemberRestrictions(
+                commandMessage.getCommandRoutingData().getExecutorBot(),
+                commandMessage.getCommandRoutingData().getVkApiChatId(),
+                memberToMute,
+                muteTimePeriodSec,
+                true
+        );
         String userName = globalUserService.getUserFullNameInRequiredCase(memberToMute, NameCase.DATIVE);
         if(!success){
             sendMessage.setText("Не удалось выдать %s(%s) запрет на отправку сообщений.".formatted(createMention(memberToMute), userName));
@@ -147,13 +146,13 @@ public class MuteCommand implements ChatCommand {
             return;
         }
 
-        String [] rows = messageDto.getAllRows();
+        String [] rows = commandMessage.getAllRows();
         if(rows.length>=2) reason = rows[1];
 
        Instant mutedUntil= Instant.now().plusSeconds(muteTimePeriodSec);
 
 
-       TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
+       TimeZoneType chatTimeZone = chatService.getChatTimeZone(dataBaseChatId);
        String message = "✅ %s(%s) было запрещено общаться в чате до %s"
                .formatted(
                        createMention(memberToMute),
@@ -161,7 +160,7 @@ public class MuteCommand implements ChatCommand {
                        getFormattedStringDateTimeWithTimeZone(mutedUntil, chatTimeZone)
                );
 
-       if(!messageDto.isEventOrTimerMode()){
+       if(!commandMessage.isEventOrTimerMode()){
            message+="\nМодератор: %s(%s)".formatted(
                createMention(fromId),
                globalUserService.getUserFullNameInRequiredCase(fromId, NameCase.NOMINATIVE)

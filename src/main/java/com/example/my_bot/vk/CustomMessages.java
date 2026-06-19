@@ -1,4 +1,4 @@
-package com.example.my_bot.vk.transport;
+package com.example.my_bot.vk;
 
 import com.example.my_bot.vk.transport.write_restriction.MessageChangeChatMemberRestrictionQuery;
 import com.vk.api.sdk.actions.Messages;

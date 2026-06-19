@@ -53,15 +53,15 @@ public class UnbanCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
         long memberToUnban;
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", commandMessage);
 
-        ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(messageDto, 0);
+        ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
         if(inputResult.getMemberId().isPresent()){
             memberToUnban = inputResult.getMemberId().get();
         }else{

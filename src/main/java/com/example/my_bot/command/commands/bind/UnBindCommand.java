@@ -50,24 +50,24 @@ public class UnBindCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long fromId = messageDto.getFromId();;
+        long fromId = commandMessage.getFromId();;
 
-        SendMessageDto sendMessage =  messageMapper.toSendMessageDto("",messageDto);
+        SendMessageDto sendMessage =  messageMapper.toSendMessageDto("",commandMessage);
 
         long userToUnbind;
 
-        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(messageDto, 0);
+        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
 
         if(parseResult.getMemberId().isPresent()){
             userToUnbind = parseResult.getMemberId().get();
         }else{
-            userToUnbind = messageDto.getFromId();
+            userToUnbind = commandMessage.getFromId();
         }
 
         try {
-            userService.unBindChatFromUser(messageDto.getChatId(), fromId, userToUnbind);
+            userService.unBindChatFromUser(commandMessage.getCommandRoutingData().getDataBaseChatId(), fromId, userToUnbind);
         }catch (MemberException | GlobalUserException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);

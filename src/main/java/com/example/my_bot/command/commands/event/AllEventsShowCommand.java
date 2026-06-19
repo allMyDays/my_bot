@@ -64,12 +64,12 @@ public class AllEventsShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        String[] args = messageDto.getFirstRowArguments();
+        String[] args = commandMessage.getFirstRowArguments();
         StringBuilder sb = new StringBuilder();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
 
         if(args.length>=1&&args[0].equalsIgnoreCase("доступные")){
             sb.append("Вам доступно %d событий для создания:\n\n".formatted(MyEventType.values().length));
@@ -84,7 +84,7 @@ public class AllEventsShowCommand implements ChatCommand {
             return;
         }
 
-        long chatId = messageDto.getChatId();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String chatTimeZone = chatService.getChatTimeZone(chatId).getStringType();
 
         List<EventDto> events = eventService.getEventsSortedByIdInIncreasingOrder(chatId);
@@ -96,7 +96,7 @@ public class AllEventsShowCommand implements ChatCommand {
         int counter=0;
         for(EventDto currentEvent: events){
             counter++;
-            if(eventService.isEventBeingACommandEvent(currentEvent)){
+            if(eventService.isEventACommandEvent(currentEvent)){
                 // созданная команда-событие
                 eventCommandsMap.put(counter, currentEvent);
                 continue;

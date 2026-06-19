@@ -10,7 +10,7 @@ import com.example.my_bot.entity.RolePermissionEntity;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
-import com.example.my_bot.repository.RolePermissionRepository;
+import com.example.my_bot.repository.permission.RolePermissionRepository;
 import com.example.my_bot.service.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;

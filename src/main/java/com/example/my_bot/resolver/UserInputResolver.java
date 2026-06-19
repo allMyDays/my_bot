@@ -32,7 +32,7 @@ public class UserInputResolver {
     private final MemberService memberService;
 
 
-    public Optional<Long> getMemberIdByStringInput(long chatId, @NonNull String userInput){
+    public Optional<Long> getMemberIdByStringInput(long dataBaseChatId, @NonNull String userInput){
 
         userInput=userInput.trim();
 
@@ -64,21 +64,21 @@ public class UserInputResolver {
                         k -> vkChatClient.getMemberIdByScreenName(userNickname));
             }
         }else if(userInput.length()>1){  // поиск по имени/фамилии
-            return memberService.findCurrentMemberByFirstNameOrLastName(chatId, userInput);
+            return memberService.findCurrentMemberByFirstNameOrLastName(dataBaseChatId, userInput);
         }
         return Optional.empty();
     }
 
-    public ParseMemberInputResult getMemberIdByAnyInput(CommandMessageDto messageDto, int userIndex){
+    public ParseMemberInputResult getMemberIdByAnyInput(CommandMessageDto commandMessage, int userIndex){
 
         ParseMemberInputResult result = new ParseMemberInputResult();
         Long targetMember = null;
-        if(!messageDto.getReplyOrFwdMessages().isEmpty()){
-            targetMember = messageDto.getReplyOrFwdMessages().get(0).getFromId();
+        if(!commandMessage.getReplyOrFwdMessages().isEmpty()){
+            targetMember = commandMessage.getReplyOrFwdMessages().get(0).getFromId();
             result.setFwdMessage(true);
         }else{
-            if(messageDto.getFirstRowArguments().length>=(userIndex+1)){
-                Optional<Long> memberOptional = getMemberIdByStringInput(messageDto.getChatId(), messageDto.getFirstRowArguments()[userIndex]);
+            if(commandMessage.getFirstRowArguments().length>=(userIndex+1)){
+                Optional<Long> memberOptional = getMemberIdByStringInput(commandMessage.getCommandRoutingData().getDataBaseChatId(), commandMessage.getFirstRowArguments()[userIndex]);
                 if(memberOptional.isPresent()){
                     targetMember = memberOptional.get();
                 }

@@ -33,7 +33,15 @@ public class ChatDetailsDto {
 
     private String chatCode;
 
-    Long boundLogChat;
+    private Long boundLogChat;
+
+    private Long boundSubmanagerId;
+
+    private Long submanagerChatId;
+
+
+
+
 
     @JsonIgnore
     public Optional<Character> getOptionalPrefix() {

@@ -21,9 +21,6 @@ public class CommandMessageDto{
     private int conversationMessageId;
 
     @Getter
-    private Long chatId;
-
-    @Getter
     private long fromId;
 
     @Getter
@@ -38,17 +35,18 @@ public class CommandMessageDto{
     private String command;
 
     @Getter
-    private long peerId;
-
-    @Getter
     private boolean replyToMessageId;
 
     @Getter
-    private boolean doNotSendMessage;
+    private boolean doNotSendTheMessage;
 
     @Getter
     private boolean eventOrTimerMode = false;
+
+    @Getter
+    private CommandRoutingData commandRoutingData;
     
+
 
 
     public Optional<String> getUserText() {
@@ -58,9 +56,6 @@ public class CommandMessageDto{
     public boolean hasAnyText(){
         return userText !=null&&!userText.trim().isEmpty();
     }
-
-
-
 
     public Optional<String> getCommand() {
         if(command==null||command.trim().isEmpty()){

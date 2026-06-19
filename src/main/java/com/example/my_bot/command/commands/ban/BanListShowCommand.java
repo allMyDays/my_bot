@@ -6,31 +6,22 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.BanEntity;
-import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.GlobalUserService;
-import com.example.my_bot.service.MemberService;
-import com.example.my_bot.service.RoleService;
 import com.example.my_bot.service.chat.ChatService;
-import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
-import static com.example.my_bot.enumeration.member.MemberPresenceType.IN_CHAT;
 import static com.example.my_bot.utils.TextUtils.createMention;
 import static com.example.my_bot.utils.TimeUtils.*;
 
@@ -58,10 +49,10 @@ public class BanListShowCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
 
         StringBuilder sb = new StringBuilder();
@@ -103,7 +94,7 @@ public class BanListShowCommand implements ChatCommand {
             }
             sb.append("\nЧтобы посмотреть пользователей в вечном бане, добавьте аргумент «%s».".formatted(PERMANENT_ARGUMENT));
         }
-        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),messageDto));
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
 
     }
 

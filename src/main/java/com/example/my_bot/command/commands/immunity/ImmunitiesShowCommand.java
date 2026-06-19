@@ -15,13 +15,11 @@ import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.enumeration.member.MemberPresenceType.IN_CHAT;
 import static com.example.my_bot.utils.TextUtils.createMention;
@@ -52,9 +50,9 @@ public class ImmunitiesShowCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
         StringBuilder sb = new StringBuilder();
 
@@ -86,7 +84,7 @@ public class ImmunitiesShowCommand implements ChatCommand {
         if(!membersWithImmune.isEmpty()){
             sb.append("\n❓На этих пользователей не могут воздействовать управляющие, чья роль ниже или равна роли напротив.");
         }
-        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),messageDto));
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
 
     }
 

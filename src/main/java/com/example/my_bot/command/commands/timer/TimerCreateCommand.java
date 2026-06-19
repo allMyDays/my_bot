@@ -56,13 +56,13 @@ public class TimerCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        String[] args = messageDto.getFirstRowArguments();
-        long chatId = messageDto.getChatId();
-        long fromId = messageDto.getFromId();
+        String[] args = commandMessage.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        long fromId = commandMessage.getFromId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
 
         if(args.length<3){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);

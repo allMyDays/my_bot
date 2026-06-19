@@ -50,9 +50,9 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
         ImmutableMap<String, Integer> rolePermissions = rolePermissionService.getCachedCustomRolePermissions(chatId);
         ImmutableMap<String, ImmutableMap<Long, Boolean>> memberPermissions = memberPermissionService.getCachedCustomMemberPermissions(chatId);
@@ -105,7 +105,7 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
             });
         });
 
-        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(), messageDto));
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(), commandMessage));
     }
 
 

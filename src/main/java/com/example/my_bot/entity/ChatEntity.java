@@ -3,9 +3,9 @@ package com.example.my_bot.entity;
 import com.example.my_bot.enumeration.TimeZoneType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Check;
 
 import java.time.Instant;
-import java.util.Optional;
 
 @Entity
 @Setter
@@ -13,9 +13,13 @@ import java.util.Optional;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "chat"
-        ,uniqueConstraints = @UniqueConstraint(name = "uk_chat_chat_code", columnNames = "chat_code")
+        ,uniqueConstraints = {
+        @UniqueConstraint(name = "uk_chat_chat_code", columnNames = "chat_code"),
+        @UniqueConstraint(columnNames = {"bound_submanager_id", "submanager_chat_id"})
+}
         ,indexes = @Index(name = "idx_bound_log_chat", columnList = "bound_log_chat")
 )
+@Check(constraints = "(bound_submanager_id IS NULL AND submanager_chat_id IS NULL) OR (bound_submanager_id IS NOT NULL AND submanager_chat_id IS NOT NULL)")
 public class ChatEntity {
 
     @Id
@@ -47,7 +51,15 @@ public class ChatEntity {
     private String chatCode;
 
     @Column(name = "bound_log_chat", nullable = true)
-    Long boundLogChat;
+    private Long boundLogChat;
+
+    @Column(name = "bound_submanager_id", nullable = true)
+    private Long boundSubmanagerId;
+
+    @Column(name = "submanager_chat_id", nullable = true)
+    private Long submanagerChatId;
+
+
 
 
 }

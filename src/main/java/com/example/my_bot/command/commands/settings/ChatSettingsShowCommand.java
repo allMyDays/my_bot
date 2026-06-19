@@ -46,9 +46,10 @@ public class ChatSettingsShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        ChatDetailsDto details = chatService.getCachedChatDetails(messageDto.getChatId(), false);
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        ChatDetailsDto details = chatService.getCachedChatDetails(chatId, false);
 
 
         String sb = "⚙ Список настроек чата:\n\n" +
@@ -61,7 +62,7 @@ public class ChatSettingsShowCommand implements ChatCommand {
 
         sb+="\n\n\uD83D\uDDD3 Код чата: "+details.getChatCode();
 
-        vkChatClient.sendText(messageMapper.toSendMessageDto(sb,messageDto));
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb,commandMessage));
 
     }
 }

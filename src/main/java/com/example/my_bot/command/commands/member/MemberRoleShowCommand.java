@@ -41,7 +41,7 @@ public class MemberRoleShowCommand implements ChatCommand {
 
     private final GlobalUserService userService;
 
-    private final long groupId;
+    private final long theMainBotId;
 
     private final MessageMapper messageMapper;
 
@@ -50,14 +50,14 @@ public class MemberRoleShowCommand implements ChatCommand {
                                  UserInputResolver userInputResolver,
                                  RoleService roleService,
                                  GlobalUserService userService,
-                                 @Value("${vk.group.id}") long groupId,
+                                 @Value("${vk.main-bot.id}") long theMainBotId,
                                  MessageMapper messageMapper
     ) {
         this.memberService = memberService;
         this.userInputResolver = userInputResolver;
         this.roleService = roleService;
         this.userService = userService;
-        this.groupId = groupId;
+        this.theMainBotId = theMainBotId;
         this.messageMapper = messageMapper;
     }
 
@@ -69,22 +69,22 @@ public class MemberRoleShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
         long memberToCheck;
 
-        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(messageDto, 0);
+        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
 
         if(parseResult.getMemberId().isPresent()){
             memberToCheck = parseResult.getMemberId().get();
         }else{
-            memberToCheck = messageDto.getFromId();
+            memberToCheck = commandMessage.getFromId();
         }
 
         int userRolePriority =  memberService.getMemberRolePriority(chatId, memberToCheck);
-        String roleName = memberToCheck==-groupId
+        String roleName = memberToCheck==-theMainBotId
                 ? "Чат-менеджер"
                 : roleService.getRoleName(chatId, userRolePriority).orElse("Unknown role");
         String userName = userService.getUserFullNameInRequiredCase(memberToCheck, NameCase.GENITIVE);
@@ -92,7 +92,7 @@ public class MemberRoleShowCommand implements ChatCommand {
 
         vkChatClient.sendText(
                 messageMapper.toSendMessageDto("Роль %s(%s) в чате — «%s». Приоритет роли: %d".formatted(createMention(memberToCheck),userName,roleName, userRolePriority),
-                        messageDto));
+                        commandMessage));
 
 
     }

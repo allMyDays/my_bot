@@ -70,13 +70,13 @@ public class EventCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        String[] args = messageDto.getFirstRowArguments();
-        long chatId = messageDto.getChatId();
-        long fromId = messageDto.getFromId();
+        String[] args = commandMessage.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        long fromId = commandMessage.getFromId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
 
         if(args.length<3) {    //самый минимум: "!ивент приглашение модератор бан" (тип, роль, команда)
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);

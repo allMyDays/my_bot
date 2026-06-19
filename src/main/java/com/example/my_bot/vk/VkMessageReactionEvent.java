@@ -9,16 +9,16 @@ import lombok.Setter;
 @Setter
 public class VkMessageReactionEvent {
 
+    @SerializedName("group_id")
+    private long groupId;
+
     @SerializedName("type")
     private VkEventType type;
 
     @SerializedName("object")
     private VkReactionObject object;
 
-
-
-
-
-
+    @SerializedName("secret")
+    private String secretKey;
 
 }

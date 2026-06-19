@@ -2,9 +2,11 @@ package com.example.my_bot.mapper;
 
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.vk.VkMessage;
+import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.objects.messages.ForeignMessage;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
@@ -18,10 +20,9 @@ public abstract class MessageMapper {
 
 
 
-    public CommandMessageDto toCommandMessageDto(@Nullable Long chatId, @NonNull VkMessage message, boolean replyToMessageId){
+    public CommandMessageDto toCommandMessageDto(@NonNull CommandRoutingData commandRoutingData, @NonNull VkMessage message, boolean replyToMessageId){
 
-        CommandMessageDto commandMessageDto = toCommandMessageDto(chatId, message.getFromId(), message.getText(), message.getConversationMessageId(),replyToMessageId,false);
-        commandMessageDto.setPeerId(message.getPeerId());
+        CommandMessageDto commandMessageDto = toCommandMessageDto(commandRoutingData, message.getFromId(), message.getText(), message.getConversationMessageId(),replyToMessageId,false);
         if(message.getReplyMessage()!=null){
             commandMessageDto.setReplyOrFwdMessages(List.of(message.getReplyMessage()));
         }else if(message.getFwdMessages()!=null){
@@ -29,13 +30,12 @@ public abstract class MessageMapper {
         } return commandMessageDto;
 
     }
-    public CommandMessageDto toCommandMessageDto(@Nullable Long chatId, long fromId, @Nullable String fullMessage, int conversationMessageId, boolean replyToMessageId, boolean eventOrTimerMode){
+    public CommandMessageDto toCommandMessageDto(@NonNull CommandRoutingData commandRoutingData, long fromId, @Nullable String fullMessage, int conversationMessageId, boolean replyToMessageId, boolean eventOrTimerMode){
 
         CommandMessageDto commandMessageDto = new CommandMessageDto();
         commandMessageDto.setUserText(fullMessage);
         commandMessageDto.setFromId(fromId);
-        commandMessageDto.setChatId(chatId);
-        commandMessageDto.setPeerId(chatId==null?fromId:ChatUtils.convertToPeerId(chatId));
+        commandMessageDto.setCommandRoutingData(commandRoutingData);
         commandMessageDto.setEventOrTimerMode(eventOrTimerMode);
         commandMessageDto.setConversationMessageId(conversationMessageId);
         commandMessageDto.setReplyToMessageId(replyToMessageId);
@@ -55,15 +55,35 @@ public abstract class MessageMapper {
     }
 
     @Mapping(target = "text", source = "text")
-    public abstract SendMessageDto toSendMessageDto(String text, @NonNull CommandMessageDto commandMessageDto);
+    @Mapping(target = "responsePeerId", source = "commandMessageDto.commandRoutingData.responsePeerId")
+    @Mapping(target = "responderBot", source = "commandMessageDto.commandRoutingData.responderBot")
+    @Mapping(target = "dataBaseChatId", source = "commandMessageDto.commandRoutingData.dataBaseChatId")
+    public abstract SendMessageDto toSendMessageDto(@NonNull String text, @NonNull CommandMessageDto commandMessageDto);
 
     @Mapping(target = "ableMentions", source = "ableMentions")
     @Mapping(target = "text", source = "text")
-    public abstract SendMessageDto toSendMessageDto(String text, boolean ableMentions, @NonNull CommandMessageDto commandMessageDto);
+    @Mapping(target = "responsePeerId", source = "commandMessageDto.commandRoutingData.responsePeerId")
+    @Mapping(target = "responderBot", source = "commandMessageDto.commandRoutingData.responderBot")
+    @Mapping(target = "dataBaseChatId", source = "commandMessageDto.commandRoutingData.dataBaseChatId")
+    public abstract SendMessageDto toSendMessageDto(@NonNull String text, boolean ableMentions, @NonNull CommandMessageDto commandMessageDto);
 
     @Mapping(target = "text", source = "text")
-    @Mapping(target = "peerId", source = "peerId")
-    public abstract SendMessageDto toSendMessageDto(String text, long peerId);
+    @Mapping(target = "responsePeerId", source = "commandRoutingData.responsePeerId")
+    @Mapping(target = "responderBot", source = "commandRoutingData.responderBot")
+    @Mapping(target = "dataBaseChatId", source = "commandRoutingData.dataBaseChatId")
+    public abstract SendMessageDto toSendMessageDto(@NonNull String text, @NonNull CommandRoutingData commandRoutingData);
+
+    @Mapping(target = "text", source = "text")
+    @Mapping(target = "responsePeerId", source = "commandRoutingData.responsePeerId")
+    @Mapping(target = "responderBot", source = "commandRoutingData.responderBot")
+    @Mapping(target = "dataBaseChatId", source = "commandRoutingData.dataBaseChatId")
+    public abstract SendMessageDto toSendMessageDto(@NonNull String text, @NonNull CommandRoutingData commandRoutingData, Integer conversationMessageId, boolean replyToMessageId);
+
+    @Mapping(target = "text", source = "text")
+    @Mapping(target = "responsePeerId", source = "responsePeerId")
+    @Mapping(target = "responderBot", source = "responderBot")
+    @Mapping(target = "dataBaseChatId", source = "dataBaseChatId")
+    public abstract SendMessageDto toSendMessageDto(@NonNull String text, long responsePeerId, @Nullable Long dataBaseChatId, @NonNull GroupActor responderBot);
 
 
 

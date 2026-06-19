@@ -46,12 +46,12 @@ public class RolePermissionCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
 
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
@@ -68,13 +68,13 @@ public class RolePermissionCreateCommand implements ChatCommand {
         try{
             Set<String> userCommandsToProcess = new HashSet<>();
             userCommandsToProcess.add(args[1].trim());
-                for(int i=1;i<messageDto.getAllRows().length;i++){
-                    userCommandsToProcess.add(messageDto.getAllRows()[i].trim());
+                for(int i=1;i<commandMessage.getAllRows().length;i++){
+                    userCommandsToProcess.add(commandMessage.getAllRows()[i].trim());
                 }
             if(isNumber(args[0])){
-                permissionResult = permissionService.allowCommandForRole(chatId, messageDto.getFromId(), userCommandsToProcess,Integer.parseInt(args[0]));
+                permissionResult = permissionService.allowCommandForRole(chatId, commandMessage.getFromId(), userCommandsToProcess,Integer.parseInt(args[0]));
             }else{
-                permissionResult = permissionService.allowCommandForRole(chatId, messageDto.getFromId(), userCommandsToProcess,args[0]);
+                permissionResult = permissionService.allowCommandForRole(chatId, commandMessage.getFromId(), userCommandsToProcess,args[0]);
             }
         }catch (PermissionException | RoleException | CommandException e){
             sendMessage.setText(e.getMessage());

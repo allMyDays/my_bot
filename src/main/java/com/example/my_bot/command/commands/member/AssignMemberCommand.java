@@ -49,12 +49,12 @@ public class AssignMemberCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
 
         // варианты:
         // !назначить @durov администратор
@@ -68,7 +68,7 @@ public class AssignMemberCommand implements ChatCommand {
         long userToAssign;
         String roleToGive;
 
-        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(messageDto,0);
+        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(commandMessage,0);
         if(parseResult.getMemberId().isPresent()){
             userToAssign = parseResult.getMemberId().get();
         }else{
@@ -96,9 +96,9 @@ public class AssignMemberCommand implements ChatCommand {
         AssignMemberResult assignResult;
         try{
          if(isNumber(roleToGive)){
-            assignResult= memberService.assignNewRoleToMember(chatId, userToAssign,Integer.parseInt(roleToGive), messageDto.getFromId());
+            assignResult= memberService.assignNewRoleToMember(chatId, userToAssign,Integer.parseInt(roleToGive), commandMessage.getFromId());
          }else{
-            assignResult = memberService.assignNewRoleToMember(chatId, userToAssign,roleToGive, messageDto.getFromId());
+            assignResult = memberService.assignNewRoleToMember(chatId, userToAssign,roleToGive, commandMessage.getFromId());
          }
         }catch(MemberException | RoleException | CommandException e){
             sendMessage.setText(e.getMessage());

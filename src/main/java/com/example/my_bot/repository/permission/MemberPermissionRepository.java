@@ -1,7 +1,6 @@
-package com.example.my_bot.repository;
+package com.example.my_bot.repository.permission;
 
 import com.example.my_bot.entity.MemberPermissionEntity;
-import com.example.my_bot.entity.RolePermissionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

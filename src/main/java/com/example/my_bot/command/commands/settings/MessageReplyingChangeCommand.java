@@ -41,13 +41,14 @@ public class MessageReplyingChangeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        SwitchChatSettingResult switchResult = chatService.switchMessageReplying(messageDto.getChatId());
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        SwitchChatSettingResult switchResult = chatService.switchMessageReplying(chatId);
 
         SendMessageDto sendMessage =  messageMapper.toSendMessageDto(
                 "Теперь мне %s отвечать на ваши команды посредством пересыла вашего сообщения в чате."
-                        .formatted((switchResult==ON?"можно":"нельзя")), messageDto
+                        .formatted((switchResult==ON?"можно":"нельзя")), commandMessage
         );
         sendMessage.setReplyToMessageId(switchResult==ON);
         vkChatClient.sendText(sendMessage);

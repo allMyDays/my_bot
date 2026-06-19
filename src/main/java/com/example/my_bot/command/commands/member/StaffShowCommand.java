@@ -11,6 +11,7 @@ import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
+import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -33,14 +34,14 @@ public class StaffShowCommand implements ChatCommand {
     private final MemberService memberService;
     private final RoleService roleService;
     private VkChatClient vkChatClient;
-    private final long groupId;
+    private final long theMainBotId;
     private final MessageMapper messageMapper;
     private final GlobalUserService globalUserService;
 
-    public StaffShowCommand(MemberService memberService, RoleService roleService, @Value("${vk.group.id}") long groupId, MessageMapper messageMapper, GlobalUserService globalUserService) {
+    public StaffShowCommand(MemberService memberService, RoleService roleService, @Value("${vk.main-bot.id}") long theMainBotId, MessageMapper messageMapper, GlobalUserService globalUserService) {
         this.memberService = memberService;
         this.roleService = roleService;
-        this.groupId = groupId;
+        this.theMainBotId = theMainBotId;
         this.messageMapper = messageMapper;
         this.globalUserService = globalUserService;
     }
@@ -52,9 +53,10 @@ public class StaffShowCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        GroupActor executorBot = commandMessage.getCommandRoutingData().getExecutorBot();
 
         StringBuilder sb = new StringBuilder();
 
@@ -65,7 +67,7 @@ public class StaffShowCommand implements ChatCommand {
         Collection<MemberEntity> membersWithPositiveRole = memberService.getMembersWithPositiveRole(chatId);
 
         for (MemberEntity memberEntity : membersWithPositiveRole){
-            if(memberEntity.getUserId()==-groupId){
+            if(memberEntity.getUserId()==-theMainBotId||memberEntity.getUserId().equals(-executorBot.getGroupId())){
                 // отсеиваю самого бота
                 continue;
             }
@@ -99,7 +101,7 @@ public class StaffShowCommand implements ChatCommand {
             }sb.append("\n");
         }
 
-        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),messageDto));
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
 
     }
 

@@ -24,12 +24,11 @@ public class AutoUnbanCommand implements ChatCommand {
 
     @Getter
     private final CommandCooldown cooldown = new CommandCooldown(4,60*2);
-
     private final MessageMapper messageMapper;
-
     private ChatService chatService;
-
     private VkChatClient vkChatClient;
+
+    private final static String UNBAN_COMMAND_NAME = UnbanCommand.class.getAnnotation(Command.class).mainCommandName();
 
     @Autowired
     @Lazy
@@ -40,15 +39,19 @@ public class AutoUnbanCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        SwitchChatSettingResult switchResult = chatService.switchAutoUnban(messageDto.getChatId());
-        String unbanCommandName = UnbanCommand.class.getAnnotation(Command.class).mainCommandName();
+        long targetChat = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-            vkChatClient.sendText(messageMapper.toSendMessageDto(
-                    "✅Теперь мне %s автоматически снимать бан с пользователей, которые были приглашены участниками, которым хватает прав на команду «%s»."
-                            .formatted(switchResult==ON?"можно":"нельзя",unbanCommandName)
-                    ,messageDto));
+        SwitchChatSettingResult switchResult = chatService.switchAutoUnban(targetChat);
+
+            vkChatClient.sendText(
+                    messageMapper.toSendMessageDto(
+                            "✅Теперь мне %s автоматически снимать бан с пользователей, которые были приглашены участниками, которым хватает прав на команду «%s»."
+                                    .formatted(switchResult==ON?"можно":"нельзя",UNBAN_COMMAND_NAME),
+                            commandMessage
+                    )
+            );
 
 
     }

@@ -2,13 +2,11 @@ package com.example.my_bot.command;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
-import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.cooldown.CooldownResult;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.exception.command.ForbiddenCommandForCurrentModeException;
-import com.example.my_bot.exception.command.ThisCommandOnlyForConversationsException;
 import com.example.my_bot.exception.command.UnknownCommandException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.*;
@@ -41,26 +39,26 @@ public class CommandDispatcher {
     private final MessageMapper messageMapper;
 
 
-    public void dispatch(CommandMessageDto messageDto) throws ClientException, ApiException {
-             SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+    public void dispatch(CommandMessageDto commandMessage) throws ClientException, ApiException {
+             SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
 
-             long fromId = messageDto.getFromId();
+             long fromId = commandMessage.getFromId();
 
              if(ChatUtils.isGroupId(fromId)||userService.getOrCreateUser(fromId).isBanned()){
                  return;
              }
 
-             Optional<String> commandOptional = messageDto.getCommand();
+             Optional<String> commandOptional = commandMessage.getCommand();
              if(commandOptional.isEmpty()) return;
              String commandName = commandOptional.get();
 
-             Long chatId = messageDto.getChatId();
+             Long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
              Optional<Character> chatPrefix = chatId==null
                      ? Optional.of(DEFAULT_CHAT_PREFIX)
                      : chatService.getChatPrefix(chatId);
 
-             if(!messageDto.isEventOrTimerMode()){   // в событиях/таймерах все команды обязаны быть без префикса
+             if(!commandMessage.isEventOrTimerMode()){   // в событиях/таймерах все команды обязаны быть без префикса
                  boolean mustCutPrefix=true;
                  if(chatPrefix.isPresent()){
                    // префикс включён - строгое соответствие префиксу
@@ -79,7 +77,7 @@ public class CommandDispatcher {
         final String finalCommandName = commandName;
         Optional<ChatCommand> cmdOptional = commandRegistry.getCommand(finalCommandName);
         if(cmdOptional.isEmpty()){
-            if(messageDto.isEventOrTimerMode()){
+            if(commandMessage.isEventOrTimerMode()){
                 throw new UnknownCommandException(finalCommandName);
             }
         }
@@ -88,7 +86,7 @@ public class CommandDispatcher {
             Command cmdAnnotation = commandRegistry.getCommandAnnotation(finalCommandName)
                     .orElseThrow(()->new RuntimeException("Cannot find required init-annotation @Command for "+ finalCommandName));
 
-            if(messageDto.isEventOrTimerMode()&&!cmdAnnotation.eventable()){
+            if(commandMessage.isEventOrTimerMode()&&!cmdAnnotation.eventable()){
                 throw new ForbiddenCommandForCurrentModeException(finalCommandName);
             }
             if(cmdAnnotation.onlyForConversations()&&chatId==null){
@@ -118,7 +116,7 @@ public class CommandDispatcher {
                     vkChatClient.sendText(sendMessage);
                   }return;
                 }
-                mainCommand.execute(messageDto);
+                mainCommand.execute(commandMessage);
             }else{
                 if(!chatService.isSilentRestriction(chatId)){
                 sendMessage.setText(

@@ -4,7 +4,6 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
-import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.RoleService;
@@ -16,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
-import java.util.Set;
 import java.util.TreeMap;
 
 import static com.example.my_bot.enumeration.DefaultRole.*;
@@ -45,9 +43,9 @@ public class AllRolesShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
         StringBuilder sb = new StringBuilder();
 
@@ -61,7 +59,7 @@ public class AllRolesShowCommand implements ChatCommand {
 
         roles.forEach((key, value) -> sb.append("%s — %d\n".formatted(value, key)));
 
-        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(), messageDto));
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(), commandMessage));
 
     }
 }

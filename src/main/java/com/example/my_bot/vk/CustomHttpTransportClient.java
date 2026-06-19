@@ -1,4 +1,4 @@
-package com.example.my_bot.vk.transport;
+package com.example.my_bot.vk;
 
 import com.vk.api.sdk.httpclient.HttpTransportClient;
 import org.apache.http.client.config.RequestConfig;

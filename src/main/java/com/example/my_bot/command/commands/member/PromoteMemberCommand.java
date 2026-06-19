@@ -52,14 +52,14 @@ public class PromoteMemberCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
 
         long userToAssign;
-        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(messageDto,0);
+        ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(commandMessage,0);
         if(parseResult.getMemberId().isPresent()){
             userToAssign = parseResult.getMemberId().get();
         }else{
@@ -71,7 +71,7 @@ public class PromoteMemberCommand implements ChatCommand {
         try{
             int targetUserRole = memberService.getMemberRolePriority(chatId, userToAssign);
             RoleDto newRoleToAssign = roleService.findTheNearestHighestRole(chatId, targetUserRole);
-            assignResult = memberService.assignNewRoleToMember(chatId,userToAssign,newRoleToAssign.getRolePriority(),messageDto.getFromId());
+            assignResult = memberService.assignNewRoleToMember(chatId,userToAssign,newRoleToAssign.getRolePriority(),commandMessage.getFromId());
 
         }catch(RoleException | MemberException | CommandException e){
             sendMessage.setText(e.getMessage());

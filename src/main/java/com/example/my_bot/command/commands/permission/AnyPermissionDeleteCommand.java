@@ -49,13 +49,13 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
-        String[] args = messageDto.getFirstRowArguments();
+        long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        String[] args = commandMessage.getFirstRowArguments();
         Optional<Long> userId=Optional.empty();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
 
         if(args.length==0){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
@@ -71,9 +71,9 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
         }
         try{
             if(userId.isEmpty()){
-              rolePermissionService.deleteCustomRolePermission(chatId, args[0], messageDto.getFromId());
+              rolePermissionService.deleteCustomRolePermission(chatId, args[0], commandMessage.getFromId());
             }else{
-                memberPermissionService.deleteCustomMemberPermission(chatId, args[0], userId.get(),messageDto.getFromId());
+                memberPermissionService.deleteCustomMemberPermission(chatId, args[0], userId.get(),commandMessage.getFromId());
             }
         }catch (CommandException | PermissionException | MemberException e){
             sendMessage.setText(e.getMessage());

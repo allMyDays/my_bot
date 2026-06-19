@@ -50,21 +50,23 @@ public class KickSelfLeftMembersCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto messageDto) throws ClientException, ApiException {
+    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long chatId = messageDto.getChatId();
+        long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        Page<MemberEntity> allRequiredMembers = memberService.getLeftButNotKickedMembersWithRoleLessThan(chatId, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(), MEMBERS_LIMIT_AT_ONE_USAGE);
+        Page<MemberEntity> allRequiredMembers = memberService.getLeftButNotKickedMembersWithRoleLessThan(dataBaseChatId, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(), MEMBERS_LIMIT_AT_ONE_USAGE);
 
-        Set<Long> kickedMembers = vkChatClient.kickManyChatMembers(chatId,
+        Set<Long> kickedMembers = vkChatClient.kickManyChatMembers(
+                commandMessage.getCommandRoutingData(),
                 allRequiredMembers.getContent().stream()
                         .filter(m->!m.isChatAdmin())
                         .map(MemberEntity::getUserId)
-                        .toList());
+                        .toList()
+        );
 
         vkChatClient.sendText(messageMapper.toSendMessageDto(
                 "✅Было исключено %d из %d вышедших, но не исключённых участников с ролью ниже чем «%s»."
-                .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName()),messageDto));
+                .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName()),commandMessage));
 
 
 
