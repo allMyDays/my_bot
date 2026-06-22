@@ -67,10 +67,5 @@ public class KickSelfLeftMembersCommand implements ChatCommand {
         vkChatClient.sendText(messageMapper.toSendMessageDto(
                 "✅Было исключено %d из %d вышедших, но не исключённых участников с ролью ниже чем «%s»."
                 .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName()),commandMessage));
-
-
-
-
-
     }
 }

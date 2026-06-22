@@ -39,6 +39,8 @@ public class ChatDetailsDto {
 
     private Long submanagerChatId;
 
+    private boolean isSubPosts;
+
 
 
 

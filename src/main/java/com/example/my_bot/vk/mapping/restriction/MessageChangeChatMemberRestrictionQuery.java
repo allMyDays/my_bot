@@ -1,14 +1,12 @@
-package com.example.my_bot.vk.transport.write_restriction;
+package com.example.my_bot.vk.mapping.restriction;
 
 import com.example.my_bot.vk.enumeration.WriteRestrictionAction;
 import com.vk.api.sdk.client.AbstractQueryBuilder;
-import com.vk.api.sdk.client.Utils;
 import com.vk.api.sdk.client.VkApiClient;
 import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.client.actors.UserActor;
 import com.vk.api.sdk.objects.annotations.ApiParam;
 
-import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
 

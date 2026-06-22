@@ -54,7 +54,7 @@ public class AssignMemberCommand implements ChatCommand {
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
 
         // варианты:
         // !назначить @durov администратор
@@ -105,18 +105,16 @@ public class AssignMemberCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
-            RoleDto oldRole = assignResult.getPreviousRole();
-            RoleDto newRole = assignResult.getNewRole();
+        RoleDto oldRole = assignResult.getPreviousRole();
+        RoleDto newRole = assignResult.getNewRole();
 
-            String username = userService.getUserFullNameInRequiredCase(userToAssign, NameCase.GENITIVE);
+        String username = userService.getUserFullNameInRequiredCase(userToAssign, NameCase.GENITIVE);
 
-            sendMessage.setText(
-                    String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,
-                    createMention(userToAssign),username,oldRole.getRoleName(), newRole.getRoleName())
-            );
-            vkChatClient.sendText(sendMessage);
+        sendMessage.setText(
+                String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,
+                        createMention(userToAssign),username,oldRole.getRoleName(), newRole.getRoleName())
+        );
+        vkChatClient.sendText(sendMessage);
 
     }
-
-
 }

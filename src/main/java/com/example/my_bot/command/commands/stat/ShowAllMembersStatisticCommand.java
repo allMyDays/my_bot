@@ -78,7 +78,7 @@ public class ShowAllMembersStatisticCommand implements ChatCommand {
         String[] args = commandMessage.getFirstRowArguments();
 
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         // варианты:
         // !статистика (покажет за сутки)

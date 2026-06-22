@@ -1,4 +1,4 @@
-package com.example.my_bot.vk.attachment;
+package com.example.my_bot.vk.mapping.attachment;
 
 import com.example.my_bot.vk.enumeration.VideoType;
 import com.google.gson.annotations.SerializedName;
@@ -9,8 +9,4 @@ public class Video {
     @Getter
     @SerializedName("type")
     private VideoType type;
-
-
-
-
 }

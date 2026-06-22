@@ -1,10 +1,9 @@
-package com.example.my_bot.vk;
+package com.example.my_bot.vk.mapping.message;
 
-import com.example.my_bot.vk.attachment.VkMessageAttachment;
+import com.example.my_bot.vk.mapping.action.VkAction;
+import com.example.my_bot.vk.mapping.attachment.VkMessageAttachment;
 import com.google.gson.annotations.SerializedName;
-import com.vk.api.sdk.objects.annotations.Required;
 import com.vk.api.sdk.objects.messages.ForeignMessage;
-import com.vk.api.sdk.objects.messages.MessageAttachment;
 import lombok.Getter;
 import lombok.Setter;
 

@@ -92,7 +92,7 @@ public class TokenGiveCommand implements ChatCommand {
         String[] args = messageDto.getFirstRowArguments();
         long fromId = messageDto.getFromId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, messageDto);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, messageDto);
 
         if(!ChatUtils.isPersonalChat(messageDto.getCommandRoutingData().getOriginalEventPeerId())){
             sendMessage.setText("Данную команду можно использовать только в личных сообщениях Чат-менеджера: "+ GroupUtils.createPrivateMessagesLink(theMainBotId));

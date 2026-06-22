@@ -81,7 +81,7 @@ public class BanCommand implements ChatCommand {
         // !бан @durov 2 часа
         // !бан 2 часа (пересланное смс)
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
         if(inputResult.getMemberId().isPresent()){
@@ -122,7 +122,7 @@ public class BanCommand implements ChatCommand {
            sendMessage.setText(e.getMessage());
            vkChatClient.sendText(sendMessage);
            return;
-       } catch (ApiException e){
+       }catch (ApiException e){
            if(!USER_NOT_FOUND_IN_CHAT.getCodes().contains(e.getCode())){    // 935 - скорее всего дали бан тому, кого в чате никогда не было, чтобы он не смог присоединиться
              sendMessage.setText(
                      "%s(%s) забанен, но его не удалось исключить из чата. %s".formatted(createMention(memberToBan),userName, e.getMessage())

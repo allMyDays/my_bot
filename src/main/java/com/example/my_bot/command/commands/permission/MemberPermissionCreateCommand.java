@@ -61,7 +61,7 @@ public class MemberPermissionCreateCommand implements ChatCommand {
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
 
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
@@ -75,7 +75,7 @@ public class MemberPermissionCreateCommand implements ChatCommand {
             return;
         }
 
-        MemberPermissionSettingResult permissionResult=null;
+        MemberPermissionSettingResult permissionResult;
 
         boolean allow=true;
         if(args.length==3&&args[2].equalsIgnoreCase("запретить")){
@@ -85,23 +85,18 @@ public class MemberPermissionCreateCommand implements ChatCommand {
         try{
             Set<String> userCommandsToProcess = new HashSet<>();
             userCommandsToProcess.add(args[1].trim());
-                for(int i=1;i<commandMessage.getAllRows().length;i++){
+            for(int i=1;i<commandMessage.getAllRows().length;i++){
                     userCommandsToProcess.add(commandMessage.getAllRows()[i].trim());
-                }
-                permissionResult = memberPermissionService.allowOrForbidCommandForMember(
-                        chatId, commandMessage.getFromId(), userCommandsToProcess, targetUserId.get(), allow);
+            }
+            permissionResult = memberPermissionService.allowOrForbidCommandForMember(
+                    chatId, commandMessage.getFromId(), userCommandsToProcess, targetUserId.get(), allow);
 
         }catch (PermissionException | RoleException | CommandException | MemberException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return;
         }
-        if(permissionResult==null){
-            log.error("chat {} error: permissionResult is null after executing method allowOrForbidCommandForMember", chatId);
-            sendMessage.setText("Произошла ошибка при попытке обработать команды.");
-            vkChatClient.sendText(sendMessage);
-            return;
-        }
+
         char chatPrefix = chatService.getChatPrefix(chatId).orElse(ChatUtils.DEFAULT_CHAT_PREFIX);
 
         StringBuilder result = new StringBuilder();

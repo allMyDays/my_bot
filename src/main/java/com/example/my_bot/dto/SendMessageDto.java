@@ -32,6 +32,8 @@ public class SendMessageDto {
 
     private boolean isLogChatForward;
 
+    private String attachment;
+
 
     public SendMessageDto(@NonNull String text, long responsePeerId, @NonNull GroupActor responderBot, @Nullable Integer conversationMessageId, boolean replyToMessageId, boolean ableMentions, @Nullable Forward forward) {
         this.text = text;

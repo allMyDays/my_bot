@@ -72,7 +72,7 @@ public class LogChatCommand implements ChatCommand {
         long fromId = commandMessage.getFromId();
 
         ChatDetailsDto currentChat = chatService.getCachedChatDetails(chatId,false);
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         String fullSetCommand = "%c%s %s %s".formatted(DEFAULT_CHAT_PREFIX,logChatMainCommand, FOR_ARGUMENT,currentChat.getChatCode());
 

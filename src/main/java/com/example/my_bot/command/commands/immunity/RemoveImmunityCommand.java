@@ -49,7 +49,7 @@ public class RemoveImmunityCommand implements ChatCommand {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
 
         long userToAlter;
         ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(commandMessage,0);

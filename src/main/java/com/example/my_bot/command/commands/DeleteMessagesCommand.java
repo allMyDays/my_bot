@@ -41,9 +41,7 @@ public class DeleteMessagesCommand implements ChatCommand {
 
     private final MessageMapper messageMapper;
     private VkChatClient vkChatClient;
-    private final ChatService chatService;
     private final UserInputResolver userInputResolver;
-    private final GlobalUserService globalUserService;
 
     private final static long DEFAULT_DELETION_TIME_PERIOD_SEC = 604_800;
     private final static int MESSAGE_LIMIT_AT_ONE_USAGE = 500;
@@ -85,7 +83,7 @@ public class DeleteMessagesCommand implements ChatCommand {
         // !чистка @durov 2 часа - удалит сообщения участника за последние 2 часа
         // !чистка 3 дня - удалит все сообщения не-администраторов за данный срок
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         List<Integer> messagesToDelete;
         long totalMessagesQuantity;

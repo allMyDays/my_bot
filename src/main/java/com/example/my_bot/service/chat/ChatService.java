@@ -36,15 +36,10 @@ import static com.example.my_bot.utils.ChatUtils.DEFAULT_CHAT_PREFIX;
 public class ChatService {
 
     private final CaffeineCacheManager cacheManager;
-
     private final ChatRepository chatRepository;
-
     private final ChatMapper chatMapper;
-
     private final BanService banService;
-
     private final ChatService selfLink;
-
     private final MemberService memberService;
 
     private final static Set<Character> FORBIDDEN_PREFIXES = Set.of('*','@');
@@ -162,6 +157,23 @@ public class ChatService {
             resultToReturn = SwitchChatSettingResult.OFF;
         }else{
             chat.setMessageReplying(true);
+            resultToReturn = SwitchChatSettingResult.ON;
+        }
+        putChatToCache(chatRepository.save(chat));
+        return resultToReturn;
+    }
+
+    @Transactional
+    public SwitchChatSettingResult switchSubPosts(long chatId){
+
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+
+        SwitchChatSettingResult resultToReturn;
+        if(chat.isSubPosts()){
+            chat.setSubPosts(false);
+            resultToReturn = SwitchChatSettingResult.OFF;
+        }else{
+            chat.setSubPosts(true);
             resultToReturn = SwitchChatSettingResult.ON;
         }
         putChatToCache(chatRepository.save(chat));
@@ -329,6 +341,10 @@ public class ChatService {
         ChatEntity chat  = findByChatIdOrThrow(chatId);
         chat.setBoundLogChat(null);
         putChatToCache(chat);
+    }
+
+    public List<ChatEntity> findChatsByBoundSubmanagerAndSubPostsTrue(long submanagerId){
+        return chatRepository.findChatsByBoundSubmanagerAndSubPostsTrue(Math.abs(submanagerId));
     }
 
     @Transactional

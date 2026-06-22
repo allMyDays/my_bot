@@ -76,7 +76,7 @@ public class EventCreateCommand implements ChatCommand {
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         long fromId = commandMessage.getFromId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         if(args.length<3) {    //самый минимум: "!ивент приглашение модератор бан" (тип, роль, команда)
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
@@ -103,7 +103,7 @@ public class EventCreateCommand implements ChatCommand {
             eventArgument = args[1];
             eventRole = args[2];
             fullCommand = collectArgumentsSinceIndex(args, 3);
-        } else{
+        }else{
             // аргумента нет, предполагается: !ивент приглашение модератор бан
             eventRole = args[1];
             fullCommand = collectArgumentsSinceIndex(args, 2);
@@ -142,7 +142,7 @@ public class EventCreateCommand implements ChatCommand {
                 // предполагается что ввели название роли
                 createdEvent = eventService.createNewEvent(chatId, foundEventType, eventRole, eventArgument, fullCommand, fromId, delete,reply,silent);
             }
-        } catch (RoleException | EventException | CommandException e) {
+        }catch (RoleException | EventException | CommandException e) {
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return;

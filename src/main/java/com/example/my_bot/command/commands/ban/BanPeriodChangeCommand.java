@@ -48,9 +48,7 @@ public class BanPeriodChangeCommand implements ChatCommand {
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         final String banCommandName = BanCommand.class.getAnnotation(Command.class).mainCommandName();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
-
-
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         if(args.length==0){        // отключить стандартный срок бана
             chatService.disableDefaultBanPeriod(chatId);

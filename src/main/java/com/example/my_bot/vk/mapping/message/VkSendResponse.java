@@ -1,4 +1,4 @@
-package com.example.my_bot.vk;
+package com.example.my_bot.vk.mapping.message;
 
 import com.google.gson.annotations.SerializedName;
 

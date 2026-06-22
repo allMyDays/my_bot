@@ -60,7 +60,7 @@ public class DMResponsesSwitchCommand implements ChatCommand {
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         long fromId = commandMessage.getFromId();
 
-        SendMessageDto sendMessage =  messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage =  messageMapper.toSendMessageDto(commandMessage);
 
         boolean isEnabled = memberService.isDmResponsesEnabled(chatId, fromId);
 

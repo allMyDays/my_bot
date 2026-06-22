@@ -4,10 +4,8 @@ import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.resolver.UserInputResolver;
-import com.example.my_bot.utils.ChatUtils;
-import com.example.my_bot.vk.VkMessage;
+import com.example.my_bot.vk.mapping.message.VkMessage;
 import com.vk.api.sdk.client.actors.GroupActor;
-import com.vk.api.sdk.objects.messages.ForeignMessage;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import org.mapstruct.Mapper;
@@ -60,12 +58,20 @@ public abstract class MessageMapper {
     @Mapping(target = "dataBaseChatId", source = "commandMessageDto.commandRoutingData.dataBaseChatId")
     public abstract SendMessageDto toSendMessageDto(@NonNull String text, @NonNull CommandMessageDto commandMessageDto);
 
+    public SendMessageDto toSendMessageDto(@NonNull CommandMessageDto commandMessageDto){
+        return toSendMessageDto("", commandMessageDto);
+    }
+
     @Mapping(target = "ableMentions", source = "ableMentions")
     @Mapping(target = "text", source = "text")
     @Mapping(target = "responsePeerId", source = "commandMessageDto.commandRoutingData.responsePeerId")
     @Mapping(target = "responderBot", source = "commandMessageDto.commandRoutingData.responderBot")
     @Mapping(target = "dataBaseChatId", source = "commandMessageDto.commandRoutingData.dataBaseChatId")
     public abstract SendMessageDto toSendMessageDto(@NonNull String text, boolean ableMentions, @NonNull CommandMessageDto commandMessageDto);
+
+    public SendMessageDto toSendMessageDto(boolean ableMentions, @NonNull CommandMessageDto commandMessageDto){
+        return toSendMessageDto("", ableMentions, commandMessageDto);
+    }
 
     @Mapping(target = "text", source = "text")
     @Mapping(target = "responsePeerId", source = "commandRoutingData.responsePeerId")

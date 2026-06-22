@@ -1,42 +1,40 @@
 package com.example.my_bot.service.submanager;
 
-import com.example.my_bot.cache.key.GroupIdAndChatIdKey;
 import com.example.my_bot.cache.value.callback.GroupIdAndChatId;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.config.CaffeineCacheManager;
+import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.submanager.SubmanagerDto;
 import com.example.my_bot.entity.ChatEntity;
-import com.example.my_bot.entity.SubmanagerEntity;
-import com.example.my_bot.exception.submanager.SubmanagerNotFoundException;
+import com.example.my_bot.exception.submanager.CannotFindSubmanagerChatIdByMainChatIdException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.mapper.SubmanagerMapper;
 import com.example.my_bot.repository.SubmanagerRepository;
 import com.example.my_bot.service.CryptoService;
 import com.example.my_bot.service.chat.ChatService;
+import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.SubmanagerUtils;
 import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import jakarta.annotation.Nullable;
-import lombok.Locked;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Objects;
-import java.util.Optional;
+import java.util.List;
 
 import static com.example.my_bot.utils.ChatUtils.convertToPeerId;
+import static com.example.my_bot.utils.SubmanagerUtils.DEFAULT_SUB_POST_TEXT;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
 
 @Slf4j
 @Service
-public class SubmanagerBindingService {
+public class SubmanagerActionService {
 
     private final CryptoService cryptoService;
     private final SubmanagerRepository submanagerRepository;
@@ -49,15 +47,15 @@ public class SubmanagerBindingService {
     private final long theMainBotId;
     private final GroupActor theMainBotGroupActor;
 
-    public SubmanagerBindingService(CryptoService cryptoService,
-                                    SubmanagerRepository submanagerRepository,
-                                    CaffeineCacheManager cacheManager,
-                                    SubmanagerMapper submanagerMapper,
-                                    ChatService chatService,
-                                    @Lazy VkChatClient vkChatClient,
-                                    MessageMapper messageMapper,
-                                    @Value("${vk.main-bot.id}") long theMainBotId,
-                                    @Qualifier("theMainBotGroupActor") GroupActor theMainBotGroupActor){
+    public SubmanagerActionService(CryptoService cryptoService,
+                                   SubmanagerRepository submanagerRepository,
+                                   CaffeineCacheManager cacheManager,
+                                   SubmanagerMapper submanagerMapper,
+                                   ChatService chatService,
+                                   @Lazy VkChatClient vkChatClient,
+                                   MessageMapper messageMapper,
+                                   @Value("${vk.main-bot.id}") long theMainBotId,
+                                   @Qualifier("theMainBotGroupActor") GroupActor theMainBotGroupActor){
 
         this.cryptoService = cryptoService;
         this.submanagerRepository = submanagerRepository;
@@ -120,6 +118,38 @@ public class SubmanagerBindingService {
             log.warn("chat {}: error while executing vk actions after submanager {} has been successfully unbound from the chat",dataBaseChatId, subToUnbind.getGroupId(), e);
         }
     }
+
+    public void sendNewSubPostToRequiredChats(@NonNull SubmanagerDto subInfo, int postId, long fromId){
+
+        if(fromId!=-subInfo.getGroupId()) return;
+
+        List<ChatEntity> requiredChats = chatService.findChatsByBoundSubmanagerAndSubPostsTrue(subInfo.getGroupId());
+
+        for(ChatEntity chat: requiredChats){
+            long submanagerChatId;
+            try{
+                submanagerChatId= chatService.getSubmanagerChatIdByMainChatId(subInfo.getGroupId(), chat.getChatId());
+            }catch (CannotFindSubmanagerChatIdByMainChatIdException e){
+                continue;
+            }
+            SendMessageDto sendMessage = messageMapper.toSendMessageDto(DEFAULT_SUB_POST_TEXT, convertToPeerId(submanagerChatId), chat.getChatId(), subInfo.getGroupActor());
+            sendMessage.setAttachment(ChatUtils.buildGroupWallPostAsAttachment(subInfo.getGroupId(), postId));
+
+            try {
+                vkChatClient.sendText(sendMessage);
+            } catch (ClientException | ApiException e){
+                log.info("chat {}: error trying send new post from submanager group {}",chat.getChatId(), subInfo.getGroupId(), e);
+            }
+        }
+    }
+
+
+
+
+
+
+
+
 
 
 

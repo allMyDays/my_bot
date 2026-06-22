@@ -44,7 +44,7 @@ public class TitleChangeCommand implements ChatCommand {
     @Override
     public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException{
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
         long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
         if(commandMessage.getFirstRowArguments().length==0){

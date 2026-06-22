@@ -54,7 +54,7 @@ public class UnBindCommand implements ChatCommand {
 
         long fromId = commandMessage.getFromId();;
 
-        SendMessageDto sendMessage =  messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage =  messageMapper.toSendMessageDto(commandMessage);
 
         long userToUnbind;
 

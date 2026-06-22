@@ -61,7 +61,7 @@ public class BindCommand implements ChatCommand {
         long originalPeerId = commandMessage.getCommandRoutingData().getOriginalEventPeerId();
         long fromId = commandMessage.getFromId();;
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         if(ChatUtils.isPersonalChat(originalPeerId)){
             sendMessage.setText(CANNOT_USE_THIS_COMMAND_IN_PERSONAL_DIALOGUE);

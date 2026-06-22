@@ -55,7 +55,7 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
         String[] args = commandMessage.getFirstRowArguments();
         Optional<Long> userId=Optional.empty();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
 
         if(args.length==0){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);

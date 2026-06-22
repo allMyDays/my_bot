@@ -100,7 +100,6 @@ public class StaffShowCommand implements ChatCommand {
 
             }sb.append("\n");
         }
-
         vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
 
     }

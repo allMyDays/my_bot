@@ -56,8 +56,7 @@ public class ChatUtils {
         return memberId<0;
     }
 
-
-
-
-
+    public static String buildGroupWallPostAsAttachment(long groupId, int postId){
+        return "wall" + -Math.abs(groupId) + "_" + postId;
+    }
 }

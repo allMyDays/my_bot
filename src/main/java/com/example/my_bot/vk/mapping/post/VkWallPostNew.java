@@ -1,4 +1,4 @@
-package com.example.my_bot.vk;
+package com.example.my_bot.vk.mapping.post;
 
 import com.example.my_bot.vk.enumeration.VkEventType;
 import com.google.gson.annotations.SerializedName;
@@ -7,15 +7,17 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class VkCallbackEventBaseInfo {
+public class VkWallPostNew {
+
+    @SerializedName("group_id")
+    private long groupId;
 
     @SerializedName("type")
     private VkEventType type;
 
-    @SerializedName("group_id")
-    private Long groupId;
+    @SerializedName("object")
+    private VkWallPostObject object;
 
     @SerializedName("secret")
     private String secretKey;
-
 }

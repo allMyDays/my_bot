@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import java.time.Instant;
+import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
@@ -50,7 +51,6 @@ public class MuteCommand implements ChatCommand {
     private final UserInputResolver userInputResolver;
     private final GlobalUserService globalUserService;
 
-    private final static long MUTE_DEFAULT_TIME_PERIOD_SEC = 60*30;
     private final static long MUTE_MAX_TIME_PERIOD_SEC = 2_592_000;
 
     @Autowired
@@ -73,17 +73,18 @@ public class MuteCommand implements ChatCommand {
         Long muteTimePeriodSec;
 
         // варианты:
-        // !мут @durov
-        // !мут (пересланное смс)
+        // !мут @durov - вечный мут
+        // !мут (пересланное смс) - вечный мут
         // !мут @durov 2 часа
         // !мут 2 часа (пересланное смс)
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
         if(inputResult.getMemberId().isPresent()){
             memberToMute = inputResult.getMemberId().get();
-            if(args.length>=2){ // мут с временными параметрами
+            if(args.length>=2){
+                // мут с временными параметрами
                 boolean isFwd = inputResult.isFwdMessage();
                 if(!isFwd&&args.length<3){   // указали ссылку на участника, но недостаточно аргументов для периода мута
                     // !мут @durov 2 часа
@@ -91,14 +92,15 @@ public class MuteCommand implements ChatCommand {
                     vkChatClient.sendText(sendMessage);
                     return;
                 }
-                muteTimePeriodSec = toSecondsFromString(args[isFwd?0:1],args[isFwd?1:2]).orElse(null); //!мут @durov 2 часа или !мут 2 часа (пересланное смс)
+                muteTimePeriodSec = toSecondsFromString(args[isFwd?0:1],args[isFwd?1:2]).orElse(null);  //!мут @durov 2 часа или !мут 2 часа (пересланное смс)
                 if(muteTimePeriodSec==null){
                     sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
                     vkChatClient.sendText(sendMessage);
                     return;
                 }
             }else{
-                muteTimePeriodSec = MUTE_DEFAULT_TIME_PERIOD_SEC;
+                // вечный мут
+                muteTimePeriodSec = null;
             }
         }else{
             sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
@@ -106,14 +108,10 @@ public class MuteCommand implements ChatCommand {
             return;
         }
 
-        if(muteTimePeriodSec>MUTE_MAX_TIME_PERIOD_SEC){
-            sendMessage.setText(
-                    "Максимальный период, на который можно выдать мут — "+
-                            TimeUtils.formatDurationFromSeconds(MUTE_MAX_TIME_PERIOD_SEC,false)
-            );
-            vkChatClient.sendText(sendMessage);
-            return;
+        if(muteTimePeriodSec!=null&&muteTimePeriodSec>MUTE_MAX_TIME_PERIOD_SEC){
+            muteTimePeriodSec = null;  // вечный мут, если срок превышает 1 месяц
         }
+
         if(memberToMute==commandMessage.getFromId()){
             sendMessage.setText(new CannotApplyThisCommandToYourselfException().getMessage());
             vkChatClient.sendText(sendMessage);
@@ -136,7 +134,7 @@ public class MuteCommand implements ChatCommand {
                 commandMessage.getCommandRoutingData().getExecutorBot(),
                 commandMessage.getCommandRoutingData().getVkApiChatId(),
                 memberToMute,
-                muteTimePeriodSec,
+                muteTimePeriodSec==null?null:muteTimePeriodSec.intValue(),
                 true
         );
         String userName = globalUserService.getUserFullNameInRequiredCase(memberToMute, NameCase.DATIVE);
@@ -149,15 +147,15 @@ public class MuteCommand implements ChatCommand {
         String [] rows = commandMessage.getAllRows();
         if(rows.length>=2) reason = rows[1];
 
-       Instant mutedUntil= Instant.now().plusSeconds(muteTimePeriodSec);
-
 
        TimeZoneType chatTimeZone = chatService.getChatTimeZone(dataBaseChatId);
-       String message = "✅ %s(%s) было запрещено общаться в чате до %s"
+       String message = "✅ %s(%s) было запрещено общаться в чате %s"
                .formatted(
                        createMention(memberToMute),
                        userName,
-                       getFormattedStringDateTimeWithTimeZone(mutedUntil, chatTimeZone)
+                       muteTimePeriodSec==null
+                               ? "навсегда."
+                               : "до "+getFormattedStringDateTimeWithTimeZone(Instant.now().plusSeconds(muteTimePeriodSec), chatTimeZone)
                );
 
        if(!commandMessage.isEventOrTimerMode()){

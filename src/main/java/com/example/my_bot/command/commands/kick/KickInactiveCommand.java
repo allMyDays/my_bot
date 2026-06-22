@@ -66,7 +66,7 @@ public class KickInactiveCommand implements ChatCommand {
         long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);

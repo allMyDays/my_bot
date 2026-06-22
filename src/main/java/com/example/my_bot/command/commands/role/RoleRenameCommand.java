@@ -44,7 +44,7 @@ public class RoleRenameCommand implements ChatCommand {
         String[] args = commandMessage.getFirstRowArguments();
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
 
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);

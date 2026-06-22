@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 
 public class SubmanagerUtils {
 
+    public static final String DEFAULT_SUB_POST_TEXT = "\uD83D\uDD14Новый пост в нашей группе!";
 
 
     public static String generateNewBindingCode(long submanagerId){
@@ -17,6 +18,7 @@ public class SubmanagerUtils {
     public static boolean stringMatchesABindingCode(@NonNull String str){
         return str.matches("\\[club\\d{1,10}\\|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\]");
     }
+
 
 
 

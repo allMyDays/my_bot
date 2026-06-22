@@ -1,8 +1,7 @@
-package com.example.my_bot.vk.attachment;
+package com.example.my_bot.vk.mapping.attachment;
 
 import com.example.my_bot.vk.enumeration.VkMessageAttachmentType;
 import com.google.gson.annotations.SerializedName;
-import com.vk.api.sdk.objects.annotations.Required;
 import com.vk.api.sdk.objects.audio.Audio;
 import com.vk.api.sdk.objects.base.Sticker;
 import com.vk.api.sdk.objects.calls.Call;
@@ -12,7 +11,6 @@ import com.vk.api.sdk.objects.market.MarketAlbum;
 import com.vk.api.sdk.objects.market.MarketItem;
 import com.vk.api.sdk.objects.messages.AudioMessage;
 import com.vk.api.sdk.objects.messages.Graffiti;
-import com.vk.api.sdk.objects.messages.MessageAttachmentType;
 import com.vk.api.sdk.objects.photos.Photo;
 import com.vk.api.sdk.objects.polls.Poll;
 import com.vk.api.sdk.objects.stories.Story;
@@ -55,9 +53,4 @@ public class VkMessageAttachment {
     private WallComment wallReply;
     @SerializedName("video")
     private Video video;
-
-
-
-
-
 }

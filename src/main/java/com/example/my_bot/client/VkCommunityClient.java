@@ -1,7 +1,6 @@
 package com.example.my_bot.client;
 
 import com.example.my_bot.utils.GroupUtils;
-import com.example.my_bot.vk.VkSendResponse;
 import com.example.my_bot.vk.enumeration.GroupTokenPermissionType;
 import com.example.my_bot.vk.CustomVkApiClient;
 import com.google.gson.Gson;
@@ -13,7 +12,6 @@ import com.vk.api.sdk.objects.base.BoolInt;
 import com.vk.api.sdk.objects.base.responses.BoolResponse;
 import com.vk.api.sdk.objects.base.responses.OkResponse;
 import com.vk.api.sdk.objects.groups.GetMembersFilter;
-import com.vk.api.sdk.objects.groups.MemberRole;
 import com.vk.api.sdk.objects.groups.MemberRoleStatus;
 import com.vk.api.sdk.objects.groups.responses.*;
 import com.vk.api.sdk.objects.messages.responses.*;
@@ -153,6 +151,7 @@ public class VkCommunityClient {
                 .apiVersion(apiVersion)
                 .messageNew(true)
                 .messageReactionEvent(true)
+                .wallPostNew(true)
                 .execute();
 
         return response == OkResponse.OK;

@@ -1,6 +1,5 @@
 package com.example.my_bot.handler;
 
-import com.example.my_bot.cache.value.callback.GroupIdAndChatId;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.config.CaffeineCacheManager;
@@ -15,15 +14,19 @@ import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.MessageLogService;
-import com.example.my_bot.service.submanager.SubmanagerBindingService;
+import com.example.my_bot.service.submanager.SubmanagerActionService;
 import com.example.my_bot.service.submanager.SubmanagerService;
 import com.example.my_bot.service.chat.ChatActionService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.event.EventExecutionService;
 import com.example.my_bot.utils.ChatUtils;
-import com.example.my_bot.utils.SubmanagerUtils;
-import com.example.my_bot.vk.*;
 import com.example.my_bot.vk.enumeration.VkActionType;
+import com.example.my_bot.vk.mapping.action.VkAction;
+import com.example.my_bot.vk.mapping.message.VkMessage;
+import com.example.my_bot.vk.mapping.message.VkMessageNew;
+import com.example.my_bot.vk.mapping.post.VkWallPostNew;
+import com.example.my_bot.vk.mapping.reaction.VkMessageReactionEvent;
+import com.example.my_bot.vk.mapping.reaction.VkReactionObject;
 import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -43,7 +46,6 @@ import java.util.Optional;
 import static com.example.my_bot.constant.MessageConstant.UNKNOWN_ERROR_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.WELCOME_MESSAGE;
 import static com.example.my_bot.utils.ChatUtils.*;
-import static com.example.my_bot.utils.TextUtils.createMention;
 import static com.example.my_bot.vk.enumeration.ChatErrorCode.*;
 import static java.util.Objects.requireNonNull;
 
@@ -60,7 +62,7 @@ public class AsyncEventHandler {
     private final ChatService chatService;
     private final MessageLogService messageLogService;
     private final SubmanagerService submanagerService;
-    private final SubmanagerBindingService submanagerBindingService;
+    private final SubmanagerActionService submanagerActionService;
     private final CaffeineCacheManager cacheManager;
 
     private final GroupActor theMainBotGroupActor;
@@ -76,7 +78,7 @@ public class AsyncEventHandler {
                              EventExecutionService eventExecutionService,
                              ChatService chatService,
                              MessageLogService messageLogService,
-                             SubmanagerService submanagerService, SubmanagerBindingService submanagerBindingService, CaffeineCacheManager cacheManager,
+                             SubmanagerService submanagerService, SubmanagerActionService submanagerActionService, CaffeineCacheManager cacheManager,
                              @Qualifier("theMainBotGroupActor") GroupActor theMainBotGroupActor,
                              @Value("${vk.main-bot.id}") long theMainBotId, MemberService memberService) {
         this.commandDispatcher = commandDispatcher;
@@ -88,7 +90,7 @@ public class AsyncEventHandler {
         this.chatService = chatService;
         this.messageLogService = messageLogService;
         this.submanagerService = submanagerService;
-        this.submanagerBindingService = submanagerBindingService;
+        this.submanagerActionService = submanagerActionService;
         this.cacheManager = cacheManager;
         this.theMainBotGroupActor = theMainBotGroupActor;
         this.theMainBotId = theMainBotId;
@@ -169,7 +171,29 @@ public class AsyncEventHandler {
         eventExecutionService.executeRequiredChatEvents(
                 new DataForEventExecution(routingData.getDataBaseChatId(), fromId, conversationMessageId, null, null, null, null, null, foundReaction.get(), false, routingData)
         );
+    }
 
+    @Async
+    public void handleNewWallPostEvent(@NonNull VkWallPostNew postNew){
+
+        SubmanagerDto subInfo = validateCallbackEvent(postNew.getGroupId(),postNew.getSecretKey()).orElse(null);
+        if(subInfo==null) return;
+        submanagerActionService.sendNewSubPostToRequiredChats(subInfo, postNew.getObject().getPostId(), postNew.getObject().getFromId());
+    }
+
+    private Optional<SubmanagerDto> validateCallbackEvent(long groupId, String secretKey){
+
+        if(Math.abs(groupId)==theMainBotId){
+            // callback только для субменеджеров
+            log.warn("the main bot id {} came in callback event. secret key {}", groupId, secretKey);
+            return Optional.empty();
+        }
+        SubmanagerDto subInfo = submanagerService.getSubmanagerOrThrowIfAbsents(groupId);
+        if(secretKey==null||!subInfo.getSecretKey().equals(secretKey.trim())){
+            log.warn("came callback event from submanager {}, but come secret key {} don't match with {}", groupId, secretKey, subInfo.getSecretKey());
+            return Optional.empty();
+        }
+        return Optional.of(subInfo);
     }
 
     private Optional<CommandRoutingData> validateVkEventAndBuildRoutingData(long groupId, long peerId, long fromId, @Nullable String secretKey, @Nullable VkAction action, @Nullable String messageText, boolean isCallback){
@@ -179,21 +203,15 @@ public class AsyncEventHandler {
 
         if(isCallback){
             // пришло событие от субменеджера
-            if(Math.abs(groupId)==theMainBotId){  // callback только для субменеджеров
-                log.warn("the main bot id came in callback event. peerId {}, secret {}", peerId, secretKey);
-                return Optional.empty();
-            }
-            if(isPersonalChat(peerId)) return Optional.empty(); // субменеджеры работают только в многопользовательских чатах, не в личных сообщениях
+            SubmanagerDto subInfo = validateCallbackEvent(groupId, secretKey).orElse(null);
 
-            SubmanagerDto subInfo = submanagerService.getSubmanagerOrThrowIfAbsents(groupId);
-            if(secretKey==null||!subInfo.getSecretKey().equals(secretKey.trim())){
-                log.warn("came callback event from submanager {}, but secret keys don't match. peerId {}",peerId, groupId);
-                return Optional.empty();
-            }
+            if(subInfo==null||isPersonalChat(peerId))
+                return Optional.empty(); // субменеджеры работают только в многопользовательских чатах, не в личных сообщениях
+
             routingData.setReceivedEventBot(subInfo.getGroupActor());
             long submanagerChatId = extractConversationId(peerId);
 
-            if(submanagerBindingService.tryHandleSubmanagerBinding(groupId, fromId, submanagerChatId, subInfo, messageText)) return Optional.empty();
+            if(submanagerActionService.tryHandleSubmanagerBinding(groupId, fromId, submanagerChatId, subInfo, messageText)) return Optional.empty();
 
             ChatDetailsDto chatDetails= chatService.getMainChatDataBySubmanagerChatId(groupId, submanagerChatId).orElse(null);
             if(chatDetails==null){
@@ -217,7 +235,8 @@ public class AsyncEventHandler {
             if(groupId!=theMainBotId){  // longpoll только для основного бота
                 log.warn("foreign group {} came in longpoll event. peerId {}", groupId, peerId);
                 return Optional.empty();
-            } routingData.setReceivedEventBot(theMainBotGroupActor);
+            }
+            routingData.setReceivedEventBot(theMainBotGroupActor);
 
             if(isPersonalChat(peerId)){
                 // личные сообщения чат-менеджера

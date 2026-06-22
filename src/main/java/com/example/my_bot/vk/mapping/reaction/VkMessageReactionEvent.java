@@ -1,4 +1,4 @@
-package com.example.my_bot.vk;
+package com.example.my_bot.vk.mapping.reaction;
 
 import com.example.my_bot.vk.enumeration.VkEventType;
 import com.google.gson.annotations.SerializedName;
@@ -20,5 +20,4 @@ public class VkMessageReactionEvent {
 
     @SerializedName("secret")
     private String secretKey;
-
 }

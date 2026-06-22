@@ -53,7 +53,7 @@ public class KickCommand implements ChatCommand {
 
         long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         long memberToRemove;
 

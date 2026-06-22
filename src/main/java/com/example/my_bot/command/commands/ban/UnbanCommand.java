@@ -59,7 +59,7 @@ public class UnbanCommand implements ChatCommand {
 
         long memberToUnban;
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
         if(inputResult.getMemberId().isPresent()){

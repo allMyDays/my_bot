@@ -15,9 +15,8 @@ import com.example.my_bot.dto.submanager.SubmanagerDto;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.MemberService;
-import com.example.my_bot.service.submanager.SubmanagerBindingService;
+import com.example.my_bot.service.submanager.SubmanagerActionService;
 import com.example.my_bot.service.submanager.SubmanagerService;
-import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.SubmanagerUtils;
 import com.vk.api.sdk.client.actors.GroupActor;
@@ -50,7 +49,7 @@ public class SubmanagerCommand implements ChatCommand {
     private final CaffeineCacheManager cacheManager;
     private final SubmanagerService submanagerService;
     private final UserInputResolver userInputResolver;
-    private final SubmanagerBindingService submanagerBindingService;
+    private final SubmanagerActionService submanagerActionService;
     private final MemberService memberService;
 
     private final long theMainBotId;
@@ -64,7 +63,7 @@ public class SubmanagerCommand implements ChatCommand {
                              MessageMapper messageMapper,
                              CaffeineCacheManager cacheManager,
                              SubmanagerService submanagerService,
-                             SubmanagerBindingService submanagerBindingService,
+                             SubmanagerActionService submanagerActionService,
                              @Value("${vk.main-bot.id}") long theMainBotId,
                              @Qualifier("theMainBotGroupActor") GroupActor theMainBotGroupActor,
                              UserInputResolver userInputResolver,
@@ -75,7 +74,7 @@ public class SubmanagerCommand implements ChatCommand {
         this.messageMapper = messageMapper;
         this.cacheManager = cacheManager;
         this.submanagerService = submanagerService;
-        this.submanagerBindingService = submanagerBindingService;
+        this.submanagerActionService = submanagerActionService;
         this.theMainBotId = theMainBotId;
         this.theMainBotGroupActor = theMainBotGroupActor;
         this.userInputResolver = userInputResolver;
@@ -92,7 +91,7 @@ public class SubmanagerCommand implements ChatCommand {
         long dataBaseChatId = routingData.getDataBaseChatId();
         long vkApiChatId = routingData.getVkApiChatId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
 
         if(args.length==0){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
@@ -114,7 +113,7 @@ public class SubmanagerCommand implements ChatCommand {
                 vkChatClient.sendText(sendMessage);
                 return;
             }
-            submanagerBindingService.handleSubmanagerUnBinding(dataBaseChatId,routingData.getExecutorBot(),vkApiChatId);
+            submanagerActionService.handleSubmanagerUnBinding(dataBaseChatId,routingData.getExecutorBot(),vkApiChatId);
             return;
         }
         // !субменеджер @apiclub

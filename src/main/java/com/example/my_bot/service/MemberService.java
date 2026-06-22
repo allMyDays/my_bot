@@ -300,10 +300,14 @@ public class MemberService {
         Integer targetUserImmunityRole = targetUser.map(MemberDto::getImmuneRolePriority)
                 .orElse(null);
 
-        if((callerRole<=targetUserRole)||(compareImmunity&&targetUserImmunityRole!=null&&callerRole<=targetUserImmunityRole)){
+        if(targetUserRole>callerRole ||
+                (targetUserRole==callerRole&&callerRole<SENIOR_ADMINISTRATOR.getRolePriority()) ||
+                (compareImmunity&&targetUserImmunityRole!=null&&callerRole<=targetUserImmunityRole)){
+            // никому нельзя воздействовать на участника с ролью выше своей
+            // можно на участников с равной ролью, если твоя роль ст.админ и выше
+            // нельзя воздействовать на участника если у него иммунитет на твою роль и ниже
             throw new MemberAccessDeniedException(userToInteract,fromId);
         }
-
     }
 
     public boolean isChatAdmin(long chatId, long memberId){

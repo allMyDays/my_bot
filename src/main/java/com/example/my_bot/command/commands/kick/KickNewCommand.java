@@ -66,7 +66,7 @@ public class KickNewCommand implements ChatCommand {
 
         long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         String[] args = commandMessage.getFirstRowArguments();
         if(args.length<2){
@@ -79,7 +79,8 @@ public class KickNewCommand implements ChatCommand {
             sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
             vkChatClient.sendText(sendMessage);
             return;
-        }long periodInSeconds = optionalPeriod.get();
+        }
+        long periodInSeconds = optionalPeriod.get();
 
         if(periodInSeconds>MAX_COMMAND_PERIOD_IN_SECONDS){
             sendMessage.setText("Максимальный период, за который можно исключить новичков — %s"

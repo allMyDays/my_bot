@@ -46,18 +46,19 @@ public class EventDeleteCommand implements ChatCommand {
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         if(args.length<1){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
             return;
-        }if(!isValidInteger(args[0])){
+        }
+        if(!isValidInteger(args[0])){
             sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
             vkChatClient.sendText(sendMessage);
             return;
 
-        } List<EventDto> events = eventService.getEventsSortedByIdInIncreasingOrder(chatId);
+        }List<EventDto> events = eventService.getEventsSortedByIdInIncreasingOrder(chatId);
 
         int outerEventId = Integer.parseInt(args[0]);
 

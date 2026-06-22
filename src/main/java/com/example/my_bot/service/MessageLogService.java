@@ -10,7 +10,7 @@ import com.example.my_bot.exception.message.InactiveMembersStatisticIntervalOutO
 import com.example.my_bot.exception.message.MemberStatisticIntervalOutOfBoundsException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.repository.MessageLogRepository;
-import com.example.my_bot.vk.VkAction;
+import com.example.my_bot.vk.mapping.action.VkAction;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;

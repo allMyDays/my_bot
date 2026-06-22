@@ -1,8 +1,8 @@
 package com.example.my_bot.longpoll;
 
 import com.example.my_bot.handler.AsyncEventHandler;
-import com.example.my_bot.vk.VkMessageNew;
-import com.example.my_bot.vk.VkMessageReactionEvent;
+import com.example.my_bot.vk.mapping.message.VkMessageNew;
+import com.example.my_bot.vk.mapping.reaction.VkMessageReactionEvent;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -10,15 +10,12 @@ import com.vk.api.sdk.client.VkApiClient;
 import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
-import com.vk.api.sdk.objects.callback.MessageNew;
 import com.vk.api.sdk.objects.callback.longpoll.responses.GetLongPollEventsResponse;
 import com.vk.api.sdk.objects.groups.LongPollServer;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import static com.example.my_bot.vk.enumeration.VkEventType.MESSAGE_NEW;
@@ -93,16 +90,13 @@ public class VkLongPollBot {
                     if(typeElement == null) continue;
                     String type= typeElement.getAsString();
 
-                    if(MESSAGE_NEW.getValue().equals(type)){
+                    if (MESSAGE_NEW.getValue().equals(type)){
                         VkMessageNew event = GSON.fromJson(update, VkMessageNew.class);
-                        if(event!=null){
-                            asyncEventHandler.handleNewMessageEvent(event, false);
-                        }
-                    } else if (MESSAGE_REACTION_EVENT.getValue().equals(type)){
+                        asyncEventHandler.handleNewMessageEvent(event, false);
+                    }
+                    else if (MESSAGE_REACTION_EVENT.getValue().equals(type)){
                         VkMessageReactionEvent event = GSON.fromJson(update, VkMessageReactionEvent.class);
-                        if(event!=null){
-                            asyncEventHandler.handleNewReactionEvent(event, false);
-                        }
+                        asyncEventHandler.handleNewReactionEvent(event, false);
                     }
 
                 }

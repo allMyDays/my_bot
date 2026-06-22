@@ -46,7 +46,7 @@ public class SynchronizeCommand implements ChatCommand {
     @Override
     public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
 
         try{
             memberService.synchronizeChatMembers(commandMessage.getCommandRoutingData());

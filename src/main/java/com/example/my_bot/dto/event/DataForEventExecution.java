@@ -2,8 +2,8 @@ package com.example.my_bot.dto.event;
 
 import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.enumeration.event.ReactionType;
-import com.example.my_bot.vk.VkAction;
-import com.example.my_bot.vk.attachment.VkMessageAttachment;
+import com.example.my_bot.vk.mapping.action.VkAction;
+import com.example.my_bot.vk.mapping.attachment.VkMessageAttachment;
 import com.vk.api.sdk.objects.messages.ForeignMessage;
 import jakarta.annotation.Nullable;
 import lombok.Getter;

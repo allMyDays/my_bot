@@ -30,16 +30,12 @@ public class MuteListShowCommand implements ChatCommand {
     private final VkChatClient vkChatClient;
     private final MessageMapper messageMapper;
     private final GlobalUserService globalUserService;
-    private final BanService banService;
-    private final ChatService chatService;
 
 
-    public MuteListShowCommand(@Lazy VkChatClient vkChatClient, MessageMapper messageMapper, GlobalUserService globalUserService, BanService banService, ChatService chatService) {
-        this.chatService = chatService;
+    public MuteListShowCommand(@Lazy VkChatClient vkChatClient, MessageMapper messageMapper, GlobalUserService globalUserService) {
         this.vkChatClient = vkChatClient;
         this.messageMapper = messageMapper;
         this.globalUserService = globalUserService;
-        this.banService = banService;
     }
 
     @Override

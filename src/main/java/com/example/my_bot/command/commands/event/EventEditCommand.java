@@ -72,7 +72,7 @@ public class EventEditCommand implements ChatCommand {
         String[] args = commandMessage.getFirstRowArguments();
         long fromId = commandMessage.getFromId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         if(notEnoughArgs(args,3,sendMessage)) return;  // самый минимум: <номер события> <тип для редактирования> <аргумент>
 

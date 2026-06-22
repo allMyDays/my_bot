@@ -9,6 +9,7 @@ import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
+import com.example.my_bot.service.submanager.SubmanagerService;
 import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -29,10 +30,9 @@ public class ChatSettingsShowCommand implements ChatCommand {
     private final CommandCooldown cooldown = new CommandCooldown(10,60*2);
 
     private VkChatClient vkChatClient;
-
     private final ChatService chatService;
-
     private final MessageMapper messageMapper;
+    private final SubmanagerService submanagerService;
 
     @Autowired
     @Lazy
@@ -59,6 +59,10 @@ public class ChatSettingsShowCommand implements ChatCommand {
                 "\n \uD83C\uDF0D Таймзона: " + details.getTimeZoneType().getStringType() +
                 "\n ⌚ Дефолтный срок бана: " + details.getOptionalBanPeriod().map(p -> TimeUtils.formatDurationFromSeconds(p, true)).orElse(off) +
                 "\n \uD83D\uDD27 Авторазбан приглашенных: " + (details.isAutoUnban() ? on : off);
+
+        if(submanagerService.isSubmanager(commandMessage.getCommandRoutingData().getExecutorBot())){
+            sb+="\n \uD83D\uDD14 Субпосты: "+ (details.isSubPosts() ? on : off);
+        }
 
         sb+="\n\n\uD83D\uDDD3 Код чата: "+details.getChatCode();
 

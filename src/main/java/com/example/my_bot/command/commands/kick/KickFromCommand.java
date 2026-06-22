@@ -69,7 +69,7 @@ public class KickFromCommand implements ChatCommand {
 
         long inviterId;
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
         if(inputResult.getMemberId().isPresent()){

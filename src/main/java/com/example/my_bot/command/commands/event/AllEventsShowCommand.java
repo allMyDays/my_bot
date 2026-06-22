@@ -62,14 +62,13 @@ public class AllEventsShowCommand implements ChatCommand {
     }
 
 
-
     @Override
     public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         String[] args = commandMessage.getFirstRowArguments();
         StringBuilder sb = new StringBuilder();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         if(args.length>=1&&args[0].equalsIgnoreCase("доступные")){
             sb.append("Вам доступно %d событий для создания:\n\n".formatted(MyEventType.values().length));

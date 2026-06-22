@@ -1,6 +1,6 @@
-package com.example.my_bot.vk;
+package com.example.my_bot.vk.mapping.message;
 
-import com.example.my_bot.vk.transport.write_restriction.MessageChangeChatMemberRestrictionQuery;
+import com.example.my_bot.vk.mapping.restriction.MessageChangeChatMemberRestrictionQuery;
 import com.vk.api.sdk.actions.Messages;
 import com.vk.api.sdk.client.VkApiClient;
 import com.vk.api.sdk.client.actors.GroupActor;
@@ -15,7 +15,4 @@ public class CustomMessages extends Messages {
     public MessageChangeChatMemberRestrictionQuery changeChatMemberRestrictions (GroupActor actor) {
         return new MessageChangeChatMemberRestrictionQuery(this.getClient(), actor);
     }
-
-
-
 }

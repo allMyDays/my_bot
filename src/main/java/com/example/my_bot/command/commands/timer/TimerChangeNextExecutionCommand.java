@@ -49,7 +49,7 @@ public class TimerChangeNextExecutionCommand implements ChatCommand {
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
 
         if(args.length<3){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);

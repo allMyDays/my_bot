@@ -264,8 +264,8 @@ public class RoleService {
 
     public void checkRoleInteractionAbility(int roleToEdit, int userRole){
 
-        if(roleToEdit>userRole||(userRole==roleToEdit&&userRole<SENIOR_ADMINISTRATOR.getRolePriority())){
-            // никому нельзя редактировать роль выше своей, но можно редактировать свою роль, если ты ст.админ и выше
+        if(roleToEdit>userRole||(roleToEdit==userRole&&userRole<SENIOR_ADMINISTRATOR.getRolePriority())){
+            // никому нельзя работать над ролью выше своей, но можно работать над своей ролью, если ты ст.админ и выше
             throw new RoleAccessDeniedException();
         }
     }

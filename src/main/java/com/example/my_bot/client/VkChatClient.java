@@ -4,11 +4,11 @@ import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.MessageLogService;
-import com.example.my_bot.vk.VkSendResponse;
+import com.example.my_bot.vk.mapping.message.VkSendResponse;
 import com.example.my_bot.vk.enumeration.WriteRestrictionAction;
 import com.example.my_bot.vk.CustomVkApiClient;
-import com.example.my_bot.vk.transport.write_restriction.MessageChangeChatMemberRestrictionQuery;
-import com.example.my_bot.vk.transport.write_restriction.ChangeChatMemberRestrictionResponse;
+import com.example.my_bot.vk.mapping.restriction.MessageChangeChatMemberRestrictionQuery;
+import com.example.my_bot.vk.mapping.restriction.ChangeChatMemberRestrictionResponse;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.vk.api.sdk.client.AbstractQueryBuilder;
@@ -27,6 +27,7 @@ import com.vk.api.sdk.queries.execute.ExecuteBatchQuery;
 import com.vk.api.sdk.queries.messages.MessagesDeleteQueryWithFull;
 import com.vk.api.sdk.queries.messages.MessagesRemoveChatUserQuery;
 import com.vk.api.sdk.queries.messages.MessagesSendQueryWithUserIds;
+import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -95,6 +96,7 @@ public class VkChatClient{
                 .sendUserIds(sendMessage.getResponderBot())
                 .peerIds(responsePeerId)
                 .message(sendMessage.getText())
+              //  .attachment("wall" + -237600749 + "_" + 1)
                 .disableMentions(!sendMessage.isAbleMentions())
                 .randomId((int) System.currentTimeMillis());
 
@@ -103,11 +105,13 @@ public class VkChatClient{
             forward.setConversationMessageIds(List.of(sendMessage.getConversationMessageId()));
             forward.setPeerId(responsePeerId);
             forward.setIsReply(true);
-
             query.forward(forward);
         }
         if(sendMessage.getForward()!=null){
             query.forward(sendMessage.getForward());
+        }
+        if(sendMessage.getAttachment()!=null){
+            query.attachment(sendMessage.getAttachment());
         }
 
         String jsonResponse = query.executeAsString();
@@ -122,7 +126,6 @@ public class VkChatClient{
             messageLogService.saveNewMessageLog(sendMessage.getDataBaseChatId(), -sendMessage.getResponderBot().getGroupId(), cmid, null, sendMessage.getText(), sendMessage.isLogChatForward());
         }
         return cmid;
-
     }
 
     public GetConversationMembersResponse getAllConversationMembersWithAllNameCases(@NonNull GroupActor executorBot, long vkApiChatId) throws ClientException, ApiException {
@@ -273,7 +276,7 @@ public class VkChatClient{
                  .execute();
      }
 
-    public boolean changeChatMemberRestrictions(@NonNull GroupActor executorBot, long chatId, long memberId, long seconds, boolean mute) throws ClientException, ApiException {
+    public boolean changeChatMemberRestrictions(@NonNull GroupActor executorBot, long chatId, long memberId, @Nullable Integer timePeriodSec, boolean mute) throws ClientException, ApiException {
 
         if(memberId==-executorBot.getGroupId()){
             return false;
@@ -283,7 +286,7 @@ public class VkChatClient{
                 .memberIds(List.of(memberId));
         if(mute){
             query.action(WriteRestrictionAction.READ_ONLY);
-            query.timePeriodSec((int) seconds);
+            if(timePeriodSec!=null) query.timePeriodSec(timePeriodSec);
         }else{
             query.action(WriteRestrictionAction.READ_AND_WRITE);
         }

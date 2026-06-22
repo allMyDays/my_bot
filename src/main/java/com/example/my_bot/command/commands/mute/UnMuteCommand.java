@@ -63,7 +63,7 @@ public class UnMuteCommand implements ChatCommand {
         // !размут @durov
         // !размут (пересланное смс)
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
         if(inputResult.getMemberId().isPresent()){
@@ -95,7 +95,7 @@ public class UnMuteCommand implements ChatCommand {
                 commandMessage.getCommandRoutingData().getExecutorBot(),
                 commandMessage.getCommandRoutingData().getVkApiChatId(),
                 memberToUnMute,
-                -1,
+                null,
                 false);
 
         String userName = globalUserService.getUserFullNameInRequiredCase(memberToUnMute, NameCase.GENITIVE);

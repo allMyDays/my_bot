@@ -56,7 +56,7 @@ public class PromoteMemberCommand implements ChatCommand {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
 
         long userToAssign;
         ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(commandMessage,0);

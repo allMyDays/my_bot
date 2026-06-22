@@ -47,7 +47,7 @@ public class PrefixChangeCommand implements ChatCommand {
         String[] args = commandMessage.getFirstRowArguments();
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
 
         if(args.length==0){
 

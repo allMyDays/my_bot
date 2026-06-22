@@ -1,9 +1,7 @@
-package com.example.my_bot.vk;
+package com.example.my_bot.vk.mapping.action;
 
 import com.example.my_bot.vk.enumeration.VkActionType;
 import com.google.gson.annotations.SerializedName;
-import com.vk.api.sdk.objects.annotations.Required;
-import com.vk.api.sdk.objects.messages.MessageActionStatus;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -16,7 +14,4 @@ public class VkAction {
 
     @SerializedName("type")
     private VkActionType type;
-
-
-
 }

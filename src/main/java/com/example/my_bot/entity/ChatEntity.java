@@ -14,10 +14,12 @@ import java.time.Instant;
 @NoArgsConstructor
 @Table(name = "chat"
         ,uniqueConstraints = {
-        @UniqueConstraint(name = "uk_chat_chat_code", columnNames = "chat_code"),
-        @UniqueConstraint(columnNames = {"bound_submanager_id", "submanager_chat_id"})
-}
-        ,indexes = @Index(name = "idx_bound_log_chat", columnList = "bound_log_chat")
+              @UniqueConstraint(name = "uk_chat_chat_code", columnNames = "chat_code"),
+              @UniqueConstraint(columnNames = {"bound_submanager_id", "submanager_chat_id"})
+        }
+        ,indexes = {
+              @Index(name = "idx_bound_log_chat", columnList = "bound_log_chat"),
+        }
 )
 @Check(constraints = "(bound_submanager_id IS NULL AND submanager_chat_id IS NULL) OR (bound_submanager_id IS NOT NULL AND submanager_chat_id IS NOT NULL)")
 public class ChatEntity {
@@ -58,6 +60,9 @@ public class ChatEntity {
 
     @Column(name = "submanager_chat_id", nullable = true)
     private Long submanagerChatId;
+
+    @Column(nullable = true)
+    private boolean isSubPosts;
 
 
 

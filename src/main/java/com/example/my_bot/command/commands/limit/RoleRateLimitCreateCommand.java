@@ -50,7 +50,7 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
         String[] args = commandMessage.getFirstRowArguments();
         long fromId = commandMessage.getFromId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
 
         if(args.length<5){                       // !лимит !пинг 3 6 часов 80
@@ -83,12 +83,6 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
             }
         }catch (RateLimitException | RoleException | CommandException e){
             sendMessage.setText(e.getMessage());
-            vkChatClient.sendText(sendMessage);
-            return;
-        }
-        if(createdLimit==null){
-            log.error("chat {} error: createdLimit is null after executing method createCommandLimit", chatId);
-            sendMessage.setText("Произошла ошибка при попытке обработать команды.");
             vkChatClient.sendText(sendMessage);
             return;
         }

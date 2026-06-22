@@ -47,7 +47,7 @@ public class RateLimitDeleteCommand implements ChatCommand {
         String[] args = commandMessage.getFirstRowArguments();
         long fromId = commandMessage.getFromId();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("", commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         if(args.length<1){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
@@ -69,7 +69,6 @@ public class RateLimitDeleteCommand implements ChatCommand {
         }
         try{
             roleRateLimitService.deleteLimit(roleLimits.get(limitId-1),chatId,fromId);
-
         }catch (RateLimitException | RoleException | CommandException e){
           sendMessage.setText(e.getMessage());
           vkChatClient.sendText(sendMessage);

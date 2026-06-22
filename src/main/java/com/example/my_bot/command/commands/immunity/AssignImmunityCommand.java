@@ -51,7 +51,7 @@ public class AssignImmunityCommand implements ChatCommand {
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
 
-        SendMessageDto sendMessage = messageMapper.toSendMessageDto("",true, commandMessage);
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
 
         // варианты:
         // !иммунитет @durov администратор
@@ -92,17 +92,16 @@ public class AssignImmunityCommand implements ChatCommand {
 
         RoleDto newImmuneRole;
         try{
-         if(isNumber(immuneRoleToGive)){
-            newImmuneRole= memberService.assignImmunityToMember(chatId, userToAlter,Integer.parseInt(immuneRoleToGive), commandMessage.getFromId());
-         }else{
-            newImmuneRole = memberService.assignImmunityToMember(chatId, userToAlter,immuneRoleToGive, commandMessage.getFromId());
-         }
+            if(isNumber(immuneRoleToGive)){
+                newImmuneRole= memberService.assignImmunityToMember(chatId, userToAlter,Integer.parseInt(immuneRoleToGive), commandMessage.getFromId());
+            }else{
+                newImmuneRole = memberService.assignImmunityToMember(chatId, userToAlter,immuneRoleToGive, commandMessage.getFromId());
+            }
         }catch(MemberException | RoleException | CommandException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return;
         }
-
         String username = userService.getUserFullNameInRequiredCase(userToAlter, NameCase.ACCUSATIVE);
 
         sendMessage.setText("✅ Теперь на %s(%s) не смогут воздействовать участники с ролью «%s» и ниже.".formatted(createMention(userToAlter), username, newImmuneRole.getRoleName()));
