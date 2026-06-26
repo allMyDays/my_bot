@@ -9,9 +9,12 @@ import lombok.Setter;
 @Setter
 public class VkAction {
 
+    @SerializedName("type")
+    private VkActionType type;
+
     @SerializedName("member_id")
     private Long memberId;
 
-    @SerializedName("type")
-    private VkActionType type;
+    @SerializedName("text")
+    private String text;
 }

@@ -52,8 +52,8 @@ public class ChatActionService {
 
     public void handleChatAction(@NonNull CommandRoutingData commandRoutingData, long fromId, VkAction action){
 
-        Long chatId = commandRoutingData.getDataBaseChatId();
-        if(chatId==null||action==null){
+        Long dataBaseChatId = commandRoutingData.getDataBaseChatId();
+        if(dataBaseChatId==null||action==null){
             return;
         }
         VkActionType type = action.getType();
@@ -64,34 +64,41 @@ public class ChatActionService {
             case CHAT_INVITE_USER_BY_LINK->{
                 hasBeenKicked = handleBannedMemberOnJoin(commandRoutingData, fromId, fromId);
                 if(!hasBeenKicked){
-                    memberService.createNewMemberOrMarkAsPresent(chatId, fromId,null);
+                    memberService.createNewMemberOrMarkAsPresent(dataBaseChatId, fromId,null);
                 }
             }
             case CHAT_INVITE_USER->{
                 hasBeenKicked = handleBannedMemberOnJoin(commandRoutingData, fromId, memberId);
                 if(!hasBeenKicked){
                     Long invitedBy = fromId==memberId?null:fromId;  // самостоятельный возврат или приглашение
-                    memberService.createNewMemberOrMarkAsPresent(chatId, memberId,invitedBy);
+                    memberService.createNewMemberOrMarkAsPresent(dataBaseChatId, memberId,invitedBy);
                 }
             }
             case CHAT_KICK_USER->{
                 MemberPresenceType presenceType = (fromId==memberId?SELF_LEAVE:KICKED);   // самостоятельный выход или исключение
-                memberService.setPresenceTypeToMember(chatId, memberId, presenceType, true);
+                memberService.setPresenceTypeToMember(dataBaseChatId, memberId, presenceType, true);
+            }
+            case CHAT_TITLE_UPDATE -> {
+                chatService.setChatTitle(dataBaseChatId, action.getText());
             }
 
         }
     }
 
-    public void checkLastChatSynchronizationAndExecute(@NonNull CommandRoutingData commandRoutingData) {
-        long dataBaseChatId = commandRoutingData.getDataBaseChatId();
+    public void checkLastChatSynchronizationAndExecute(@NonNull CommandRoutingData routingData) throws ClientException {
+        long dataBaseChatId = routingData.getDataBaseChatId();
 
         ChatDetailsDto chatDto = chatService.getCachedChatDetails(dataBaseChatId, true);
 
         Optional<Instant> lastSync = chatDto.getOptionalLastSyncTime();
 
         if(lastSync.isEmpty()||Duration.between(lastSync.get(),Instant.now()).toMinutes()>=AUTO_SYNC_INTERVAL_MINUTES){
+
+            Optional<String> chatTitle = vkChatClient.getChatTitle(routingData.getVkApiChatId(), routingData.getExecutorBot());
+            chatTitle.ifPresent(title-> chatService.setChatTitle(routingData.getDataBaseChatId(), title));
+
             try {
-                memberService.synchronizeChatMembers(commandRoutingData);
+                memberService.synchronizeChatMembers(routingData);
             }catch (Exception e){
                 log.warn("chat {} error while auto synchronization",chatDto,e);
                 chatService.setLastSyncToNow(dataBaseChatId);

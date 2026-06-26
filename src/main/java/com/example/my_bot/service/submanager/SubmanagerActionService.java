@@ -82,7 +82,7 @@ public class SubmanagerActionService {
             return false;
         }
         long dataBaseChatId = bindingData.chatId();
-        chatService.bindSubmanagerToAChat(dataBaseChatId, executorBotId, submanagerChatId);
+        chatService.setBoundSubmanager(dataBaseChatId, executorBotId, submanagerChatId);
 
         try{
             vkChatClient.sendText(messageMapper.toSendMessageDto(
@@ -102,7 +102,7 @@ public class SubmanagerActionService {
 
     public void handleSubmanagerUnBinding(long dataBaseChatId, @NonNull GroupActor subToUnbind, long submanagerChatId){
 
-        chatService.unbindSubmanagerFromAChat(dataBaseChatId, subToUnbind.getGroupId(), submanagerChatId);
+        chatService.setBoundSubmanagerAsNull(dataBaseChatId, subToUnbind.getGroupId(), submanagerChatId);
 
         try{
             vkChatClient.sendText(messageMapper.toSendMessageDto(

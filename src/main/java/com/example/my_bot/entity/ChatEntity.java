@@ -27,6 +27,9 @@ public class ChatEntity {
     @Id
     private Long chatId;
 
+    @Column(nullable = true, columnDefinition = "TEXT")
+    private String chatTitle;
+
     @Column(nullable = true)
     private Character prefix;
 
@@ -63,8 +66,5 @@ public class ChatEntity {
 
     @Column(nullable = true)
     private boolean isSubPosts;
-
-
-
 
 }

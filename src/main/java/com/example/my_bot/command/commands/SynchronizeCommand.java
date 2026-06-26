@@ -7,8 +7,10 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.service.chat.ChatService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -16,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+
+import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
@@ -33,6 +37,8 @@ public class SynchronizeCommand implements ChatCommand {
 
     private final MemberService memberService;
 
+    private final ChatService chatService;
+
     private final MessageMapper messageMapper;
 
     @Autowired
@@ -47,9 +53,13 @@ public class SynchronizeCommand implements ChatCommand {
     public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
+        CommandRoutingData routingData = commandMessage.getCommandRoutingData();
+
+        Optional<String> chatTitle = vkChatClient.getChatTitle(routingData.getVkApiChatId(), routingData.getExecutorBot());
+        chatTitle.ifPresent(title-> chatService.setChatTitle(routingData.getDataBaseChatId(), title));
 
         try{
-            memberService.synchronizeChatMembers(commandMessage.getCommandRoutingData());
+            memberService.synchronizeChatMembers(routingData);
         }catch (ApiException e){
             if(NO_CHAT_ACCESS.getCodes().contains(e.getCode())){
                 sendMessage.setText(THE_BOT_HAS_NO_CHAT_ACCESS_ERROR);
@@ -61,7 +71,7 @@ public class SynchronizeCommand implements ChatCommand {
         }
 
         vkChatClient.sendText(
-                messageMapper.toSendMessageDto("✅Текущие участники чата были синхронизированы с моей базой данных.",commandMessage));
+                messageMapper.toSendMessageDto("✅Информация чата была синхронизирована с моей базой данных.",commandMessage));
 
     }
 }

@@ -8,6 +8,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.mapper.MessageMapper;
+import com.example.my_bot.service.chat.ChatService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -31,8 +32,8 @@ public class TitleChangeCommand implements ChatCommand {
     private final CommandCooldown cooldown = new CommandCooldown(3,60);
 
     private VkChatClient vkChatClient;
-
     private final MessageMapper messageMapper;
+    private final ChatService chatService;
 
     @Autowired
     @Lazy
@@ -52,24 +53,27 @@ public class TitleChangeCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
+        String title = String.join(" ", commandMessage.getFirstRowArguments());
+
         try{
             vkChatClient.changeChatTitle(
                     commandMessage.getCommandRoutingData().getExecutorBot(),
                     commandMessage.getCommandRoutingData().getVkApiChatId(),
-                    String.join(" ", commandMessage.getFirstRowArguments())
+                    title
             );
-        } catch (ApiException e) {
+        }
+        catch (ApiException e){
             if(YOU_ARE_RESTRICTED_TO_WRITE.getCodes().contains(e.getCode())){
                 sendMessage.setText(THE_BOT_IS_RESTRICTED_TO_WRITE_ERROR );
             }else if(YOU_ARE_NOT_CHAT_ADMIN.getCodes().contains(e.getCode())){
                 sendMessage.setText(THE_BOT_IS_NOT_CHAT_ADMIN_ERROR);
-            }
-            else{
+            }else{
                 sendMessage.setText("Произошла ошибка: "+e.getMessage());
             }
             vkChatClient.sendText(sendMessage);
+            return;
         }
-
+        chatService.setChatTitle(dataBaseChatId, title);
     }
 
 }

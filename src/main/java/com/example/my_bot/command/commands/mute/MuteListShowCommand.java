@@ -21,7 +21,7 @@ import java.util.Set;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
-@Command(mainCommandName = "мутлист", alternativeCommandNames = {"mutelist"}, defaultRole = MODERATOR, eventable = true)
+@Command(mainCommandName = "мутлист", alternativeCommandNames = {"муты","mutelist"}, defaultRole = MODERATOR, eventable = true)
 public class MuteListShowCommand implements ChatCommand {
 
     @Getter

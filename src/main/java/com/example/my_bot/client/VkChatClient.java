@@ -21,6 +21,7 @@ import com.vk.api.sdk.objects.messages.Forward;
 import com.vk.api.sdk.objects.messages.responses.DeleteFullResponse;
 import com.vk.api.sdk.objects.messages.responses.GetByConversationMessageIdResponse;
 import com.vk.api.sdk.objects.messages.responses.GetConversationMembersResponse;
+import com.vk.api.sdk.objects.messages.responses.GetConversationsByIdResponse;
 import com.vk.api.sdk.objects.utils.DomainResolvedType;
 import com.vk.api.sdk.objects.utils.responses.ResolveScreenNameResponse;
 import com.vk.api.sdk.queries.execute.ExecuteBatchQuery;
@@ -380,6 +381,25 @@ public class VkChatClient{
 
         messageLogService.markMessagesAsDeleted(dataBaseChatId, justDeletedByTheBot);
         return justDeletedByTheBot;
+    }
+
+    public Optional<String> getChatTitle(long chatId, @NonNull GroupActor executorBot) throws ClientException{
+
+        GetConversationsByIdResponse response;
+
+        try{
+            response = vkApiClient.messages().getConversationsById(executorBot)
+                    .peerIds(convertToPeerId(chatId))
+                    .execute();
+        }catch (ApiException e){
+            log.info("couldn't get chat title. executor bot: {}, peerId: {}",executorBot.getGroupId(), convertToPeerId(chatId), e);
+            return Optional.empty();
+        }
+        if(response==null||response.getItems()==null||response.getItems().isEmpty()){
+            log.info("couldn't get chat title cause vk sent not full response: {}", response);
+            return Optional.empty();
+        }
+        return Optional.of(response.getItems().get(0).getChatSettings().getTitle());
     }
 
 

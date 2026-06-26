@@ -9,6 +9,7 @@ import com.example.my_bot.vk.mapping.post.VkWallPostNew;
 import com.example.my_bot.vk.mapping.reaction.VkMessageReactionEvent;
 import com.google.gson.Gson;
 import com.vk.api.sdk.objects.callback.Base;
+import com.vk.api.sdk.objects.callback.MessageNew;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,7 @@ public class VkCallbackController {
         this.asyncEventHandler = asyncEventHandler;
         this.cacheManager = cacheManager;
         this.submanagerApiVersion = submanagerApiVersion;
+        MessageNew M;
     }
 
     @PostMapping("/callback")

@@ -6,10 +6,12 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.client.VkCommunityClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
+import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
+import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.GroupUtils;
 import com.vk.api.sdk.client.actors.GroupActor;
@@ -36,6 +38,7 @@ public class BindCommand implements ChatCommand {
     private final VkCommunityClient vkCommunityClient;
     private final GlobalUserService userService;
     private final MessageMapper messageMapper;
+    private final ChatService chatService;
 
     private final long theMainBotId;
     private final GroupActor theMainBotGroupActor;
@@ -44,6 +47,7 @@ public class BindCommand implements ChatCommand {
                        @Lazy VkCommunityClient vkCommunityClient,
                        GlobalUserService userService,
                        MessageMapper messageMapper,
+                       ChatService chatService,
                        @Value("${vk.main-bot.id}") long theMainBotId,
                        @Qualifier("theMainBotGroupActor") GroupActor theMainBotGroupActor) {
 
@@ -51,6 +55,7 @@ public class BindCommand implements ChatCommand {
         this.vkCommunityClient = vkCommunityClient;
         this.userService = userService;
         this.messageMapper = messageMapper;
+        this.chatService = chatService;
         this.theMainBotId = theMainBotId;
         this.theMainBotGroupActor = theMainBotGroupActor;
     }
@@ -63,12 +68,17 @@ public class BindCommand implements ChatCommand {
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
+        long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+
         if(ChatUtils.isPersonalChat(originalPeerId)){
-            sendMessage.setText(CANNOT_USE_THIS_COMMAND_IN_PERSONAL_DIALOGUE);
+            ChatDetailsDto chatDetails = chatService.getCachedChatDetails(dataBaseChatId, false);
+            sendMessage.setText(
+                    "\uD83D\uDD17 Информация о привязанном чате\n\n\uD83D\uDCDD Название: «%s»\n\uD83D\uDCF0 UID чата: %s"
+                            .formatted(chatDetails.getChatTitle(), chatDetails.getChatCode())
+            );
             vkChatClient.sendText(sendMessage);
             return;
         }
-        long targetChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
         if(!vkCommunityClient.canTheMainBotWriteToUser(fromId)){
             sendMessage.setText(
@@ -78,7 +88,7 @@ public class BindCommand implements ChatCommand {
             vkChatClient.sendText(sendMessage);
             return;
         }
-        userService.bindChatToUser(targetChatId, fromId);
+        userService.bindChatToUser(dataBaseChatId, fromId);
         try{
             sendMessage.setResponsePeerId(fromId);
             sendMessage.setResponderBot(theMainBotGroupActor);
@@ -88,7 +98,7 @@ public class BindCommand implements ChatCommand {
             );
             vkChatClient.sendText(sendMessage);
         }catch (Exception e){
-            log.error("chat {} error: user {} allowed personal messages, but I could not send it to him",targetChatId, fromId, e);
+            log.error("chat {} error: user {} allowed personal messages, but I could not send it to him",dataBaseChatId, fromId, e);
             sendMessage.setResponsePeerId(commandMessage.getCommandRoutingData().getResponsePeerId());
             sendMessage.setResponderBot(commandMessage.getCommandRoutingData().getResponderBot());
 

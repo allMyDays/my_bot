@@ -69,7 +69,7 @@ public class GlobalUserService {
         putUserToCache(globalUserEntity);
     }
 
-    public List<Long> findUserIdsByBoundChat(long chatId){
+    public Set<Long> findUserIdsByBoundChat(long chatId){
         return globalUserRepository.findUserIdsByBoundChat(chatId);
     }
 

@@ -63,6 +63,13 @@ public class ChatService {
 
     }
 
+    private ChatDetailsDto putChatToCache(@NonNull ChatEntity chat){
+        ChatDetailsDto chatDetails = chatMapper.toChatDetailsDto(chat);
+
+        cacheManager.getChatDetailsCache().asMap().compute(chat.getChatId(),(k,v)-> chatDetails);
+        return chatDetails;
+    }
+
     public ChatDetailsDto getCachedChatDetails(long chatId, boolean createIfAbsent){
         return cacheManager.getChatDetailsCache().get(chatId, id -> {
             Optional<ChatEntity> optionalChat = getChatEntity(id);
@@ -122,6 +129,15 @@ public class ChatService {
         chat.setPrefix(newPrefix);
         putChatToCache(chatRepository.save(chat));
     }
+
+    @Transactional
+    public void setChatTitle(long chatId, @NonNull String newTitle){
+
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+        chat.setChatTitle(newTitle);
+        putChatToCache(chatRepository.save(chat));
+    }
+
     @Transactional
     public void disableChatPrefix(long chatId){
 
@@ -129,9 +145,9 @@ public class ChatService {
         chat.setPrefix(null);
         putChatToCache(chatRepository.save(chat));
     }
+
     @Transactional
     public SwitchChatSettingResult switchSilentRestriction(long chatId){
-
         ChatEntity chat = findByChatIdOrThrow(chatId);
 
         SwitchChatSettingResult resultToReturn;
@@ -144,11 +160,10 @@ public class ChatService {
         }
         putChatToCache(chatRepository.save(chat));
         return resultToReturn;
-
     }
+
     @Transactional
     public SwitchChatSettingResult switchMessageReplying(long chatId){
-
         ChatEntity chat = findByChatIdOrThrow(chatId);
 
         SwitchChatSettingResult resultToReturn;
@@ -165,7 +180,6 @@ public class ChatService {
 
     @Transactional
     public SwitchChatSettingResult switchSubPosts(long chatId){
-
         ChatEntity chat = findByChatIdOrThrow(chatId);
 
         SwitchChatSettingResult resultToReturn;
@@ -184,14 +198,12 @@ public class ChatService {
         return getCachedChatDetails(chatId, false).isSilentRestriction();
     }
 
-
     public Optional<Character> getChatPrefix(long chatId){
        return getCachedChatDetails(chatId, false).getOptionalPrefix();
-
     }
+
     public TimeZoneType getChatTimeZone(long chatId){
         return getCachedChatDetails(chatId, false).getTimeZoneType();
-
     }
 
     @Transactional
@@ -215,6 +227,7 @@ public class ChatService {
 
         return banPeriodSeconds;
     }
+
     @Transactional
     public void disableDefaultBanPeriod(long chatId){
         ChatEntity chat = findByChatIdOrThrow(chatId);
@@ -232,6 +245,7 @@ public class ChatService {
     public boolean isAutoUnban(long chatId){
         return getCachedChatDetails(chatId, false).isAutoUnban();
     }
+
     @Transactional
     public SwitchChatSettingResult switchAutoUnban(long chatId){
 
@@ -252,7 +266,6 @@ public class ChatService {
 
     @Transactional
     public void setLastSyncToNow(long chatId){
-
         ChatEntity chat = findByChatIdOrThrow(chatId);
         chat.setLastSyncTime(Instant.now());
 
@@ -281,15 +294,6 @@ public class ChatService {
                 }
             }
         }
-    }
-
-    private ChatDetailsDto putChatToCache(@NonNull ChatEntity chat){
-        ChatDetailsDto chatDetails = chatMapper.toChatDetailsDto(chat);
-
-        cacheManager.getChatDetailsCache().asMap().compute(chat.getChatId(),(k,v)->{
-            return chatDetails;
-        });
-        return chatDetails;
     }
 
     @Transactional
@@ -348,8 +352,9 @@ public class ChatService {
     }
 
     @Transactional
-    public void bindSubmanagerToAChat(long dataBaseChatId, long submanagerId, long submanagerChatId){
+    public void setBoundSubmanager(long dataBaseChatId, long submanagerId, long submanagerChatId){
         submanagerId = Math.abs(submanagerId);
+
         ChatEntity chat= findByChatIdOrThrow(dataBaseChatId);
         chat.setBoundSubmanagerId(Math.abs(submanagerId));
         chat.setSubmanagerChatId(submanagerChatId);
@@ -364,8 +369,9 @@ public class ChatService {
     }
 
     @Transactional
-    public void unbindSubmanagerFromAChat(long dataBaseChatId, long submanagerId, long submanagerChatId){
+    public void setBoundSubmanagerAsNull(long dataBaseChatId, long submanagerId, long submanagerChatId){
         submanagerId = Math.abs(submanagerId);
+
         ChatEntity chat= findByChatIdOrThrow(dataBaseChatId);
         chat.setBoundSubmanagerId(null);
         chat.setSubmanagerChatId(null);
@@ -378,6 +384,5 @@ public class ChatService {
                 new GroupIdAndChatIdKey(submanagerId, dataBaseChatId), (k,v)-> Optional.empty()
         );
     }
-
 
 }

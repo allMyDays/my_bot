@@ -17,6 +17,8 @@ public class ChatDetailsDto {
 
     private Long chatId;
 
+    private String chatTitle;
+
     private Character prefix;
 
     private Instant lastSyncTime;
@@ -40,8 +42,6 @@ public class ChatDetailsDto {
     private Long submanagerChatId;
 
     private boolean isSubPosts;
-
-
 
 
 

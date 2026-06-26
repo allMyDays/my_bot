@@ -80,9 +80,9 @@ public class LogChatCommand implements ChatCommand {
         if(args.length==0){
             if(!boundChats.isEmpty()){
                 AtomicInteger ai = new AtomicInteger();
-                sendMessage.setText("Данный чат является логчатом для [%d] бесед со следующим кодом:\n".formatted(boundChats.size())+
+                sendMessage.setText("Данный чат является логчатом для [%d] бесед:\n\n".formatted(boundChats.size())+
                 boundChats.stream()
-                        .map(c->ai.incrementAndGet()+". "+c.getChatCode()+"\n")
+                        .map(chat->"%d. «%s» — %s\n".formatted(ai.incrementAndGet(), chat.getChatTitle(), chat.getChatCode()))
                         .collect(Collectors.joining()));
             }
             else if(currentChat.getBoundLogChat()==null){
@@ -92,10 +92,10 @@ public class LogChatCommand implements ChatCommand {
                                         .formatted(fullSetCommand));
 
             }else{
-                sendMessage.setText("К данному чату привязан логчат c кодом «%s»."
-                        .formatted(
-                                chatService.getCachedChatDetails(currentChat.getBoundLogChat(),false).getChatCode()
-                        ));
+                ChatDetailsDto chatDetails = chatService.getCachedChatDetails(currentChat.getBoundLogChat(),false);
+                sendMessage.setText(
+                        "К данному чату привязан логчат с кодом «%s». Название чата: «%s».".formatted(chatDetails.getChatCode(), chatDetails.getChatTitle())
+                );
             }
             vkChatClient.sendText(sendMessage);
             return;
