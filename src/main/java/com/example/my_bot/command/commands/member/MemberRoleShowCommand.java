@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
@@ -20,12 +21,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
 
 @Slf4j
-@Command(mainCommandName = "роль", alternativeCommandNames = {"role", "ктоя"}, defaultRole = MEMBER, eventable = true)
+@Command(mainCommandName = "роль", alternativeCommandNames = {"role", "ктоя"}, defaultRole = MEMBER, eventable = true, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 public class MemberRoleShowCommand implements ChatCommand {
 
     @Getter
@@ -51,8 +54,8 @@ public class MemberRoleShowCommand implements ChatCommand {
                                  RoleService roleService,
                                  GlobalUserService userService,
                                  @Value("${vk.main-bot.id}") long theMainBotId,
-                                 MessageMapper messageMapper
-    ) {
+                                 MessageMapper messageMapper) {
+
         this.memberService = memberService;
         this.userInputResolver = userInputResolver;
         this.roleService = roleService;
@@ -69,7 +72,7 @@ public class MemberRoleShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
@@ -79,7 +82,8 @@ public class MemberRoleShowCommand implements ChatCommand {
 
         if(parseResult.getMemberId().isPresent()){
             memberToCheck = parseResult.getMemberId().get();
-        }else{
+        }
+        else{
             memberToCheck = commandMessage.getFromId();
         }
 
@@ -91,9 +95,11 @@ public class MemberRoleShowCommand implements ChatCommand {
 
 
         vkChatClient.sendText(
-                messageMapper.toSendMessageDto("Роль %s(%s) в чате — «%s». Приоритет роли: %d".formatted(createMention(memberToCheck),userName,roleName, userRolePriority),
-                        commandMessage));
+                messageMapper.toSendMessageDto("Роль %s(%s) в чате — «%s». Приоритет роли: %d"
+                                .formatted(createMention(memberToCheck),userName,roleName, userRolePriority),
+                        commandMessage)
+        );
 
-
+        return SUCCESS;
     }
 }

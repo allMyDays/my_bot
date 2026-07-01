@@ -7,6 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.event.EventDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.exception.event.EventException;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.role.RoleException;
@@ -22,11 +23,13 @@ import java.util.List;
 
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_VALID_INTEGER_MESSAGE;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.ARGUMENT_VALIDATION_ERROR;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.isValidInteger;
 
 @Slf4j
-@Command(mainCommandName = "удалитьсобытие", alternativeCommandNames = {"удалитьивент", "remevent"}, defaultRole = ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "удалитьсобытие", alternativeCommandNames = {"удалитьивент", "remevent"}, defaultRole = ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class EventDeleteCommand implements ChatCommand {
 
@@ -41,7 +44,7 @@ public class EventDeleteCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -51,31 +54,34 @@ public class EventDeleteCommand implements ChatCommand {
         if(args.length<1){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
         if(!isValidInteger(args[0])){
             sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
+        }
 
-        }List<EventDto> events = eventService.getEventsSortedByIdInIncreasingOrder(chatId);
+        List<EventDto> events = eventService.getEventsSortedByIdInIncreasingOrder(chatId);
 
         int outerEventId = Integer.parseInt(args[0]);
 
         if(outerEventId<1||outerEventId>events.size()){
             sendMessage.setText("Не найдено события с таким ID.");
             vkChatClient.sendText(sendMessage);
-            return;
+            return CommandExecutionStatus.BUSINESS_LOGIC_ERROR;
         }
         try{
             eventService.deleteEventById(events.get(outerEventId-1).getId(), commandMessage.getFromId());
-        }catch (EventException | RoleException | MemberException e){
+        }
+        catch (EventException | RoleException | MemberException e){
           sendMessage.setText(e.getMessage());
           vkChatClient.sendText(sendMessage);
-          return;
+          return CommandExecutionStatus.BUSINESS_LOGIC_ERROR;
         }
         sendMessage.setText("✅Событие с ID %d было успешно удалёно.".formatted(outerEventId));
 
         vkChatClient.sendText(sendMessage);
+        return null;
     }
 }

@@ -106,7 +106,7 @@ public class UserInputResolver {
 
     /**
      *
-     * ищет нужный аргумент в команде под нужным порядковым числом
+     * ищет нужный аргумент в команде под нужным порядковым числом, начиная с 1
      */
     public static Optional<String> getRequiredCommandArgument(@NonNull String userCommand, int argNum) {
         if(argNum < 1) return Optional.empty();
@@ -136,6 +136,7 @@ public class UserInputResolver {
         }
         return Optional.empty();
     }
+
 
 
     

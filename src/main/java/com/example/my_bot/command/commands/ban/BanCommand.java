@@ -8,6 +8,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.ban.BanException;
@@ -31,14 +32,16 @@ import java.time.Instant;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.createMention;
 import static com.example.my_bot.utils.TimeUtils.getFormattedStringDateTimeWithTimeZone;
 import static com.example.my_bot.vk.enumeration.ChatErrorCode.USER_NOT_FOUND_IN_CHAT;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "забанить", alternativeCommandNames = {"бан", "ban"}, defaultRole = SENIOR_MODERATOR, eventable = true)
+@Command(mainCommandName = "забанить", alternativeCommandNames = {"бан", "ban"}, defaultRole = SENIOR_MODERATOR, eventable = true, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 public class BanCommand implements ChatCommand {
 
     @Getter
@@ -65,7 +68,7 @@ public class BanCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -84,29 +87,36 @@ public class BanCommand implements ChatCommand {
         SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
         ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
+
         if(inputResult.getMemberId().isPresent()){
             memberToBan = inputResult.getMemberId().get();
+
             if(args.length>=2){ // временный бан
                 boolean isFwd = inputResult.isFwdMessage();
                 if(!isFwd&&args.length<3){   // указали ссылку на участника, но недостаточно аргументов для периода бана
                     sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
                     vkChatClient.sendText(sendMessage);
-                    return;
+                    return ARGUMENT_VALIDATION_ERROR;
                 }
                 banPeriodInSeconds = TimeUtils.toSecondsFromString(args[isFwd?0:1],args[isFwd?1:2]).orElse(null); //!бан @durov 2 часа или !бан 2 часа (пересланное смс)
                 if(banPeriodInSeconds==null){
                     sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
                     vkChatClient.sendText(sendMessage);
-                    return;
+                    return ARGUMENT_VALIDATION_ERROR;
                 }
             }else{   // вечный бан
                 banPeriodInSeconds = chatService.getDefaultBanPeriod(dataBaseChatId).orElse(null);
             }
-        }else{
+        }
+        else{
             sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
+
+        if(memberToBan==-commandMessage.getCommandRoutingData().getExecutorBot().getGroupId())
+            return BUSINESS_LOGIC_ERROR;
+
         String [] rows = commandMessage.getAllRows();
         if(rows.length>=2) reason = rows[1];
 
@@ -115,20 +125,22 @@ public class BanCommand implements ChatCommand {
        String userName = globalUserService.getUserFullNameInRequiredCase(memberToBan, NameCase.NOMINATIVE);
 
        try{
-           bannedUntil = banService.createMemberBan(dataBaseChatId, memberToBan, reason, banPeriodInSeconds,fromId);
+           bannedUntil = banService.createMemberBan(dataBaseChatId, memberToBan, reason, banPeriodInSeconds, fromId);
            vkChatClient.kickOneChatMember(commandMessage.getCommandRoutingData(), memberToBan);
 
        }catch (CommandException | MemberException | BanException e){
            sendMessage.setText(e.getMessage());
            vkChatClient.sendText(sendMessage);
-           return;
+           return BUSINESS_LOGIC_ERROR;
+
        }catch (ApiException e){
-           if(!USER_NOT_FOUND_IN_CHAT.getCodes().contains(e.getCode())){    // 935 - скорее всего дали бан тому, кого в чате никогда не было, чтобы он не смог присоединиться
+           if(!USER_NOT_FOUND_IN_CHAT.getCodes().contains(e.getCode())){
+               // скорее всего дали бан тому, кого в чате никогда не было, чтобы он не смог присоединиться
              sendMessage.setText(
                      "%s(%s) забанен, но его не удалось исключить из чата. %s".formatted(createMention(memberToBan),userName, e.getMessage())
              );
              vkChatClient.sendText(sendMessage);
-             return;
+             return SUCCESS;
            }
        }
 
@@ -154,5 +166,6 @@ public class BanCommand implements ChatCommand {
        sendMessage.setText(message);
        vkChatClient.sendText(sendMessage);
 
+       return SUCCESS;
     }
 }

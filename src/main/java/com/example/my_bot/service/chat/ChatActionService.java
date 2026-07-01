@@ -3,7 +3,7 @@ package com.example.my_bot.service.chat;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.commands.ban.UnbanCommand;
-import com.example.my_bot.dto.ChatDetailsDto;
+import com.example.my_bot.dto.chat.ChatDetailsDto;
 import com.example.my_bot.dto.ban.MemberBanStatus;
 import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.enumeration.TimeZoneType;
@@ -16,17 +16,22 @@ import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.vk.mapping.action.VkAction;
 import com.example.my_bot.vk.enumeration.VkActionType;
+import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 
+import static com.example.my_bot.constant.MessageConstant.WELCOME_MESSAGE;
 import static com.example.my_bot.enumeration.member.MemberPresenceType.*;
 import static com.example.my_bot.utils.ChatUtils.convertToPeerId;
 import static com.example.my_bot.utils.TextUtils.createMention;
@@ -34,7 +39,6 @@ import static com.example.my_bot.utils.TimeUtils.getFormattedStringDateTimeWithT
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ChatActionService {
 
     private final MemberService memberService;
@@ -45,9 +49,31 @@ public class ChatActionService {
     private final MessageMapper messageMapper;
     private final GlobalUserService globalUserService;
 
+    private final GroupActor theMainBotGroupActor;
+    private final long theMainBotId;
 
     private static final long AUTO_SYNC_INTERVAL_MINUTES = 90;
 
+    public ChatActionService(MemberService memberService,
+                             ChatService chatService,
+                             BanService banService,
+                             VkChatClient vkChatClient,
+                             CommandAccessService commandAccessService,
+                             MessageMapper messageMapper,
+                             GlobalUserService globalUserService,
+                             @Qualifier("theMainBotGroupActor") GroupActor theMainBotGroupActor,
+                             @Value("${vk.main-bot.id}") long theMainBotId) {
+
+        this.memberService = memberService;
+        this.chatService = chatService;
+        this.banService = banService;
+        this.vkChatClient = vkChatClient;
+        this.commandAccessService = commandAccessService;
+        this.messageMapper = messageMapper;
+        this.globalUserService = globalUserService;
+        this.theMainBotGroupActor = theMainBotGroupActor;
+        this.theMainBotId = theMainBotId;
+    }
 
 
     public void handleChatAction(@NonNull CommandRoutingData commandRoutingData, long fromId, VkAction action){
@@ -68,6 +94,8 @@ public class ChatActionService {
                 }
             }
             case CHAT_INVITE_USER->{
+                if(tryHandleTheMainBotChatAdding(action, dataBaseChatId)) return;
+
                 hasBeenKicked = handleBannedMemberOnJoin(commandRoutingData, fromId, memberId);
                 if(!hasBeenKicked){
                     Long invitedBy = fromId==memberId?null:fromId;  // самостоятельный возврат или приглашение
@@ -101,8 +129,9 @@ public class ChatActionService {
                 memberService.synchronizeChatMembers(routingData);
             }catch (Exception e){
                 log.warn("chat {} error while auto synchronization",chatDto,e);
-                chatService.setLastSyncToNow(dataBaseChatId);
+                return;
             }
+            chatService.setLastSyncToNow(dataBaseChatId);
         }
     }
 
@@ -156,6 +185,28 @@ public class ChatActionService {
             }
         return hasBeenKicked;
     }
+
+
+    /**
+     * @return true, если данный бот был добавлен в чат
+     */
+    public boolean tryHandleTheMainBotChatAdding(@Nullable VkAction action, long dataBaseChatId){
+
+        if(action==null) return false;
+        VkActionType type = action.getType();
+        if(type!=VkActionType.CHAT_INVITE_USER) return false;
+        if(!Objects.equals(action.getMemberId(),-theMainBotId)) return false;
+
+        try{
+            vkChatClient.sendText(messageMapper.toSendMessageDto(WELCOME_MESSAGE, convertToPeerId(dataBaseChatId),dataBaseChatId, theMainBotGroupActor));
+        }catch (ClientException|ApiException e){
+            log.warn("chat {} error: couldn't send welcome message after the bot's just been added", dataBaseChatId);
+        }
+        return true;
+
+    }
+
+
 }
 
 

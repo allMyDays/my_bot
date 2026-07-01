@@ -9,6 +9,7 @@ import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.stat.ChatMembersStatisticResult;
 import com.example.my_bot.dto.member.stat.MemberStatisticDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
@@ -36,13 +37,15 @@ import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.MessageConstant.INVALID_TIME_PERIOD_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_VALID_DATE;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.createMention;
 import static com.example.my_bot.utils.TimeUtils.*;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "статистика", alternativeCommandNames = {"statistic","stat","стата"}, defaultRole = MODERATOR, eventable = true)
+@Command(mainCommandName = "статистика", alternativeCommandNames = {"statistic","stat","стата"}, defaultRole = MODERATOR, eventable = true, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 public class ShowAllMembersStatisticCommand implements ChatCommand {
 
     @Getter
@@ -72,7 +75,7 @@ public class ShowAllMembersStatisticCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -100,7 +103,7 @@ public class ShowAllMembersStatisticCommand implements ChatCommand {
                 if(dates.length<2){
                     sendMessage.setText("Аргумент с двумя датами должен иметь вид 01.11.2025-09.11.2025");
                     vkChatClient.sendText(sendMessage);
-                    return;
+                    return ARGUMENT_VALIDATION_ERROR;
                 }
                 Optional<LocalDate> startDate= parseDate(dates[0]);
                 Optional<LocalDate> endDate= parseDate(dates[1]);
@@ -108,18 +111,19 @@ public class ShowAllMembersStatisticCommand implements ChatCommand {
                 if(startDate.isEmpty()||endDate.isEmpty()){
                     sendMessage.setText(NOT_VALID_DATE);
                     vkChatClient.sendText(sendMessage);
-                    return;
+                    return ARGUMENT_VALIDATION_ERROR;
                 }
                 startInstant = startDate.get().atStartOfDay(chatTimeZone.getZoneOffset()).toInstant();
                 endInstant = endDate.get().atStartOfDay(chatTimeZone.getZoneOffset()).toInstant();
-            }else{
+            }
+            else{
                 // !статистика 01.06.2026
                 Optional<LocalDate> startDate= parseDate(args[0]);
 
                 if(startDate.isEmpty()){
                     sendMessage.setText(NOT_VALID_DATE);
                     vkChatClient.sendText(sendMessage);
-                    return;
+                    return ARGUMENT_VALIDATION_ERROR;
                 }
                 startInstant = startDate.get().atStartOfDay(chatTimeZone.getZoneOffset()).toInstant();
                 endInstant = startInstant.plus(1, ChronoUnit.DAYS);
@@ -130,13 +134,14 @@ public class ShowAllMembersStatisticCommand implements ChatCommand {
             }
             try{
                 statResult = messageLogService.getAllChatMembersStatForATimePeriod(chatId, startInstant, endInstant, MEMBERS_LIMIT_AT_ONE_USAGE);
-            }catch(MemberException | MessageException e){
+            }
+            catch(MemberException | MessageException e){
                 sendMessage.setText(e.getMessage());
                 vkChatClient.sendText(sendMessage);
-                return;
+                return BUSINESS_LOGIC_ERROR;
             }
             sendStatistic(statResult, sendMessage, chatTimeZone);
-            return;
+            return SUCCESS;
         }
 
         Optional<Long> optionalPeriodSec;
@@ -144,23 +149,26 @@ public class ShowAllMembersStatisticCommand implements ChatCommand {
         if(args.length==0){
             // !статистика
             optionalPeriodSec = Optional.of(DEFAULT_STATISTIC_PERIOD_SEC);
-        }else{
+        }
+        else{
             // !статистика 2 часа
             optionalPeriodSec = TimeUtils.toSecondsFromString(args[0], args[1]);
         }
         if(optionalPeriodSec.isEmpty()){
             sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
         try{
             statResult= messageLogService.getAllChatMembersStatForATimePeriod(chatId, optionalPeriodSec.get(), MEMBERS_LIMIT_AT_ONE_USAGE);
-        }catch(MemberException | MessageException e){
+        }
+        catch(MemberException | MessageException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         sendStatistic(statResult, sendMessage, chatTimeZone);
+        return SUCCESS;
     }
 
     private void sendStatistic(ChatMembersStatisticResult statResult, SendMessageDto sendMessage, TimeZoneType chatTimeZone) throws ClientException, ApiException {

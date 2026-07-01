@@ -7,6 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.RoleEntity;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.RoleService;
@@ -19,11 +20,13 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Arrays;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.isValidInteger;
 
 @Slf4j
-@Command(mainCommandName = "создатьроль", alternativeCommandNames = {"новаяроль", "рольсоздать"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "создатьроль", alternativeCommandNames = {"новаяроль", "рольсоздать"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class RoleCreateCommand implements ChatCommand {
 
@@ -38,7 +41,7 @@ public class RoleCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -48,30 +51,33 @@ public class RoleCreateCommand implements ChatCommand {
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return CommandExecutionStatus.ARGUMENT_VALIDATION_ERROR;
         }
 
         if(!isValidInteger(args[0])){
             sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return CommandExecutionStatus.ARGUMENT_VALIDATION_ERROR;
         }
 
         RoleEntity createdRole;
+
         try{
             createdRole =  roleService.createRole(chatId, commandMessage.getFromId(), Integer.parseInt(args[0]),
                    String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
 
-        }catch (RoleException e){
+        }
+        catch (RoleException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return CommandExecutionStatus.BUSINESS_LOGIC_ERROR;
         }
         sendMessage.setText(
                 "✅Вы успешно создали новую роль «%s» с приоритетом %d."
                         .formatted(createdRole.getRoleName(), createdRole.getRolePriority())
         );
-            vkChatClient.sendText(sendMessage);
+        vkChatClient.sendText(sendMessage);
 
+        return SUCCESS;
     }
 }

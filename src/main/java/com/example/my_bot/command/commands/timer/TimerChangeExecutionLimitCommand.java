@@ -7,6 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.TimerEntity;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.exception.timer.TimerException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.timer.TimerService;
@@ -19,11 +20,13 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.isValidInteger;
 
 @Slf4j
-@Command(mainCommandName = "лимиттаймера", alternativeCommandNames = {"timerlimit"}, defaultRole = ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "лимиттаймера", alternativeCommandNames = {"timerlimit"}, defaultRole = ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class TimerChangeExecutionLimitCommand implements ChatCommand {
 
@@ -38,7 +41,7 @@ public class TimerChangeExecutionLimitCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -48,12 +51,14 @@ public class TimerChangeExecutionLimitCommand implements ChatCommand {
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
-        }if(!isValidInteger(args[0])||!isValidInteger(args[1])){
+            return ARGUMENT_VALIDATION_ERROR;
+        }
+        if(!isValidInteger(args[0])||!isValidInteger(args[1])){
             sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
+
         List<TimerEntity> timers;
 
         int outerTimerId = Integer.parseInt(args[0]);
@@ -61,20 +66,22 @@ public class TimerChangeExecutionLimitCommand implements ChatCommand {
         if(outerTimerId<1||outerTimerId>(timers = timerService.getChatTimersSortedByIdAsc(chatId)).size()){
             sendMessage.setText("Не найдено таймера с таким ID.");
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         int newExecutionLimit = Integer.parseInt(args[1]);
         try{
             timerService.setCustomExecutionLimit(timers.get(outerTimerId-1).getId(), newExecutionLimit);
-        }catch (TimerException e){
+        }
+        catch (TimerException e){
           sendMessage.setText(e.getMessage());
           vkChatClient.sendText(sendMessage);
-          return;
+          return BUSINESS_LOGIC_ERROR;
         }
         sendMessage.setText("✅Теперь таймер с ID %d выполнится максимум %d раз, после чего будет удалён."
                 .formatted(outerTimerId, newExecutionLimit)
         );
 
         vkChatClient.sendText(sendMessage);
+        return SUCCESS;
     }
 }

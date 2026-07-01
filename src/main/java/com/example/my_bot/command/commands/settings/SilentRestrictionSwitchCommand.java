@@ -5,6 +5,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.chat.SwitchChatSettingResult;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
@@ -16,9 +17,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.enumeration.chat.SwitchChatSettingResult.ON;
 
-@Command(mainCommandName = "тихийзапрет",alternativeCommandNames = {"silentrestr","silentrestriction"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "тихийзапрет",alternativeCommandNames = {"silentrestr","silentrestriction"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class SilentRestrictionSwitchCommand implements ChatCommand {
 
@@ -40,14 +42,17 @@ public class SilentRestrictionSwitchCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         SwitchChatSettingResult switchResult = chatService.switchSilentRestriction(chatId);
-            vkChatClient.sendText(
-                    messageMapper.toSendMessageDto(
-                    "Теперь мне "+ (switchResult==ON?"нельзя":"можно") +" говорить участникам чата о том, что им не хватило прав на использование определенной команды.",
-                    commandMessage));
+
+        vkChatClient.sendText(
+                messageMapper.toSendMessageDto(
+                        "Теперь мне "+ (switchResult==ON?"нельзя":"можно") +" говорить участникам чата о том, что им не хватило прав на использование определенной команды.", commandMessage
+                )
+        );
+        return CommandExecutionStatus.SUCCESS;
 
 
     }

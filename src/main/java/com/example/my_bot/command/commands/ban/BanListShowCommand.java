@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.BanEntity;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.mapper.MessageMapper;
@@ -21,11 +22,13 @@ import org.springframework.data.domain.Page;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.createMention;
 import static com.example.my_bot.utils.TimeUtils.*;
 
-@Command(mainCommandName = "банлист", alternativeCommandNames = {"banlist"}, defaultRole = MODERATOR, eventable = true)
+@Command(mainCommandName = "банлист", alternativeCommandNames = {"banlist"}, defaultRole = MODERATOR, eventable = true, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 public class BanListShowCommand implements ChatCommand {
 
     @Getter
@@ -49,7 +52,7 @@ public class BanListShowCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -96,6 +99,7 @@ public class BanListShowCommand implements ChatCommand {
         }
         vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
 
+        return SUCCESS;
     }
 
 }

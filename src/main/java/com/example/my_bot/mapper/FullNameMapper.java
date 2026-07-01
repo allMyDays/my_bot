@@ -1,8 +1,6 @@
 package com.example.my_bot.mapper;
 
-import com.example.my_bot.dto.ChatDetailsDto;
 import com.example.my_bot.dto.user.UserFullNameInEachCase;
-import com.example.my_bot.entity.ChatEntity;
 import com.example.my_bot.entity.GlobalUserEntity;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.vk.api.sdk.objects.groups.GroupFull;

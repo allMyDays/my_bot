@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
@@ -24,11 +25,13 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
 @Slf4j
-@Command(mainCommandName = "сброситьправо", alternativeCommandNames = {"ungrant"}, defaultRole = ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "сброситьправо", alternativeCommandNames = {"ungrant"}, defaultRole = ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class AnyPermissionDeleteCommand implements ChatCommand {
 
@@ -49,7 +52,7 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -60,25 +63,29 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
         if(args.length==0){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
-        }if(args.length==2){
+            return ARGUMENT_VALIDATION_ERROR;
+        }
+        if(args.length==2){
             userId = userInputResolver.getMemberIdByStringInput(chatId, args[1]);
             if(userId.isEmpty()){
                 sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
                 vkChatClient.sendText(sendMessage);
-                return;
+                return ARGUMENT_VALIDATION_ERROR;
             }
         }
+
         try{
             if(userId.isEmpty()){
               rolePermissionService.deleteCustomRolePermission(chatId, args[0], commandMessage.getFromId());
-            }else{
+            }
+            else{
                 memberPermissionService.deleteCustomMemberPermission(chatId, args[0], userId.get(),commandMessage.getFromId());
             }
-        }catch (CommandException | PermissionException | MemberException e){
+        }
+        catch (CommandException | PermissionException | MemberException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
 
         sendMessage.setText(userId.map(aLong ->{
@@ -91,6 +98,7 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
 
 
         vkChatClient.sendText(sendMessage);
+        return SUCCESS;
 
     }
 

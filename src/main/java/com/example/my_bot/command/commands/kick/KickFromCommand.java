@@ -9,6 +9,7 @@ import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
@@ -28,13 +29,15 @@ import org.springframework.data.domain.Page;
 import java.util.Set;
 
 import static com.example.my_bot.constant.MessageConstant.MEMBER_ARGUMENT_ABSENTS;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "кикот", alternativeCommandNames = {"kickfrom"}, defaultRole = ADMINISTRATOR, eventable = true)
+@Command(mainCommandName = "кикот", alternativeCommandNames = {"kickfrom"}, defaultRole = ADMINISTRATOR, eventable = true, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 public class KickFromCommand implements ChatCommand {
 
     @Getter
@@ -63,7 +66,7 @@ public class KickFromCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
@@ -77,17 +80,18 @@ public class KickFromCommand implements ChatCommand {
         }else{
             sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
 
 
         if(inviterId!=commandMessage.getFromId()){
         try{
             memberService.checkMemberInteractionAbility(dataBaseChatId, commandMessage.getFromId(), inviterId,true);
-        }catch (MemberException e){
+        }
+        catch (MemberException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
           }
         }
 
@@ -107,10 +111,7 @@ public class KickFromCommand implements ChatCommand {
                 .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName(),createMention(inviterId), memberName));
 
         vkChatClient.sendText(sendMessage);
-
-
-
-
+        return SUCCESS;
 
     }
 }

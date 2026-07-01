@@ -4,7 +4,12 @@ import lombok.NonNull;
 
 public enum ConfirmationCacheKeyBuilder {
 
-    REMOVE_LOG_CHAT("rem_logchat");
+    REMOVE_LOG_CHAT("rem_logchat"),
+
+    REMOVE_ADMIN_CHAT("rem_adminchat"),
+
+    SET_ADMIN_CHAT("set_adminchat");
+
 
     private final String prefix;
 

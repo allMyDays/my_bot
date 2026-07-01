@@ -8,6 +8,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.EventEntity;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.exception.command.CommandException;
@@ -28,7 +29,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.ARGUMENT_VALIDATION_ERROR;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.enumeration.event.MyEventType.WITHOUT_SUBSCRIPTION;
 import static com.example.my_bot.enumeration.event.MyEventType.WITH_SUBSCRIPTION;
 import static com.example.my_bot.utils.ChatUtils.CHAT_MANAGER_ROLE_PRIORITY;
@@ -36,7 +40,7 @@ import static com.example.my_bot.utils.TextUtils.*;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "событие", alternativeCommandNames = {"ивент","addevent"}, defaultRole = SENIOR_MODERATOR, eventable = false)
+@Command(mainCommandName = "новоесобытие", alternativeCommandNames = {"ивент","addevent"}, defaultRole = SENIOR_MODERATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 public class EventCreateCommand implements ChatCommand {
 
     @Getter
@@ -70,7 +74,7 @@ public class EventCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         String[] args = commandMessage.getFirstRowArguments();
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
@@ -81,13 +85,13 @@ public class EventCreateCommand implements ChatCommand {
         if(args.length<3) {    //самый минимум: "!ивент приглашение модератор бан" (тип, роль, команда)
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
         MyEventType foundEventType = MyEventType.findByCyrillicType(args[0]).orElse(null);
         if(foundEventType==null){
             sendMessage.setText("Вы ввели несуществующий тип события.");
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
         String eventRole;
         String fullCommand;
@@ -98,12 +102,13 @@ public class EventCreateCommand implements ChatCommand {
             if(args.length<4) {
                 sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
                 vkChatClient.sendText(sendMessage);
-                return;
+                return ARGUMENT_VALIDATION_ERROR;
             }
             eventArgument = args[1];
             eventRole = args[2];
             fullCommand = collectArgumentsSinceIndex(args, 3);
-        }else{
+        }
+        else{
             // аргумента нет, предполагается: !ивент приглашение модератор бан
             eventRole = args[1];
             fullCommand = collectArgumentsSinceIndex(args, 2);
@@ -145,7 +150,7 @@ public class EventCreateCommand implements ChatCommand {
         }catch (RoleException | EventException | CommandException e) {
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return CommandExecutionStatus.BUSINESS_LOGIC_ERROR;
         }
 
         String roleName = roleService.getRoleName(chatId, createdEvent.getRolePriority()).orElse("unknown role");
@@ -174,9 +179,10 @@ public class EventCreateCommand implements ChatCommand {
                     message+="\n\n❓Команда, которую вы указали, будет активироваться от имени того, кто спровоцировал событие, а не от имени создателя события (как в обычном событии).";
 
                 }
+
         sendMessage.setText(message);
         vkChatClient.sendText(sendMessage);
-
+        return SUCCESS;
 
     }
 

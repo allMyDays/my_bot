@@ -9,6 +9,7 @@ import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.AssignMemberResult;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
@@ -25,11 +26,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.ARGUMENT_VALIDATION_ERROR;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.BUSINESS_LOGIC_ERROR;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.*;
 
 @Slf4j
-@Command(mainCommandName = "повысить", alternativeCommandNames = {"promote"}, defaultRole = ADMINISTRATOR, eventable = true)
+@Command(mainCommandName = "повысить", alternativeCommandNames = {"promote"}, defaultRole = ADMINISTRATOR, eventable = true, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class PromoteMemberCommand implements ChatCommand {
 
@@ -49,10 +53,8 @@ public class PromoteMemberCommand implements ChatCommand {
     private final MessageMapper messageMapper;
 
 
-
-
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
@@ -60,23 +62,30 @@ public class PromoteMemberCommand implements ChatCommand {
 
         long userToAssign;
         ParseMemberInputResult parseResult = userInputResolver.getMemberIdByAnyInput(commandMessage,0);
+
         if(parseResult.getMemberId().isPresent()){
             userToAssign = parseResult.getMemberId().get();
-        }else{
+        }
+        else{
             sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
+
+        if(userToAssign==-commandMessage.getCommandRoutingData().getExecutorBot().getGroupId())
+            return BUSINESS_LOGIC_ERROR;
+
         AssignMemberResult assignResult;
         try{
             int targetUserRole = memberService.getMemberRolePriority(chatId, userToAssign);
             RoleDto newRoleToAssign = roleService.findTheNearestHighestRole(chatId, targetUserRole);
             assignResult = memberService.assignNewRoleToMember(chatId,userToAssign,newRoleToAssign.getRolePriority(),commandMessage.getFromId());
 
-        }catch(RoleException | MemberException | CommandException e){
+        }
+        catch(RoleException | MemberException | CommandException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         String username = userService.getUserFullNameInRequiredCase(userToAssign, NameCase.GENITIVE);
 
@@ -84,10 +93,10 @@ public class PromoteMemberCommand implements ChatCommand {
                 String.format(MEMBER_ROLE_HAS_BEEN_CHANGED,
                         createMention(userToAssign),username,assignResult.getPreviousRole().getRoleName(), assignResult.getNewRole().getRoleName())
         );
-        vkChatClient.sendText(sendMessage);
 
+        vkChatClient.sendText(sendMessage);
+        return CommandExecutionStatus.SUCCESS;
 
     }
-
 
 }

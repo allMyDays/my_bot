@@ -7,13 +7,12 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.message.MessageException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
-import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MessageLogService;
-import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.TimeUtils;
 import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -29,11 +28,13 @@ import org.springframework.data.domain.Page;
 import java.util.*;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "удаление", alternativeCommandNames = {"чистка", "delete"}, defaultRole = SENIOR_MODERATOR, eventable = true)
+@Command(mainCommandName = "удаление", alternativeCommandNames = {"чистка", "delete"}, defaultRole = SENIOR_MODERATOR, eventable = true, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 public class DeleteMessagesCommand implements ChatCommand {
 
     @Getter
@@ -66,7 +67,7 @@ public class DeleteMessagesCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -94,8 +95,9 @@ public class DeleteMessagesCommand implements ChatCommand {
             if(commandMessage.getReplyOrFwdMessages().isEmpty()){
                 sendMessage.setText(DELETING_MESSAGES_GUIDE);
                 vkChatClient.sendText(sendMessage);
-                return;
-            }else{
+                return SUCCESS;
+            }
+            else{
                 messagesToDelete = commandMessage.getReplyOrFwdMessages().stream()
                         .map(ForeignMessage::getConversationMessageId)
                         .toList();
@@ -108,8 +110,9 @@ public class DeleteMessagesCommand implements ChatCommand {
             if(targetMember==null){
                 sendMessage.setText(MEMBER_LINK_IS_NOT_CORRECT);
                 vkChatClient.sendText(sendMessage);
-                return;
+                return ARGUMENT_VALIDATION_ERROR;
             }
+
             if(args.length==1){
                 // !чистка @durov
                 timePeriodSec = DEFAULT_DELETION_TIME_PERIOD_SEC;
@@ -119,17 +122,19 @@ public class DeleteMessagesCommand implements ChatCommand {
                if(timePeriodSec==null){
                    sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
                    vkChatClient.sendText(sendMessage);
-                   return;
+                   return ARGUMENT_VALIDATION_ERROR;
                }
             }
+
             try{
                 Page<Integer> result = messageLogService.findNotDeletedMessageIdsOfNotAChatAdminOwner(dataBaseChatId, targetMember, timePeriodSec, MESSAGE_LIMIT_AT_ONE_USAGE, executorBot.getGroupId());
                 messagesToDelete = result.getContent();
                 totalMessagesQuantity = result.getTotalElements();
-            }catch (MemberException | MessageException e){
+            }
+            catch (MemberException | MessageException e){
                 sendMessage.setText(e.getMessage());
                 vkChatClient.sendText(sendMessage);
-                return;
+                return BUSINESS_LOGIC_ERROR;
             }
 
         }else{
@@ -138,16 +143,17 @@ public class DeleteMessagesCommand implements ChatCommand {
             if(timePeriodSec==null){
                 sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
                 vkChatClient.sendText(sendMessage);
-                return;
+                return ARGUMENT_VALIDATION_ERROR;
             }
             try{
                 Page<Integer> result = messageLogService.findNotDeletedMessageIdsOfNotChatAdminOwners(dataBaseChatId, timePeriodSec, MESSAGE_LIMIT_AT_ONE_USAGE, executorBot.getGroupId());
                 messagesToDelete = result.getContent();
                 totalMessagesQuantity = result.getTotalElements();
-            }catch (MemberException | MessageException e){
+            }
+            catch (MemberException | MessageException e){
                 sendMessage.setText(e.getMessage());
                 vkChatClient.sendText(sendMessage);
-                return;
+                return BUSINESS_LOGIC_ERROR;
             }
         }
 
@@ -171,8 +177,11 @@ public class DeleteMessagesCommand implements ChatCommand {
                 sb.append(", либо сообщения принадлежат создателю/администратору чата");
             } sb.append(".");
         }
+
         sendMessage.setText(sb.toString());
         vkChatClient.sendText(sendMessage);
+        return SUCCESS;
+
     }
 
     @Autowired

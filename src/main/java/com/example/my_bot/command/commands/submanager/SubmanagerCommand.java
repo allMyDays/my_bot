@@ -12,6 +12,7 @@ import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.dto.submanager.SubmanagerDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.MemberService;
@@ -32,12 +33,14 @@ import java.util.Optional;
 import java.util.Set;
 
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.GroupUtils.createPrivateMessagesLink;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
 @Slf4j
-@Command(mainCommandName = "субменеджер", alternativeCommandNames = {"submanager", "newsub"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "субменеджер", alternativeCommandNames = {"submanager", "newsub"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 public class SubmanagerCommand implements ChatCommand {
 
     @Getter
@@ -83,7 +86,7 @@ public class SubmanagerCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         String[] args = commandMessage.getFirstRowArguments();
         long fromId = commandMessage.getFromId();
@@ -96,14 +99,14 @@ public class SubmanagerCommand implements ChatCommand {
         if(args.length==0){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
         if(args[0].equalsIgnoreCase(REMOVE_ARGUMENT)){
             // !субменеджер удалить
             if(!submanagerService.isSubmanager(routingData.getExecutorBot())){
                 sendMessage.setText("К текущему чату не привязан субменеджер.");
                 vkChatClient.sendText(sendMessage);
-                return;
+                return BUSINESS_LOGIC_ERROR;
             }
             memberService.synchronizeChatMembers(routingData);
             if(!memberService.isChatAdmin(routingData.getDataBaseChatId(), -theMainBotId)){
@@ -111,17 +114,18 @@ public class SubmanagerCommand implements ChatCommand {
                         "Чтобы отвязать субменеджер от текущей беседы, в ней должен находиться %s(Чат-менеджер) с правами администратора.".formatted(createMention(-theMainBotId))
                 );;
                 vkChatClient.sendText(sendMessage);
-                return;
+                return BUSINESS_LOGIC_ERROR;
             }
             submanagerActionService.handleSubmanagerUnBinding(dataBaseChatId,routingData.getExecutorBot(),vkApiChatId);
-            return;
+            return SUCCESS;
         }
         // !субменеджер @apiclub
         Optional<Long> memberArgument = userInputResolver.getMemberIdByStringInput(dataBaseChatId, args[0]);
+
         if(memberArgument.isEmpty()||!ChatUtils.isGroupId(memberArgument.get())){
             sendMessage.setText("Если хотите установить субменеджера, первым аргументом должна быть ссылка/упоминание сообщества.");
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         long groupId = memberArgument.get();
 
@@ -132,12 +136,12 @@ public class SubmanagerCommand implements ChatCommand {
                             .formatted(createPrivateMessagesLink(-theMainBotId))
             );
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         if(submanagerService.isSubmanager(routingData.getExecutorBot())){
             sendMessage.setText("К текущему чату уже привязан %s(этот субменеджер). Отвяжите его, если хотите привязать другое сообщество.".formatted(createMention(-routingData.getExecutorBot().getGroupId())));
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         memberService.synchronizeChatMembers(routingData);
         if(!memberService.isChatAdmin(dataBaseChatId, groupId)){
@@ -145,7 +149,7 @@ public class SubmanagerCommand implements ChatCommand {
                     "Если хотите сделать %s(указанное сообщество) субменеджером, оно должно находиться в чате с правами администратора.".formatted(createMention(groupId))
             );
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         Set<Long> communityAdmins;
         try{
@@ -154,12 +158,12 @@ public class SubmanagerCommand implements ChatCommand {
             log.warn("fail get submanager {} community admins by token",groupId, e);
             sendMessage.setText("Не удалось получить информацию о администраторах указанного сообщества-субменеджера. Попробуйте позже.");
             vkChatClient.sendText(sendMessage);
-            return;
+            return VK_API_ERROR;
         }
         if(!communityAdmins.contains(fromId)){
             sendMessage.setText("Вы не являетесь администратором указанного сообщества.");
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         String newBindingCode = SubmanagerUtils.generateNewBindingCode(subInfo.getGroupId());
 
@@ -171,7 +175,9 @@ public class SubmanagerCommand implements ChatCommand {
         sendMessage.setResponderBot(theMainBotGroupActor);
         sendMessage.setResponsePeerId(ChatUtils.convertToPeerId(routingData.getDataBaseChatId()));
         sendMessage.setReplyToMessageId(false);
+        sendMessage.setDoNotSendTheMessage(false);
 
         vkChatClient.sendText(sendMessage);
+        return SUCCESS;
     }
 }

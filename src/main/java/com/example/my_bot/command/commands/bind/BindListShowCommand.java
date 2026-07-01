@@ -6,6 +6,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
@@ -17,19 +18,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "привязки", alternativeCommandNames = {"bindlist"}, defaultRole = SENIOR_MODERATOR, eventable = false)
+@Command(mainCommandName = "привязки", alternativeCommandNames = {"bindlist"}, defaultRole = SENIOR_MODERATOR, eventable = false, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 public class BindListShowCommand implements ChatCommand {
 
     @Getter
@@ -49,7 +49,7 @@ public class BindListShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         Set<Long> users = userService.findUserIdsByBoundChat(commandMessage.getCommandRoutingData().getDataBaseChatId());
 
@@ -63,8 +63,8 @@ public class BindListShowCommand implements ChatCommand {
                         .formatted(createMention(userId),memberNamesMap.get(userId))
                 )
         );
-
         vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
 
+        return SUCCESS;
     }
 }

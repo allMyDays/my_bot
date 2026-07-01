@@ -7,6 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.permission.MemberPermissionSettingResult;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.member.MemberException;
@@ -31,11 +32,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.*;
 
 @Slf4j
-@Command(mainCommandName = "правоюзера", alternativeCommandNames = {"правоюзеру","userallow"}, defaultRole = ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "правоюзера", alternativeCommandNames = {"правоюзеру","userallow"}, defaultRole = ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class MemberPermissionCreateCommand implements ChatCommand {
 
@@ -56,7 +59,7 @@ public class MemberPermissionCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -66,13 +69,15 @@ public class MemberPermissionCreateCommand implements ChatCommand {
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
+
         Optional<Long> targetUserId = userInputResolver.getMemberIdByStringInput(chatId, args[0].trim());
+
         if(targetUserId.isEmpty()){
             sendMessage.setText(MEMBER_LINK_IS_NOT_CORRECT);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
 
         MemberPermissionSettingResult permissionResult;
@@ -91,10 +96,11 @@ public class MemberPermissionCreateCommand implements ChatCommand {
             permissionResult = memberPermissionService.allowOrForbidCommandForMember(
                     chatId, commandMessage.getFromId(), userCommandsToProcess, targetUserId.get(), allow);
 
-        }catch (PermissionException | RoleException | CommandException | MemberException e){
+        }
+        catch (PermissionException | RoleException | CommandException | MemberException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
 
         char chatPrefix = chatService.getChatPrefix(chatId).orElse(ChatUtils.DEFAULT_CHAT_PREFIX);
@@ -117,8 +123,10 @@ public class MemberPermissionCreateCommand implements ChatCommand {
         appendSection(result, permissionResult.getNotFound(), "❓",
                 "❌Аргументы:\n", "%s\nНе являются командами или написаны с опечатками.", userMention);
 
+
         sendMessage.setText(result.toString());
         vkChatClient.sendText(sendMessage);
+        return SUCCESS;
 
     }
 

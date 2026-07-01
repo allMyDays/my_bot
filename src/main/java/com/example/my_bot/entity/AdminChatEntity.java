@@ -5,7 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Setter
@@ -17,6 +20,10 @@ public class AdminChatEntity {
     @Id
     private Long chatId;
 
-    private List<Long> boundChats;
+    @ElementCollection(fetch = FetchType.EAGER)
+    private Set<Long> boundChats = new HashSet<>();
 
+    public AdminChatEntity(long chatId) {
+        this.chatId = chatId;
+    }
 }

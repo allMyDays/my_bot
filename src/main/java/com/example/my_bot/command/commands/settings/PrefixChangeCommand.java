@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.exception.chat.ForbiddenPrefixException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
@@ -18,10 +19,12 @@ import org.springframework.context.annotation.Lazy;
 
 import java.util.Optional;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.*;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.ChatUtils.DEFAULT_CHAT_PREFIX;
 
-@Command(mainCommandName = "префикс",alternativeCommandNames = {"prefix"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "префикс",alternativeCommandNames = {"prefix"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class PrefixChangeCommand implements ChatCommand {
 
@@ -42,7 +45,7 @@ public class PrefixChangeCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         String[] args = commandMessage.getFirstRowArguments();
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
@@ -50,12 +53,13 @@ public class PrefixChangeCommand implements ChatCommand {
         SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
 
         if(args.length==0){
-
             Optional<Character> optionalPrefix = chatService.getChatPrefix(chatId);
+
             if(optionalPrefix.isEmpty()){
                 chatService.setChatPrefix(chatId, DEFAULT_CHAT_PREFIX);
                 sendMessage.setText(String.format("✅Префикс чата был установлен на стандартный: %s",DEFAULT_CHAT_PREFIX));
-            }else{
+            }
+            else{
                 chatService.disableChatPrefix(chatId);
                 sendMessage.setText(
                         String.format("✅Префикс чата был отключён. " +
@@ -63,26 +67,29 @@ public class PrefixChangeCommand implements ChatCommand {
                 );
             }
             vkChatClient.sendText(sendMessage);
-            return;
+            return SUCCESS;
         }
 
         if(args[0].length()>1){
             sendMessage.setText("В качестве префикса можно установить только один символ.");
             vkChatClient.sendText(sendMessage);
-            return;
+            return CommandExecutionStatus.BUSINESS_LOGIC_ERROR;
         }
+
         try{
          chatService.setChatPrefix(chatId, args[0].charAt(0));
-        }catch (ForbiddenPrefixException e){
+        }
+        catch (ForbiddenPrefixException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return CommandExecutionStatus.BUSINESS_LOGIC_ERROR;
         }
 
         sendMessage.setText(("✅Префикс чата был установлен на: %s\n" +
                 "Теперь команды в чате можно писать ТОЛЬКО с этим префиксом.").formatted(args[0]));
         vkChatClient.sendText(sendMessage);
 
+        return SUCCESS;
     }
 
 }

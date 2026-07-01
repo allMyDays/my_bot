@@ -7,6 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.command.CommandRoutingData;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.chat.SwitchChatSettingResult;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
@@ -19,11 +20,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import static com.example.my_bot.constant.MessageConstant.THIS_COMMAND_IS_ONLY_FOR_CHATS_WITH_SUBMANAGERS;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.BUSINESS_LOGIC_ERROR;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.enumeration.chat.SwitchChatSettingResult.ON;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
-@Command(mainCommandName = "субпосты",alternativeCommandNames = {"subposts"}, defaultRole = ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "субпосты",alternativeCommandNames = {"subposts"}, defaultRole = ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class SubPostsSwitchCommand implements ChatCommand {
 
@@ -44,7 +48,7 @@ public class SubPostsSwitchCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
         CommandRoutingData commandRouting = commandMessage.getCommandRoutingData();
@@ -52,7 +56,7 @@ public class SubPostsSwitchCommand implements ChatCommand {
         if(!submanagerService.isSubmanager(commandRouting.getExecutorBot())){
             sendMessage.setText(THIS_COMMAND_IS_ONLY_FOR_CHATS_WITH_SUBMANAGERS);
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
 
         long chatId = commandRouting.getDataBaseChatId();
@@ -64,7 +68,6 @@ public class SubPostsSwitchCommand implements ChatCommand {
         );
 
         vkChatClient.sendText(sendMessage);
-
+        return SUCCESS;
     }
-
 }

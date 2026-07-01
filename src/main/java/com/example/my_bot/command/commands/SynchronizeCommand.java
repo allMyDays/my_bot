@@ -8,6 +8,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.command.CommandRoutingData;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.chat.ChatService;
@@ -22,12 +23,15 @@ import org.springframework.context.annotation.Lazy;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.VK_API_ERROR;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.vk.enumeration.ChatErrorCode.*;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName ="синхронизация", alternativeCommandNames = {"resync"}, defaultRole = MODERATOR, eventable = true)
+@Command(mainCommandName ="синхронизация", alternativeCommandNames = {"resync"}, defaultRole = MODERATOR, eventable = true, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 public class SynchronizeCommand implements ChatCommand {
 
     @Getter
@@ -50,7 +54,7 @@ public class SynchronizeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto(true, commandMessage);
         CommandRoutingData routingData = commandMessage.getCommandRoutingData();
@@ -67,11 +71,13 @@ public class SynchronizeCommand implements ChatCommand {
                 sendMessage.setText("Произошла ошибка: "+e.getMessage());
             }
             vkChatClient.sendText(sendMessage);
-            return;
+            return VK_API_ERROR;
         }
 
         vkChatClient.sendText(
                 messageMapper.toSendMessageDto("✅Информация чата была синхронизирована с моей базой данных.",commandMessage));
+
+        return SUCCESS;
 
     }
 }

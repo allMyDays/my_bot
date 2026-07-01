@@ -9,6 +9,7 @@ import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.inactive.InactiveMemberDto;
 import com.example.my_bot.dto.member.inactive.InactiveMembersResult;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.exception.member.MemberException;
@@ -30,12 +31,14 @@ import java.util.Set;
 
 import static com.example.my_bot.constant.MessageConstant.INVALID_TIME_PERIOD_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "кикнеактив", alternativeCommandNames = {"kickinactive"}, defaultRole = ADMINISTRATOR, eventable = true)
+@Command(mainCommandName = "кикнеактив", alternativeCommandNames = {"kickinactive"}, defaultRole = ADMINISTRATOR, eventable = true, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 public class KickInactiveCommand implements ChatCommand {
 
     @Getter
@@ -61,7 +64,7 @@ public class KickInactiveCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -71,23 +74,25 @@ public class KickInactiveCommand implements ChatCommand {
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
         Optional<Long> optionalPeriodSec = TimeUtils.toSecondsFromString(args[0], args[1]);
         if(optionalPeriodSec.isEmpty()){
             sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
-        } long periodSec = optionalPeriodSec.get();
-
+            return ARGUMENT_VALIDATION_ERROR;
+        }
+        long periodSec = optionalPeriodSec.get();
 
         InactiveMembersResult membersResult;
+
         try{
             membersResult= messageLogService.findCurrentInactiveChatMembers(dataBaseChatId, periodSec,false, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(),MEMBERS_LIMIT_AT_ONE_USAGE);
-        }catch(MemberException | MessageException e){
+        }
+        catch(MemberException | MessageException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(dataBaseChatId);
 
@@ -103,6 +108,7 @@ public class KickInactiveCommand implements ChatCommand {
         sendMessage.setText("✅Было исключено %d из %d участников с ролью ниже чем «%s», которые не писали сообщения после %s"
                 .formatted(kickedMembers.size(), membersResult.getTotalInactiveQuantity(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName(), dateToShow));
         vkChatClient.sendText(sendMessage);
+        return SUCCESS;
 
     }
 }

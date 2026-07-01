@@ -8,6 +8,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.mapper.MessageMapper;
@@ -28,12 +29,15 @@ import java.util.Optional;
 import java.util.Set;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.ARGUMENT_VALIDATION_ERROR;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.BUSINESS_LOGIC_ERROR;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "кикновичков", alternativeCommandNames = {"kicknew"}, defaultRole = ADMINISTRATOR, eventable = true)
+@Command(mainCommandName = "кикновичков", alternativeCommandNames = {"kicknew"}, defaultRole = ADMINISTRATOR, eventable = true, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 public class KickNewCommand implements ChatCommand {
 
     @Getter
@@ -62,7 +66,7 @@ public class KickNewCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
@@ -72,13 +76,14 @@ public class KickNewCommand implements ChatCommand {
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
+
         Optional<Long> optionalPeriod = TimeUtils.toSecondsFromString(args[0], args[1]);
         if(optionalPeriod.isEmpty()){
             sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
         long periodInSeconds = optionalPeriod.get();
 
@@ -86,7 +91,7 @@ public class KickNewCommand implements ChatCommand {
             sendMessage.setText("Максимальный период, за который можно исключить новичков — %s"
                     .formatted(TimeUtils.formatDurationFromSeconds(MAX_COMMAND_PERIOD_IN_SECONDS,false)));
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
 
         Instant kickAfter = Instant.now().minusSeconds(periodInSeconds);
@@ -107,10 +112,7 @@ public class KickNewCommand implements ChatCommand {
         sendMessage.setText("✅Было исключено %d из %d новичков с ролью ниже чем «%s», впервые появившихся в чате после %s"
                 .formatted(kickedCommunities.size(), allRequiredMembers.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName(), dateToShow));
         vkChatClient.sendText(sendMessage);
-
-
-
-
+        return BUSINESS_LOGIC_ERROR;
 
     }
 }

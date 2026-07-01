@@ -8,6 +8,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.ban.BanException;
 import com.example.my_bot.mapper.MessageMapper;
@@ -23,12 +24,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "разбанить", alternativeCommandNames = {"разбан", "unban", "снятьбан"}, defaultRole = SENIOR_MODERATOR, eventable = true)
+@Command(mainCommandName = "разбанить", alternativeCommandNames = {"разбан", "unban", "снятьбан"}, defaultRole = SENIOR_MODERATOR, eventable = true, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 public class UnbanCommand implements ChatCommand {
 
     @Getter
@@ -53,7 +56,7 @@ public class UnbanCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
@@ -64,18 +67,20 @@ public class UnbanCommand implements ChatCommand {
         ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
         if(inputResult.getMemberId().isPresent()){
             memberToUnban = inputResult.getMemberId().get();
-        }else{
+        }
+        else{
             sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
 
        try{
            banService.deleteMemberBan(chatId, memberToUnban);
-       }catch (BanException e){
+       }
+       catch (BanException e){
            sendMessage.setText(e.getMessage());
            vkChatClient.sendText(sendMessage);
-           return;
+           return BUSINESS_LOGIC_ERROR;
        }
 
        sendMessage.setText("✅С %s(%s) был успешно снят бан. Теперь вам нужно самостоятельно пригласить этого пользователя в чат.".formatted(
@@ -85,5 +90,6 @@ public class UnbanCommand implements ChatCommand {
 
        vkChatClient.sendText(sendMessage);
 
+       return SUCCESS;
     }
 }

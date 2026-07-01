@@ -1,6 +1,5 @@
-package com.example.my_bot.dto;
+package com.example.my_bot.dto.chat;
 
-import com.example.my_bot.entity.ChatEntity;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;

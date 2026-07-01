@@ -47,4 +47,7 @@ public class VkMessage {
     @SerializedName("is_cropped")
     private boolean isCropped;
 
+    @SerializedName("payload")
+    private String payload;
+
 }

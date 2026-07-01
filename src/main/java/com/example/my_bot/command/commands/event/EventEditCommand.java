@@ -8,6 +8,7 @@ import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.event.EventDto;
 import com.example.my_bot.entity.EventEntity;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.event.EditEventArgType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.CommandException;
@@ -34,12 +35,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.*;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
 @Slf4j
-@Command(mainCommandName = "редивент", alternativeCommandNames = {"editevent"}, defaultRole = ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "редивент", alternativeCommandNames = {"editevent"}, defaultRole = ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class EventEditCommand implements ChatCommand {
 
@@ -66,7 +69,7 @@ public class EventEditCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -74,16 +77,17 @@ public class EventEditCommand implements ChatCommand {
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
-        if(notEnoughArgs(args,3,sendMessage)) return;  // самый минимум: <номер события> <тип для редактирования> <аргумент>
+        if(notEnoughArgs(args,3,sendMessage))
+            return ARGUMENT_VALIDATION_ERROR;;  // самый минимум: <номер события> <тип для редактирования> <аргумент>
 
         Integer outerEventId = parseInt(args[0], sendMessage);
-        if(outerEventId == null) return;
+        if(outerEventId == null) return ARGUMENT_VALIDATION_ERROR;;
 
         List<EventDto> events = eventService.getEventsSortedByIdInIncreasingOrder(chatId);
 
         if(outerEventId<1||outerEventId>events.size()){
             send(sendMessage, "Не найдено события с таким ID.");
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         long eventEntityId = events.get(outerEventId-1).getId();
 
@@ -92,7 +96,7 @@ public class EventEditCommand implements ChatCommand {
         Optional<EditEventArgType> foundType = EditEventArgType.findByCyrillicType(args[1]);
         if(foundType.isEmpty()){
             send(sendMessage, "Вы ввели несуществующий тип для редактирования.");
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
 
         switch(foundType.get()){
@@ -115,7 +119,7 @@ public class EventEditCommand implements ChatCommand {
                                       : eventService.setDailyWorkTime(eventEntityId, start, end,fromId);
                     }catch (EventException | RoleException | MemberException e){
                         send(sendMessage, e.getMessage());
-                        return;
+                        return BUSINESS_LOGIC_ERROR;
                     };
                     send(sendMessage, "✅Теперь событие №%d («%s») будет работать ".formatted(outerEventId,editedEvent.getType().getDescription())+
                             (delete
@@ -132,19 +136,20 @@ public class EventEditCommand implements ChatCommand {
                 // !редивент 1 исключение удалить @durov
 
                 boolean remove = args[2].equalsIgnoreCase(REMOVE_ARGUMENT);
-                if(remove&&notEnoughArgs(args,4,sendMessage)) return;
+                if(remove&&notEnoughArgs(args,4,sendMessage)) return ARGUMENT_VALIDATION_ERROR;;
 
                 Long memberId = parseMember(chatId, args[remove?3:2],sendMessage);
-                if(memberId==null) return;
+                if(memberId==null) return ARGUMENT_VALIDATION_ERROR;;
                 try{
                     if(remove){
                         editedEvent = eventService.removeMemberFromExceptional(eventEntityId, memberId,fromId);
                     }else{
                         editedEvent = eventService.addMemberToExceptional(eventEntityId, memberId,fromId);
                     }
-                }catch (EventException | RoleException | CommandException | MemberException e){
+                }
+                catch (EventException | RoleException | CommandException | MemberException e){
                     send(sendMessage, e.getMessage());
-                    return;
+                    return BUSINESS_LOGIC_ERROR;
                 }
                 send(sendMessage,
                         ("✅Вы успешно "+(remove
@@ -157,12 +162,13 @@ public class EventEditCommand implements ChatCommand {
                 // !редивент 1 толькодля @durov
 
                 Long memberId = parseMember(chatId, args[2],sendMessage);
-                if(memberId==null) return;
+                if(memberId==null) return ARGUMENT_VALIDATION_ERROR;;
                 try{
                     editedEvent = eventService.setMemberToTrigger(eventEntityId, memberId, fromId);
-                }catch (EventException | RoleException | CommandException | MemberException e){
+                }
+                catch (EventException | RoleException | CommandException | MemberException e){
                     send(sendMessage, e.getMessage());
-                    return;
+                    return BUSINESS_LOGIC_ERROR;
                 }
                 Long memberToTrigger = editedEvent.getMemberToTrigger();
                 send(sendMessage,
@@ -172,16 +178,17 @@ public class EventEditCommand implements ChatCommand {
             case ACTION_LIMIT -> {
                 // !редивент 1 лимитдействия 100 2 часа
 
-                if(notEnoughArgs(args,5,sendMessage)) return;
+                if(notEnoughArgs(args,5,sendMessage)) return ARGUMENT_VALIDATION_ERROR;;
                 Integer maxUsage = parseInt(args[2], sendMessage);
-                if(maxUsage == null) return;
+                if(maxUsage == null) return ARGUMENT_VALIDATION_ERROR;;
                 Long timePeriod = parsePeriod(args[3],args[4], sendMessage);
-                if (timePeriod==null) return;
+                if (timePeriod==null) return ARGUMENT_VALIDATION_ERROR;;
                 try{
                     editedEvent = eventService.setAETimePeriodAndMaxUsage(eventEntityId,timePeriod,maxUsage,fromId);
-                }catch (EventException | RoleException | MemberException e){
+                }
+                catch (EventException | RoleException | MemberException e){
                     send(sendMessage, e.getMessage());
-                    return;
+                    return BUSINESS_LOGIC_ERROR;
                 }
                 send(sendMessage,
                         "✅Вы успешно добавили событию №%d («%s») лимит действия в %d за %s\n❓Теперь команда, указанная в этом событии, будет активироваться только по достижении участником данного лимита за данный период времени (для события «%s»)."
@@ -192,15 +199,15 @@ public class EventEditCommand implements ChatCommand {
             case COOLDOWN -> {
                 // !редивент 1 кулдаун 1 час
 
-                if(notEnoughArgs(args,4,sendMessage)) return;
+                if(notEnoughArgs(args,4,sendMessage)) return ARGUMENT_VALIDATION_ERROR;;
                 Long timePeriod = parsePeriod(args[2],args[3], sendMessage);
-                if(timePeriod==null) return;
+                if(timePeriod==null) return ARGUMENT_VALIDATION_ERROR;;
 
                 try{
                     editedEvent = eventService.setCDTimePeriod(eventEntityId,timePeriod,fromId);
                 }catch (EventException | RoleException | MemberException e){
                     send(sendMessage, e.getMessage());
-                    return;
+                    return BUSINESS_LOGIC_ERROR;
                 }
                 int cdPeriod = editedEvent.getCDPeriodSec();
                 String eventDesc = editedEvent.getType().getDescription();
@@ -220,9 +227,9 @@ public class EventEditCommand implements ChatCommand {
 
                 Long timePeriod =null;
                 if(!remove){
-                    if(notEnoughArgs(args,4,sendMessage)) return;
+                    if(notEnoughArgs(args,4,sendMessage)) return null;
                     timePeriod = parsePeriod(args[2],args[3], sendMessage);
-                    if(timePeriod==null) return;
+                    if(timePeriod==null) return null;
                 }
                 try{
                     editedEvent = remove
@@ -230,7 +237,7 @@ public class EventEditCommand implements ChatCommand {
                             : eventService.setNewMembersTimePeriod(eventEntityId,timePeriod,fromId);
                 }catch (EventException | RoleException e){
                     send(sendMessage, e.getMessage());
-                    return;
+                    return BUSINESS_LOGIC_ERROR;
                 }
                 send(sendMessage,"✅Теперь событие №%d («%s») будет срабатывать ".formatted(outerEventId,editedEvent.getType().getDescription())+
                         (remove
@@ -246,10 +253,10 @@ public class EventEditCommand implements ChatCommand {
                   editedEvent = isValidInteger(args[2])
                           ? eventService.setNewRole(eventEntityId,Integer.parseInt(args[2]),fromId)
                           : eventService.setNewRole(eventEntityId,args[2],fromId);
-
-                }catch(EventException | RoleException | MemberException e){
+                }
+                catch(EventException | RoleException | MemberException e){
                     send(sendMessage, e.getMessage());
-                    return;
+                    return BUSINESS_LOGIC_ERROR;
                 }
                 send(sendMessage,
                         "✅Теперь событие №%d («%s») будет срабатывать на роль «%s» и ниже."
@@ -257,12 +264,12 @@ public class EventEditCommand implements ChatCommand {
             }
             case COMMAND -> {
                 // !редивент 1 команда !кик %user%
-
                 try{
                     editedEvent = eventService.setNewCommand(eventEntityId,collectArgumentsSinceIndex(args, 2),fromId);
-                }catch (EventException | CommandException | RoleException | MemberException e){
+                }
+                catch (EventException | CommandException | RoleException | MemberException e){
                     send(sendMessage, e.getMessage());
-                    return;
+                    return BUSINESS_LOGIC_ERROR;
                 }
                 send(sendMessage,
                         "✅Новая команда для события №%d («%s») была успешно установлена."
@@ -271,6 +278,7 @@ public class EventEditCommand implements ChatCommand {
 
             }
         }
+        return SUCCESS;
     }
 
     private void send(SendMessageDto dto, String text) throws ClientException, ApiException{

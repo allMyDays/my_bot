@@ -8,6 +8,8 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
+import com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
 import com.example.my_bot.exception.user.GlobalUserException;
@@ -22,12 +24,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.BUSINESS_LOGIC_ERROR;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "отвязать", alternativeCommandNames = {"unbind"}, defaultRole = SENIOR_MODERATOR, eventable = false)
+@Command(mainCommandName = "отвязать", alternativeCommandNames = {"unbind"}, defaultRole = SENIOR_MODERATOR, eventable = false, adminChatCommandExecutionMode = AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 public class UnBindCommand implements ChatCommand {
 
     @Getter
@@ -50,7 +54,7 @@ public class UnBindCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long fromId = commandMessage.getFromId();;
 
@@ -68,10 +72,11 @@ public class UnBindCommand implements ChatCommand {
 
         try {
             userService.unBindChatFromUser(commandMessage.getCommandRoutingData().getDataBaseChatId(), fromId, userToUnbind);
+
         }catch (MemberException | GlobalUserException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         sendMessage.setText("Вы успешно сняли с %s(%s) привязку этого чата.".formatted(createMention(userToUnbind),userToUnbind==fromId
                          ? "себя"
@@ -79,6 +84,6 @@ public class UnBindCommand implements ChatCommand {
         );
 
         vkChatClient.sendText(sendMessage);
-
+        return SUCCESS;
     }
 }

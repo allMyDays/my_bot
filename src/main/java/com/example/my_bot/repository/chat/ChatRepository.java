@@ -1,4 +1,4 @@
-package com.example.my_bot.repository;
+package com.example.my_bot.repository.chat;
 
 import com.example.my_bot.entity.ChatEntity;
 import org.springframework.data.jpa.repository.JpaRepository;

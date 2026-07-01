@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.limit.RoleRateLimitDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.RoleRateLimitService;
 import com.example.my_bot.service.RoleService;
@@ -19,10 +20,12 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import java.util.Map;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE;
 
 @Slf4j
-@Command(mainCommandName = "лимиты", alternativeCommandNames = {"limits"}, defaultRole = ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "лимиты", alternativeCommandNames = {"limits"}, defaultRole = ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 @RequiredArgsConstructor
 public class AllRateLimitsShowCommand implements ChatCommand {
 
@@ -39,7 +42,7 @@ public class AllRateLimitsShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
@@ -63,7 +66,8 @@ public class AllRateLimitsShowCommand implements ChatCommand {
                     )
             );
 
-
-        } vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
+        }
+        vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
+        return SUCCESS;
     }
 }

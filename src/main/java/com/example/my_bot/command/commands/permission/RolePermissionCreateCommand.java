@@ -7,6 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.permission.RolePermissionSettingResult;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.permission.PermissionException;
 import com.example.my_bot.exception.role.RoleException;
@@ -25,11 +26,13 @@ import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_VALID_INTEGER_MESSAGE;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.*;
 
 @Slf4j
-@Command(mainCommandName = "правороли", alternativeCommandNames = {"roleallow"}, defaultRole = ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "правороли", alternativeCommandNames = {"roleallow"}, defaultRole = ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class RolePermissionCreateCommand implements ChatCommand {
 
@@ -46,7 +49,7 @@ public class RolePermissionCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -56,15 +59,16 @@ public class RolePermissionCreateCommand implements ChatCommand {
         if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
         if(isNumber(args[0])&&!isValidInteger(args[0])){
-                sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
-                vkChatClient.sendText(sendMessage);
-                return;
+            sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
+            vkChatClient.sendText(sendMessage);
+            return ARGUMENT_VALIDATION_ERROR;
         }
 
         RolePermissionSettingResult permissionResult;
+
         try{
             Set<String> userCommandsToProcess = new HashSet<>();
             userCommandsToProcess.add(args[1].trim());
@@ -74,13 +78,15 @@ public class RolePermissionCreateCommand implements ChatCommand {
 
             if(isNumber(args[0])){
                 permissionResult = permissionService.allowCommandForRole(chatId, commandMessage.getFromId(), userCommandsToProcess,Integer.parseInt(args[0]));
-            }else{
+            }
+            else{
                 permissionResult = permissionService.allowCommandForRole(chatId, commandMessage.getFromId(), userCommandsToProcess,args[0]);
             }
-        }catch (PermissionException | RoleException | CommandException e){
+        }
+        catch (PermissionException | RoleException | CommandException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
 
         char chatPrefix = chatService.getChatPrefix(chatId).orElse(ChatUtils.DEFAULT_CHAT_PREFIX);
@@ -100,9 +106,10 @@ public class RolePermissionCreateCommand implements ChatCommand {
         appendSection(result, permissionResult.getNotFound(), "❓",
                 "❌Аргументы:\n", "%s\nНе являются командами или написаны с опечатками.", roleName);
 
+
         sendMessage.setText(result.toString());
         vkChatClient.sendText(sendMessage);
-
+        return SUCCESS;
     }
 
     private void appendSection(StringBuilder result,

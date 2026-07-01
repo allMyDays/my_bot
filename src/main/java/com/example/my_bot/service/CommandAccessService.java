@@ -111,7 +111,8 @@ public class CommandAccessService {
                     log.error("chat {} error: could not find required @Command annotation for normalized string command: {}",chatId, normalizedCommand);
                     forbidden.add(normalizedCommand);
                     continue;
-                }Command annotation = annotationOptional.get();
+                }
+                Command annotation = annotationOptional.get();
                 if(annotation.defaultRole().getRolePriority()>userRolePriority){
                     forbidden.add(normalizedCommand);
                 }else{
@@ -155,14 +156,12 @@ public class CommandAccessService {
 
     public CooldownResult checkCommandRateLimit(@Nullable Long chatId, String userCommand, int userRolePriority, long fromId){
 
-        ChatCommand chatCommand = commandRegistry.getCommand(userCommand)
+        Map.Entry<ChatCommand, Command> chatCommand = commandRegistry.getCommandWithTheAnnotation(userCommand)
                 .orElseThrow(() -> new UserCommandNotFoundException(userCommand));
 
-        String normalizedCommand = commandRegistry.getCommandAnnotation(userCommand)
-                .orElseThrow(() -> new UserCommandNotFoundException(userCommand))
-                .mainCommandName();
+        String normalizedCommand = chatCommand.getValue().mainCommandName();
 
-        CommandCooldown defaultCooldown = chatCommand.getCooldown();
+        CommandCooldown defaultCooldown = chatCommand.getKey().getCooldown();
         if (defaultCooldown == null) {
             throw new IllegalStateException("CommandCooldown not found for " + normalizedCommand);
         }

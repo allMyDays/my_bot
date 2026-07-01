@@ -97,7 +97,6 @@ public class VkChatClient{
                 .sendUserIds(sendMessage.getResponderBot())
                 .peerIds(responsePeerId)
                 .message(sendMessage.getText())
-              //  .attachment("wall" + -237600749 + "_" + 1)
                 .disableMentions(!sendMessage.isAbleMentions())
                 .randomId((int) System.currentTimeMillis());
 
@@ -114,7 +113,9 @@ public class VkChatClient{
         if(sendMessage.getAttachment()!=null){
             query.attachment(sendMessage.getAttachment());
         }
-
+        if(sendMessage.getKeyboard()!=null){
+            query.keyboard(sendMessage.getKeyboard());
+        }
         String jsonResponse = query.executeAsString();
         VkSendResponse resp = GSON.fromJson(jsonResponse, VkSendResponse.class);
         if(resp==null||resp.response==null||resp.response.isEmpty()){

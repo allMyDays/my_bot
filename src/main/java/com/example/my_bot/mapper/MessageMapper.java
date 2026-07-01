@@ -29,6 +29,10 @@ public abstract class MessageMapper {
 
     }
     public CommandMessageDto toCommandMessageDto(@NonNull CommandRoutingData commandRoutingData, long fromId, @Nullable String fullMessage, int conversationMessageId, boolean replyToMessageId, boolean eventOrTimerMode){
+        return toCommandMessageDto(commandRoutingData, fromId, fullMessage, conversationMessageId, replyToMessageId, eventOrTimerMode, false);
+    }
+
+    public CommandMessageDto toCommandMessageDto(@NonNull CommandRoutingData commandRoutingData, long fromId, @Nullable String fullMessage, int conversationMessageId, boolean replyToMessageId, boolean eventOrTimerMode, boolean doNotSendTheMessage){
 
         CommandMessageDto commandMessageDto = new CommandMessageDto();
         commandMessageDto.setUserText(fullMessage);
@@ -37,6 +41,7 @@ public abstract class MessageMapper {
         commandMessageDto.setEventOrTimerMode(eventOrTimerMode);
         commandMessageDto.setConversationMessageId(conversationMessageId);
         commandMessageDto.setReplyToMessageId(replyToMessageId);
+        commandMessageDto.setDoNotSendTheMessage(doNotSendTheMessage);
 
         if(fullMessage!=null){
             fullMessage = fullMessage.trim();
@@ -44,12 +49,11 @@ public abstract class MessageMapper {
             String[] commandAndArgs = UserInputResolver.splitFullCommandIntoTwoElements(rows[0]);
             commandMessageDto.setCommand(commandAndArgs[0].toLowerCase().trim());
             if(commandAndArgs.length==2){
-               commandMessageDto.setFirstRowArguments(commandAndArgs[1].split(" +"));
+                commandMessageDto.setFirstRowArguments(commandAndArgs[1].split(" +"));
             }
             commandMessageDto.setAllRows(rows);
         }
         return commandMessageDto;
-
     }
 
     @Mapping(target = "text", source = "text")

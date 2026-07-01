@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
@@ -20,11 +21,13 @@ import org.springframework.context.annotation.Lazy;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE;
 import static com.example.my_bot.enumeration.member.MemberPresenceType.IN_CHAT;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
-@Command(mainCommandName = "иммунитеты", alternativeCommandNames = {"иммуны", "immunities"}, defaultRole = MODERATOR, eventable = true)
+@Command(mainCommandName = "иммунитеты", alternativeCommandNames = {"иммуны", "immunities"}, defaultRole = MODERATOR, eventable = true, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 public class ImmunitiesShowCommand implements ChatCommand {
 
     @Getter
@@ -50,7 +53,7 @@ public class ImmunitiesShowCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
@@ -84,7 +87,9 @@ public class ImmunitiesShowCommand implements ChatCommand {
         if(!membersWithImmune.isEmpty()){
             sb.append("\n❓На этих пользователей не могут воздействовать управляющие, чья роль ниже или равна роли напротив.");
         }
+
         vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
+        return SUCCESS;
 
     }
 

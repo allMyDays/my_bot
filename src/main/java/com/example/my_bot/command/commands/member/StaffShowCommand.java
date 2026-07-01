@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
@@ -21,11 +22,13 @@ import org.springframework.context.annotation.Lazy;
 
 import java.util.*;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE;
 import static com.example.my_bot.enumeration.member.MemberPresenceType.IN_CHAT;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
-@Command(mainCommandName = "управляющие", alternativeCommandNames = {"staff", "админы"}, defaultRole = MEMBER, eventable = true)
+@Command(mainCommandName = "управляющие", alternativeCommandNames = {"staff", "админы"}, defaultRole = MEMBER, eventable = true, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 public class StaffShowCommand implements ChatCommand {
 
     @Getter
@@ -53,7 +56,7 @@ public class StaffShowCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         GroupActor executorBot = commandMessage.getCommandRoutingData().getExecutorBot();
@@ -66,15 +69,18 @@ public class StaffShowCommand implements ChatCommand {
         TreeMap<Integer, List<MemberEntity>> staffMap =  new TreeMap<>(Comparator.reverseOrder());
         Collection<MemberEntity> membersWithPositiveRole = memberService.getMembersWithPositiveRole(chatId);
 
-        for (MemberEntity memberEntity : membersWithPositiveRole){
+        for(MemberEntity memberEntity: membersWithPositiveRole){
+
             if(memberEntity.getUserId()==-theMainBotId||memberEntity.getUserId().equals(-executorBot.getGroupId())){
                 // отсеиваю самого бота
                 continue;
             }
             staffMap.computeIfAbsent(memberEntity.getRolePriority(), k -> new ArrayList<>()).add(memberEntity);
-            if (!memberEntity.getPresenceType().equals(IN_CHAT)){
+
+            if(!memberEntity.getPresenceType().equals(IN_CHAT)){
                 exitedStaffMembers++;
-            } allStaffMembers.add(memberEntity.getUserId());
+            }
+            allStaffMembers.add(memberEntity.getUserId());
         }
 
         Map<Long, String> memberNamesMap = globalUserService.getUserFullNamesInRequiredCase(allStaffMembers, NameCase.NOMINATIVE);
@@ -96,11 +102,13 @@ public class StaffShowCommand implements ChatCommand {
 
             if(!member.getPresenceType().equals(IN_CHAT)){
                 sb.append(" \uD83D\uDEAA");
-            } sb.append("\n");
+            }sb.append("\n");
 
             }sb.append("\n");
         }
+
         vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
+        return SUCCESS;
 
     }
 

@@ -2,17 +2,17 @@ package com.example.my_bot.service.chat;
 
 import com.example.my_bot.cache.key.GroupIdAndChatIdKey;
 import com.example.my_bot.config.CaffeineCacheManager;
-import com.example.my_bot.dto.ChatDetailsDto;
+import com.example.my_bot.dto.chat.ChatDetailsDto;
 import com.example.my_bot.entity.ChatEntity;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.chat.SwitchChatSettingResult;
-import com.example.my_bot.exception.LogChatException;
+import com.example.my_bot.exception.chat.LogChatException;
 import com.example.my_bot.exception.chat.ChatEntityAlreadyExistsException;
 import com.example.my_bot.exception.chat.ChatEntityNotFoundException;
 import com.example.my_bot.exception.chat.ForbiddenPrefixException;
 import com.example.my_bot.exception.submanager.CannotFindSubmanagerChatIdByMainChatIdException;
 import com.example.my_bot.mapper.ChatMapper;
-import com.example.my_bot.repository.ChatRepository;
+import com.example.my_bot.repository.chat.ChatRepository;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.ChatUtils;
@@ -57,7 +57,7 @@ public class ChatService {
         return chatRepository.findById(chatId);
     }
 
-    private ChatEntity findByChatIdOrThrow(long chatId){
+    public ChatEntity findByChatIdOrThrow(long chatId){
         return getChatEntity(chatId).orElseThrow(()->
                 new ChatEntityNotFoundException(chatId));
 
@@ -71,15 +71,16 @@ public class ChatService {
     }
 
     public ChatDetailsDto getCachedChatDetails(long chatId, boolean createIfAbsent){
+
         return cacheManager.getChatDetailsCache().get(chatId, id -> {
             Optional<ChatEntity> optionalChat = getChatEntity(id);
-            if (optionalChat.isPresent()) {
+            if(optionalChat.isPresent()){
                 return chatMapper.toChatDetailsDto(optionalChat.get());
             }
-            if (createIfAbsent) {
+            if(createIfAbsent){
                 ChatEntity newEntity = selfLink.createNewChatWithStandardSettings(id);
                 return chatMapper.toChatDetailsDto(newEntity);
-            } else {
+            }else{
                 throw new ChatEntityNotFoundException(id);
             }
         });
@@ -107,8 +108,9 @@ public class ChatService {
         });
     }
 
-    public Optional<ChatEntity> findByChatCode(@NonNull String code){
-        return chatRepository.findByChatCode(code);
+    public ChatEntity findByChatCodeOrThrow(@NonNull String code){
+        return chatRepository.findByChatCode(code)
+                .orElseThrow(()-> new ChatEntityNotFoundException(code));
     }
 
     public boolean existsByBoundLogChat(long chatId){
@@ -297,15 +299,14 @@ public class ChatService {
     }
 
     @Transactional
-    public void makeLogChat(@NonNull String currentChatCode, long targetChatId, long fromId){
+    public void setLogChat(@NonNull String currentChatCode, long targetChatId, long fromId){
 
         // !логчат для 6fgf553vd
         //(targetChat)(currentChat)
 
-        ChatEntity currentChat = findByChatCode(currentChatCode)
-                .orElseThrow(()->new LogChatException("Не найдено чатов с таким кодом."));
-        ChatEntity targetChat = findByChatIdOrThrow(targetChatId);
+        ChatEntity currentChat = findByChatCodeOrThrow(currentChatCode);
 
+        ChatEntity targetChat = findByChatIdOrThrow(targetChatId);
 
         if(Objects.equals(currentChat.getChatId(), targetChat.getChatId())){
             throw new LogChatException("Логчат и чат, из которого будут пересылаться сообщения — не могут быть один и тем же чатом.");
@@ -316,13 +317,13 @@ public class ChatService {
             );
         }
         if(memberService.getMemberRolePriority(currentChat.getChatId(),fromId)<SENIOR_ADMINISTRATOR.getRolePriority()){
-            throw new LogChatException("Ваша роль в указанном чате недостаточно высока.");
+            throw new LogChatException("Ваша роль в указанном чате недостаточно высока для того, чтобы установить логчат для него.");
         }
         if(currentChat.getBoundLogChat()!=null){
             throw new LogChatException("К указанному чату уже привязан логчат. Логчат может быть только один на конкретный чат.");
         }
         if(existsByBoundLogChat(currentChat.getChatId())){
-            throw new LogChatException("Указанный вами чат уже является логчатом. Нельзя создать логчат для беседы, которая уже является логчатом.");
+            throw new LogChatException("Указанный вами чат уже является логчатом. Нельзя создать логчат для беседы, которая сама является логчатом.");
         }
         if(!Objects.equals(targetChat.getBoundSubmanagerId(), currentChat.getBoundSubmanagerId())){  // если в обоих чатах 2 основных сообщества, то null.equals(null)
             throw new LogChatException("Логчат может быть установлен только при условии, что в двух чатах работают одинаковые группы (либо субменеджер и тот же субменеджер, либо основное сообщество и основное сообщество).");

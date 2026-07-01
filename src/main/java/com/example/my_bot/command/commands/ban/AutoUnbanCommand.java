@@ -5,6 +5,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.chat.SwitchChatSettingResult;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
@@ -15,10 +16,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.enumeration.chat.SwitchChatSettingResult.ON;
 
-@Command(mainCommandName = "авторазбан",alternativeCommandNames = {"autounban"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "авторазбан",alternativeCommandNames = {"autounban"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode= ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class AutoUnbanCommand implements ChatCommand {
 
@@ -39,21 +42,21 @@ public class AutoUnbanCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
-        long targetChat = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
-        SwitchChatSettingResult switchResult = chatService.switchAutoUnban(targetChat);
+        SwitchChatSettingResult switchResult = chatService.switchAutoUnban(dataBaseChatId);
 
-            vkChatClient.sendText(
-                    messageMapper.toSendMessageDto(
+        vkChatClient.sendText(
+                messageMapper.toSendMessageDto(
                             "✅Теперь мне %s автоматически снимать бан с пользователей, которые были приглашены участниками, которым хватает прав на команду «%s»."
                                     .formatted(switchResult==ON?"можно":"нельзя",UNBAN_COMMAND_NAME),
                             commandMessage
-                    )
-            );
+                )
+        );
 
-
+        return SUCCESS;
     }
 
 }

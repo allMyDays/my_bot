@@ -2,6 +2,7 @@ package com.example.my_bot.annotation;
 
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.enumeration.DefaultRole;
+import com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode;
 import org.springframework.stereotype.Component;
 
 import java.lang.annotation.ElementType;
@@ -13,9 +14,17 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 @Component
 public @interface Command {
+
     String mainCommandName();
+
     String[] alternativeCommandNames();
+
     DefaultRole defaultRole();
+
     boolean eventable();
+
     boolean onlyForConversations() default true;
+
+    AdminChatCommandExecutionMode adminChatCommandExecutionMode();
+
 }

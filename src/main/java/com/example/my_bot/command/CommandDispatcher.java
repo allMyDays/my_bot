@@ -6,10 +6,13 @@ import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.cooldown.CooldownResult;
 import com.example.my_bot.enumeration.DefaultRole;
+import com.example.my_bot.enumeration.HandleAdminChatCommandStatus;
+import com.example.my_bot.exception.command.CommandInitAnnotationAbsentsException;
 import com.example.my_bot.exception.command.ForbiddenCommandForCurrentModeException;
 import com.example.my_bot.exception.command.UnknownCommandException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.*;
+import com.example.my_bot.service.chat.AdminChatActionService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.ChatUtils;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -20,7 +23,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-
+import static com.example.my_bot.enumeration.HandleAdminChatCommandStatus.MUST_BE_EXECUTED_IN_ADMIN_CHAT;
+import static com.example.my_bot.enumeration.HandleAdminChatCommandStatus.NOT_ADMIN_CHAT;
 import static com.example.my_bot.utils.ChatUtils.DEFAULT_CHAT_PREFIX;
 import static com.example.my_bot.utils.TextUtils.*;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
@@ -37,6 +41,7 @@ public class CommandDispatcher {
     private final CommandAccessService commandAccessService;
     private final GlobalUserService userService;
     private final MessageMapper messageMapper;
+    private final AdminChatActionService adminChatActionService;
 
 
     public void dispatch(CommandMessageDto commandMessage) throws ClientException, ApiException {
@@ -70,24 +75,28 @@ public class CommandDispatcher {
                     }
                  }
                  if(mustCutPrefix){
-                   commandName = commandName.substring(1);
+                     commandName = commandName.substring(1);
+                     commandMessage.setUserText(commandMessage.getUserText().substring(1));
                  }
              }
 
-        final String finalCommandName = commandName;
-        Optional<ChatCommand> cmdOptional = commandRegistry.getCommand(finalCommandName);
+        Optional<Map.Entry<ChatCommand, Command>> cmdOptional = commandRegistry.getCommandWithTheAnnotation(commandName);
         if(cmdOptional.isEmpty()){
             if(commandMessage.isEventOrTimerMode()){
-                throw new UnknownCommandException(finalCommandName);
+                throw new UnknownCommandException(commandName);
             }
         }
-        else {
-            ChatCommand mainCommand = cmdOptional.get();
-            Command cmdAnnotation = commandRegistry.getCommandAnnotation(finalCommandName)
-                    .orElseThrow(()->new RuntimeException("Cannot find required init-annotation @Command for "+ finalCommandName));
+        else{
+            ChatCommand mainCommand = cmdOptional.get().getKey();
+            Command cmdAnnotation = cmdOptional.get().getValue();
+
+            HandleAdminChatCommandStatus handleACCmdStatus=
+                    adminChatActionService.handleCommand(cmdAnnotation, commandMessage.getUserText(),commandMessage.getCommandRoutingData());
+
+            if(handleACCmdStatus!=NOT_ADMIN_CHAT&&handleACCmdStatus!=MUST_BE_EXECUTED_IN_ADMIN_CHAT) return;
 
             if(commandMessage.isEventOrTimerMode()&&!cmdAnnotation.eventable()){
-                throw new ForbiddenCommandForCurrentModeException(finalCommandName);
+                throw new ForbiddenCommandForCurrentModeException(commandName);
             }
             if(cmdAnnotation.onlyForConversations()&&chatId==null){
                 sendMessage.setText(

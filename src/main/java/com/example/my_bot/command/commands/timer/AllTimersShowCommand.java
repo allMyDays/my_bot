@@ -7,6 +7,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.TimerEntity;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.timer.TimerType;
 import com.example.my_bot.mapper.MessageMapper;
@@ -25,14 +26,16 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE;
 import static com.example.my_bot.enumeration.timer.TimerType.*;
 import static com.example.my_bot.utils.TextUtils.createMention;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "таймеры", alternativeCommandNames = {"timers"}, defaultRole = SENIOR_MODERATOR, eventable = false)
+@Command(mainCommandName = "таймеры", alternativeCommandNames = {"timers"}, defaultRole = SENIOR_MODERATOR, eventable = false, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 public class AllTimersShowCommand implements ChatCommand {
 
     @Getter
@@ -55,7 +58,7 @@ public class AllTimersShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
@@ -93,6 +96,7 @@ public class AllTimersShowCommand implements ChatCommand {
 
         }
         vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
+        return SUCCESS;
 
     }
 }

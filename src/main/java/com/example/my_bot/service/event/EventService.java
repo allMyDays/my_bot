@@ -18,10 +18,7 @@ import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.enumeration.event.ReactionType;
-import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
-import com.example.my_bot.exception.command.CommandAccessDeniedException;
-import com.example.my_bot.exception.command.CommandArgumentTooLongException;
-import com.example.my_bot.exception.command.UserCommandNotFoundException;
+import com.example.my_bot.exception.command.*;
 import com.example.my_bot.exception.event.*;
 import com.example.my_bot.exception.member.UserNeverBeenInChatException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
@@ -551,7 +548,7 @@ public class EventService {
             throw new CommandArgumentTooLongException(EVENT_COMMAND_ARGUMENT_MAX_LENGTH);
         }
         Command annotation = commandRegistry.getCommandAnnotation(userCommand).orElseThrow(()->
-                new UserCommandNotFoundException(userCommand));
+                new CommandInitAnnotationAbsentsException(userCommand));
         if(!annotation.eventable()){
             throw new CannotUseThisCommandForEventException(annotation.mainCommandName());
         }

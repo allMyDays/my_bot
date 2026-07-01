@@ -8,6 +8,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.event.EventDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.event.EventArgumentType;
 import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.enumeration.user.NameCase;
@@ -30,13 +31,15 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.*;
 import static com.example.my_bot.utils.TimeUtils.formatDurationFromSeconds;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "события", alternativeCommandNames = {"ивенты","events"}, defaultRole = MODERATOR, eventable = true)
+@Command(mainCommandName = "события", alternativeCommandNames = {"ивенты","events"}, defaultRole = MODERATOR, eventable = true, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 public class AllEventsShowCommand implements ChatCommand {
 
     @Getter
@@ -63,7 +66,7 @@ public class AllEventsShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         String[] args = commandMessage.getFirstRowArguments();
         StringBuilder sb = new StringBuilder();
@@ -80,7 +83,7 @@ public class AllEventsShowCommand implements ChatCommand {
             }
             sendMessage.setText(sb.toString());
             vkChatClient.sendText(sendMessage);
-            return;
+            return SUCCESS;
         }
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
@@ -187,7 +190,7 @@ public class AllEventsShowCommand implements ChatCommand {
         }
         sendMessage.setText(sb.toString());
         vkChatClient.sendText(sendMessage);
-
+        return SUCCESS;
     }
     private String addRequiredActionEmojis(@NonNull EventDto eventDto){
         return (eventDto.isDelete()?"\uD83D\uDDD1":"")+

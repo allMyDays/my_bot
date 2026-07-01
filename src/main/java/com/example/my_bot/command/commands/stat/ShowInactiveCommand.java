@@ -9,6 +9,7 @@ import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.inactive.InactiveMemberDto;
 import com.example.my_bot.dto.member.inactive.InactiveMembersResult;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
@@ -32,13 +33,15 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.example.my_bot.constant.MessageConstant.INVALID_TIME_PERIOD_MESSAGE;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.createMention;
 import static com.example.my_bot.utils.TimeUtils.*;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "неактив", alternativeCommandNames = {"inactive"}, defaultRole = MODERATOR, eventable = true)
+@Command(mainCommandName = "неактив", alternativeCommandNames = {"inactive"}, defaultRole = MODERATOR, eventable = true, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 public class ShowInactiveCommand implements ChatCommand {
 
     @Getter
@@ -64,7 +67,7 @@ public class ShowInactiveCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -75,22 +78,25 @@ public class ShowInactiveCommand implements ChatCommand {
 
         if(args.length<2){
             optionalPeriodSec = Optional.of(DEFAULT_INACTIVE_PERIOD_SEC);
-        }else{
+        }
+        else{
             optionalPeriodSec = TimeUtils.toSecondsFromString(args[0], args[1]);
         }
+
         if(optionalPeriodSec.isEmpty()){
             sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
         InactiveMembersResult membersResult;
 
         try{
             membersResult= messageLogService.findCurrentInactiveChatMembers(chatId, optionalPeriodSec.get(), true, null,null);
-        }catch(MemberException | MessageException e){
+        }
+        catch(MemberException | MessageException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
 
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
@@ -131,6 +137,7 @@ public class ShowInactiveCommand implements ChatCommand {
 
         sendMessage.setText(sb.toString());
         vkChatClient.sendText(sendMessage);
+        return SUCCESS;
 
     }
 }

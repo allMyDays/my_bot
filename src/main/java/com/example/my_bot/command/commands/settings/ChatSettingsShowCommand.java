@@ -5,8 +5,9 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
-import com.example.my_bot.dto.ChatDetailsDto;
+import com.example.my_bot.dto.chat.ChatDetailsDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.service.submanager.SubmanagerService;
@@ -19,11 +20,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "настройки", alternativeCommandNames = {"settings"}, defaultRole = MEMBER, eventable = true)
+@Command(mainCommandName = "настройки", alternativeCommandNames = {"settings"}, defaultRole = MEMBER, eventable = true, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 public class ChatSettingsShowCommand implements ChatCommand {
 
     @Getter
@@ -46,7 +49,7 @@ public class ChatSettingsShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         ChatDetailsDto details = chatService.getCachedChatDetails(chatId, false);
@@ -67,6 +70,7 @@ public class ChatSettingsShowCommand implements ChatCommand {
         sb+="\n\n\uD83D\uDDD3 Код чата: "+details.getChatCode();
 
         vkChatClient.sendText(messageMapper.toSendMessageDto(sb,commandMessage));
+        return SUCCESS;
 
     }
 }

@@ -7,6 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.limit.RoleRateLimitDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.limit.RateLimitException;
 import com.example.my_bot.exception.role.RoleException;
@@ -22,11 +23,13 @@ import java.util.List;
 
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_VALID_INTEGER_MESSAGE;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.isValidInteger;
 
 @Slf4j
-@Command(mainCommandName = "удалитьлимит", alternativeCommandNames = {"снятьлимит","remlimit"}, defaultRole = ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "удалитьлимит", alternativeCommandNames = {"снятьлимит","remlimit"}, defaultRole = ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class RateLimitDeleteCommand implements ChatCommand {
 
@@ -41,7 +44,7 @@ public class RateLimitDeleteCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -52,30 +55,33 @@ public class RateLimitDeleteCommand implements ChatCommand {
         if(args.length<1){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
-        }if(!isValidInteger(args[0])){
+            return ARGUMENT_VALIDATION_ERROR;
+        }
+        if(!isValidInteger(args[0])){
             sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
-
-        } List<RoleRateLimitDto> roleLimits;
+            return ARGUMENT_VALIDATION_ERROR;
+        }
+        List<RoleRateLimitDto> roleLimits;
 
         int limitId = Integer.parseInt(args[0]);
 
         if(limitId<1||limitId>(roleLimits = roleRateLimitService.getRoleLimitsSortedByEntityId(chatId)).size()){
             sendMessage.setText("Не найдено лимита с таким ID.");
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         try{
             roleRateLimitService.deleteLimit(roleLimits.get(limitId-1),chatId,fromId);
-        }catch (RateLimitException | RoleException | CommandException e){
+        }
+        catch (RateLimitException | RoleException | CommandException e){
           sendMessage.setText(e.getMessage());
           vkChatClient.sendText(sendMessage);
-          return;
+          return BUSINESS_LOGIC_ERROR;
         }
 
         sendMessage.setText("✅Лимит с ID %d был успешно удалён.".formatted(limitId));
         vkChatClient.sendText(sendMessage);
+        return SUCCESS;
     }
 }

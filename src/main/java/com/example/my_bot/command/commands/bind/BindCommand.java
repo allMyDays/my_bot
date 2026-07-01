@@ -6,9 +6,11 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.client.VkCommunityClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
-import com.example.my_bot.dto.ChatDetailsDto;
+import com.example.my_bot.dto.chat.ChatDetailsDto;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
+import com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.chat.ChatService;
@@ -23,12 +25,13 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 
-import static com.example.my_bot.constant.MessageConstant.CANNOT_USE_THIS_COMMAND_IN_PERSONAL_DIALOGUE;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.BUSINESS_LOGIC_ERROR;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.utils.TextUtils.*;
 
 @Slf4j
-@Command(mainCommandName = "привязать", alternativeCommandNames = {"bind"}, defaultRole = SENIOR_MODERATOR, eventable = false, onlyForConversations = true)
+@Command(mainCommandName = "привязать", alternativeCommandNames = {"bind"}, defaultRole = SENIOR_MODERATOR, eventable = false, onlyForConversations = true, adminChatCommandExecutionMode = AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 public class BindCommand implements ChatCommand {
 
     @Getter
@@ -61,7 +64,7 @@ public class BindCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long originalPeerId = commandMessage.getCommandRoutingData().getOriginalEventPeerId();
         long fromId = commandMessage.getFromId();;
@@ -77,7 +80,7 @@ public class BindCommand implements ChatCommand {
                             .formatted(chatDetails.getChatTitle(), chatDetails.getChatCode())
             );
             vkChatClient.sendText(sendMessage);
-            return;
+            return SUCCESS;
         }
 
         if(!vkCommunityClient.canTheMainBotWriteToUser(fromId)){
@@ -86,9 +89,10 @@ public class BindCommand implements ChatCommand {
                             .formatted(createMention(fromId), createMention(-theMainBotId), GroupUtils.createPrivateMessagesLink(theMainBotId))
             );
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         userService.bindChatToUser(dataBaseChatId, fromId);
+
         try{
             sendMessage.setResponsePeerId(fromId);
             sendMessage.setResponderBot(theMainBotGroupActor);
@@ -97,7 +101,8 @@ public class BindCommand implements ChatCommand {
                     "Теперь вы можете писать команды и получать ответы на них прямо здесь. Команды продолжат выполняться в том чате."
             );
             vkChatClient.sendText(sendMessage);
-        }catch (Exception e){
+        }
+        catch (Exception e){
             log.error("chat {} error: user {} allowed personal messages, but I could not send it to him",dataBaseChatId, fromId, e);
             sendMessage.setResponsePeerId(commandMessage.getCommandRoutingData().getResponsePeerId());
             sendMessage.setResponderBot(commandMessage.getCommandRoutingData().getResponderBot());
@@ -109,6 +114,6 @@ public class BindCommand implements ChatCommand {
             );
             vkChatClient.sendText(sendMessage);
         }
-
+        return SUCCESS;
     }
 }

@@ -2,6 +2,7 @@ package com.example.my_bot.dto.event;
 
 import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.enumeration.event.ReactionType;
+import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.vk.mapping.action.VkAction;
 import com.example.my_bot.vk.mapping.attachment.VkMessageAttachment;
 import com.vk.api.sdk.objects.messages.ForeignMessage;
@@ -10,6 +11,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
+
+import static com.example.my_bot.utils.ChatUtils.convertToPeerId;
 
 
 @Getter
@@ -42,7 +45,15 @@ public class DataForEventExecution {
         this.replyMessage = replyMessage;
         this.userReaction = userReaction;
         this.isSelfDestructingMessage = isSelfDestructingMessage;
-        this.commandRoutingData = commandRoutingData;
+
+        if(commandRoutingData!=null){
+            this.commandRoutingData = new CommandRoutingData(commandRoutingData);
+            this.commandRoutingData.setResponderBot(this.commandRoutingData.getExecutorBot());
+            this.commandRoutingData.setResponsePeerId(convertToPeerId(this.commandRoutingData.getVkApiChatId()));
+        }
+        else{
+            this.commandRoutingData=null;
+        }
 
         this.fwdMessageOwnerId= replyMessage!=null
                 ? replyMessage.getFromId()

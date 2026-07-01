@@ -7,6 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.RoleDto;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.exception.role.RoleException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.RoleService;
@@ -18,12 +19,14 @@ import lombok.extern.slf4j.Slf4j;
 
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_VALID_INTEGER_MESSAGE;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.isNumber;
 import static com.example.my_bot.utils.TextUtils.isValidInteger;
 
 @Slf4j
-@Command(mainCommandName = "удалитьроль", alternativeCommandNames = {"remrole"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "удалитьроль", alternativeCommandNames = {"remrole"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class RoleDeleteCommand implements ChatCommand {
 
@@ -38,7 +41,7 @@ public class RoleDeleteCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -48,7 +51,7 @@ public class RoleDeleteCommand implements ChatCommand {
         if(args.length==0){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
 
         RoleDto assignedRole;
@@ -56,28 +59,28 @@ public class RoleDeleteCommand implements ChatCommand {
         if(isNumber(args[0])&&!isValidInteger(args[0])){
             sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
 
         try{
             if(isNumber(args[0])){
                 assignedRole = roleService.deleteCustomRole(chatId, commandMessage.getFromId(), Integer.parseInt(args[0]));
-            }else{
+            }
+            else{
                 assignedRole = roleService.deleteCustomRole(chatId, commandMessage.getFromId(), String.join(" ", args));
             }
 
-        } catch (RoleException e){
+        }catch (RoleException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
 
         sendMessage.setText( "✅Вы успешно удалили указанную роль. Все участники с этой ролью автоматически получили роль «%s» с приоритетом %d."
                 .formatted(assignedRole.getRoleName(), assignedRole.getRolePriority()));
 
         vkChatClient.sendText(sendMessage);
-
-        }
-
+        return SUCCESS;
+    }
 
 }

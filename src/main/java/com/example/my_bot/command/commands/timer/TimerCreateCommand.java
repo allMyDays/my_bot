@@ -8,6 +8,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.TimerEntity;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.timer.TimerException;
 import com.example.my_bot.mapper.MessageMapper;
@@ -27,13 +28,15 @@ import java.time.LocalTime;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.enumeration.timer.TimerType.*;
 import static com.example.my_bot.utils.TextUtils.collectArgumentsSinceIndex;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "таймер", alternativeCommandNames = {"timer"}, defaultRole = SENIOR_MODERATOR, eventable = false)
+@Command(mainCommandName = "таймер", alternativeCommandNames = {"timer"}, defaultRole = SENIOR_MODERATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 public class TimerCreateCommand implements ChatCommand {
 
     @Getter
@@ -56,7 +59,7 @@ public class TimerCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         String[] args = commandMessage.getFirstRowArguments();
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
@@ -67,7 +70,7 @@ public class TimerCreateCommand implements ChatCommand {
         if(args.length<3){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
         String type = args[0].toLowerCase();
         TimerEntity createdTimer;
@@ -78,42 +81,51 @@ public class TimerCreateCommand implements ChatCommand {
                 if(localTimeOptional.isEmpty()){
                     sendMessage.setText(NOT_VALID_TIME);
                     vkChatClient.sendText(sendMessage);
-                    return;
-                }createdTimer = timerService.createDailyTimer(
-                        chatId, localTimeOptional.get(), collectArgumentsSinceIndex(args, 2), fromId);
+                    return ARGUMENT_VALIDATION_ERROR;
+                }
+                createdTimer = timerService.createDailyTimer(
+                        chatId, localTimeOptional.get(), collectArgumentsSinceIndex(args, 2), fromId
+                );
             }
             else if(EACH.getCyrillicType().equals(type)){
                 Optional<Long> intervalOptional = TimeUtils.parseManyHoursWithMinutes(args[1]);
                 if(intervalOptional.isEmpty()){
                     sendMessage.setText(NOT_VALID_TIME);
                     vkChatClient.sendText(sendMessage);
-                    return;
-                }createdTimer = timerService.createEachTimer(
-                        chatId, intervalOptional.get(),collectArgumentsSinceIndex(args, 2),fromId);
+                    return ARGUMENT_VALIDATION_ERROR;
+                }
+                createdTimer = timerService.createEachTimer(
+                        chatId, intervalOptional.get(),collectArgumentsSinceIndex(args, 2),fromId
+                );
 
-            }else if(ONCE.getCyrillicType().equals(type)){
+            }
+            else if(ONCE.getCyrillicType().equals(type)){
                 if(args.length<4){
                     sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
                     vkChatClient.sendText(sendMessage);
-                    return;
-                }Optional<LocalDateTime> localDateTimeOptional = TimeUtils.parseDateTime(args[1]+" "+args[2]);
+                    return ARGUMENT_VALIDATION_ERROR;
+                }
+                Optional<LocalDateTime> localDateTimeOptional = TimeUtils.parseDateTime(args[1]+" "+args[2]);
+
                 if(localDateTimeOptional.isEmpty()){
                     sendMessage.setText(NOT_VALID_DATE_TIME);
                     vkChatClient.sendText(sendMessage);
-                    return;
-                }createdTimer = timerService.createOnceTimer(
+                    return ARGUMENT_VALIDATION_ERROR;
+                }
+                createdTimer = timerService.createOnceTimer(
                         chatId, localDateTimeOptional.get(), collectArgumentsSinceIndex(args, 3), fromId);
 
-            }else{
+            }
+            else{
                 sendMessage.setText("Вы ввели несуществующий тип таймера.");
                 vkChatClient.sendText(sendMessage);
-                return;
+                return BUSINESS_LOGIC_ERROR;
             }
-        }catch (TimerException | CommandException e){
+        }
+        catch (TimerException | CommandException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
-
+            return BUSINESS_LOGIC_ERROR;
         }
 
         String dateToShow = TimeUtils.getFormattedStringDateTimeWithTimeZone(
@@ -125,6 +137,7 @@ public class TimerCreateCommand implements ChatCommand {
                 "&#8618; Команда: %s".formatted(createdTimer.getFullCommand()));
 
         vkChatClient.sendText(sendMessage);
+        return SUCCESS;
 
     }
 }

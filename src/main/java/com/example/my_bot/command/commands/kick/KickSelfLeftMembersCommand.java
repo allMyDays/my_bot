@@ -7,6 +7,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.MemberEntity;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.MemberService;
@@ -21,11 +22,13 @@ import org.springframework.data.domain.Page;
 
 import java.util.Set;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.*;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 
 @Slf4j
 @RequiredArgsConstructor
-@Command(mainCommandName = "киквышедших", alternativeCommandNames = {"kickleft"}, defaultRole = ADMINISTRATOR, eventable = true)
+@Command(mainCommandName = "киквышедших", alternativeCommandNames = {"kickleft"}, defaultRole = ADMINISTRATOR, eventable = true, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 public class KickSelfLeftMembersCommand implements ChatCommand {
 
     @Getter
@@ -50,7 +53,7 @@ public class KickSelfLeftMembersCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
@@ -64,8 +67,11 @@ public class KickSelfLeftMembersCommand implements ChatCommand {
                         .toList()
         );
 
-        vkChatClient.sendText(messageMapper.toSendMessageDto(
-                "✅Было исключено %d из %d вышедших, но не исключённых участников с ролью ниже чем «%s»."
-                .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName()),commandMessage));
+        vkChatClient.sendText(
+                messageMapper.toSendMessageDto(
+                        "✅Было исключено %d из %d вышедших, но не исключённых участников с ролью ниже чем «%s»."
+                                .formatted(kickedMembers.size(), allRequiredMembers.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName()),commandMessage)
+        );
+        return SUCCESS;
     }
 }

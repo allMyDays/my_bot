@@ -3,7 +3,7 @@ package com.example.my_bot.service.timer;
 import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.config.CaffeineCacheManager;
-import com.example.my_bot.dto.ChatDetailsDto;
+import com.example.my_bot.dto.chat.ChatDetailsDto;
 import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.dto.submanager.SubmanagerDto;
 import com.example.my_bot.entity.TimerEntity;

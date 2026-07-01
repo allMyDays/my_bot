@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.chat.SwitchChatSettingResult;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
@@ -16,10 +17,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.enumeration.chat.SwitchChatSettingResult.ON;
 
-@Command(mainCommandName = "ответы",alternativeCommandNames = {"reply"}, defaultRole = ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "ответы",alternativeCommandNames = {"reply"}, defaultRole = ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class MessageReplyingSwitchCommand implements ChatCommand {
 
@@ -41,17 +44,20 @@ public class MessageReplyingSwitchCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         SwitchChatSettingResult switchResult = chatService.switchMessageReplying(chatId);
 
         SendMessageDto sendMessage =  messageMapper.toSendMessageDto(
                 "Теперь мне %s отвечать на ваши команды посредством пересыла вашего сообщения в чате."
-                        .formatted((switchResult==ON?"можно":"нельзя")), commandMessage
+                        .formatted((switchResult==ON?"можно":"нельзя")),
+                commandMessage
         );
         sendMessage.setReplyToMessageId(switchResult==ON);
+
         vkChatClient.sendText(sendMessage);
+        return SUCCESS;
 
     }
 

@@ -7,6 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.RoleRateLimitEntity;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.exception.command.CommandException;
 import com.example.my_bot.exception.limit.RateLimitException;
 import com.example.my_bot.exception.role.RoleException;
@@ -23,11 +24,13 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.*;
 
 @Slf4j
-@Command(mainCommandName = "лимит", alternativeCommandNames = {"rolelimit"}, defaultRole = ADMINISTRATOR, eventable = false)
+@Command(mainCommandName = "лимит", alternativeCommandNames = {"rolelimit"}, defaultRole = ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class RoleRateLimitCreateCommand implements ChatCommand {
 
@@ -44,7 +47,7 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         String[] args = commandMessage.getFirstRowArguments();
@@ -52,39 +55,42 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
-
         if(args.length<5){                       // !лимит !пинг 3 6 часов 80
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
 
         if(!isValidInteger(args[1])||(isNumber(args[4])&&!isValidInteger(args[4]))){
-                sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
-                vkChatClient.sendText(sendMessage);
-                return;
+            sendMessage.setText(NOT_VALID_INTEGER_MESSAGE);
+            vkChatClient.sendText(sendMessage);
+            return ARGUMENT_VALIDATION_ERROR;
         }
+
         Optional<Long> timePeriodInSeconds =  TimeUtils.toSecondsFromString(args[2],args[3]);
         if(timePeriodInSeconds.isEmpty()){
             sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
 
         RoleRateLimitEntity createdLimit;
+
         try{
             int maxUsage = Integer.parseInt(args[1]);
             boolean isPersonal = args.length==6&&args[5].equalsIgnoreCase("личный");
 
             if(isNumber(args[4])){
                 createdLimit = roleRateLimitService.createCommandRateLimit(chatId,fromId,args[0],Integer.parseInt(args[4]), maxUsage,timePeriodInSeconds.get(),isPersonal);
-            }else{
+            }
+            else{
                 createdLimit = roleRateLimitService.createCommandRateLimit(chatId,fromId,args[0],args[4], maxUsage,timePeriodInSeconds.get(),isPersonal);
             }
-        }catch (RateLimitException | RoleException | CommandException e){
+        }
+        catch (RateLimitException | RoleException | CommandException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
-            return;
+            return BUSINESS_LOGIC_ERROR;
         }
         String result = "✅Успешно добавлен новый лимит в %d использований за %s для команды «%s», воздействующий только на роль «%s»."
                 .formatted(createdLimit.getMaxUsage(), TimeUtils.formatDurationFromSeconds(createdLimit.getTimePeriodSec(),true),
@@ -98,8 +104,7 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
 
         sendMessage.setText(result);
         vkChatClient.sendText(sendMessage);
-
+        return SUCCESS;
     }
-
 
 }

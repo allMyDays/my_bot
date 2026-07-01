@@ -15,6 +15,7 @@ import java.util.Optional;
 @Setter
 public class CommandMessageDto{
 
+    @Getter
     private String userText;
 
     @Getter
@@ -49,7 +50,7 @@ public class CommandMessageDto{
 
 
 
-    public Optional<String> getUserText() {
+    public Optional<String> getOptionalUserText() {
         return Optional.ofNullable(userText);
     }
 

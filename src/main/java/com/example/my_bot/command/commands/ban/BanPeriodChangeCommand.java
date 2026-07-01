@@ -6,6 +6,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.TimeUtils;
@@ -18,9 +19,12 @@ import org.springframework.context.annotation.Lazy;
 
 import static com.example.my_bot.constant.MessageConstant.INVALID_TIME_PERIOD_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.ARGUMENT_VALIDATION_ERROR;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 
-@Command(mainCommandName = "срокбана",alternativeCommandNames = {"banPeriod"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = true)
+@Command(mainCommandName = "срокбана",alternativeCommandNames = {"banPeriod"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = true, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
 public class BanPeriodChangeCommand implements ChatCommand {
 
@@ -42,7 +46,7 @@ public class BanPeriodChangeCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         String[] args = commandMessage.getFirstRowArguments();
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
@@ -54,24 +58,29 @@ public class BanPeriodChangeCommand implements ChatCommand {
             chatService.disableDefaultBanPeriod(chatId);
             sendMessage.setText("✅Дефолтный срок бана был отключён. Теперь, при команде «%s» без аргументов времени, я буду выдавать вечный бан.".formatted(banCommandName));
             vkChatClient.sendText(sendMessage);
-            return;
-        }if(args.length<2){
+            return SUCCESS;
+        }
+        if(args.length<2){
             sendMessage.setText(NOT_ENOUGH_ARGUMENTS_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
+
         Long banPeriodInSeconds = TimeUtils.toSecondsFromString(args[0],args[1]).orElse(null);
         if(banPeriodInSeconds==null){
             sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
             vkChatClient.sendText(sendMessage);
-            return;
+            return ARGUMENT_VALIDATION_ERROR;
         }
+
         long newPeriodSeconds = chatService.setDefaultBanPeriod(chatId, banPeriodInSeconds);
 
         sendMessage.setText("✅Дефолтный срок бана был успешно установлен на %s Теперь, при команде «%s» без аргументов времени, я буду выдавать бан на этот период."
                 .formatted(TimeUtils.formatDurationFromSeconds(newPeriodSeconds,true),banCommandName));
 
         vkChatClient.sendText(sendMessage);
+
+        return SUCCESS;
 
     }
 

@@ -5,6 +5,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.*;
@@ -23,13 +24,15 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE;
 import static com.example.my_bot.service.permission.MemberPermissionService.getMaxCustomMemberPermissionsCount;
 import static com.example.my_bot.service.permission.RolePermissionService.getMaxCustomRolePermissionsCount;
 import static com.example.my_bot.utils.ChatUtils.DEFAULT_CHAT_PREFIX;
 
 @Slf4j
-@Command(mainCommandName = "права", alternativeCommandNames = {"разрешения"}, defaultRole = MODERATOR, eventable = true)
+@Command(mainCommandName = "права", alternativeCommandNames = {"разрешения"}, defaultRole = MODERATOR, eventable = true, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 @RequiredArgsConstructor
 public class AllCustomPermissionsShowCommand implements ChatCommand {
 
@@ -50,7 +53,7 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
@@ -106,6 +109,7 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
         });
 
         vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(), commandMessage));
+        return SUCCESS;
     }
 
 

@@ -4,6 +4,4 @@ public enum SwitchChatSettingResult {
 
     ON, OFF
 
-
-
 }

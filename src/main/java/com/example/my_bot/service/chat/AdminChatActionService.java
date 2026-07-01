@@ -1,0 +1,232 @@
+package com.example.my_bot.service.chat;
+
+import com.example.my_bot.annotation.Command;
+import com.example.my_bot.client.VkChatClient;
+import com.example.my_bot.command.ChatCommand;
+import com.example.my_bot.command.CommandDispatcher;
+import com.example.my_bot.command.CommandRegistry;
+import com.example.my_bot.config.CaffeineCacheManager;
+import com.example.my_bot.dto.SendMessageDto;
+import com.example.my_bot.dto.chat.AdminChatDto;
+import com.example.my_bot.dto.chat.ChatDetailsDto;
+import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.dto.command.CommandRoutingData;
+import com.example.my_bot.dto.cooldown.CooldownResult;
+import com.example.my_bot.dto.submanager.SubmanagerDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
+import com.example.my_bot.enumeration.HandleAdminChatCommandStatus;
+import com.example.my_bot.enumeration.key.ButtonPayloadKey;
+import com.example.my_bot.exception.command.UserCommandNotFoundException;
+import com.example.my_bot.mapper.ChatMapper;
+import com.example.my_bot.mapper.MessageMapper;
+import com.example.my_bot.resolver.UserInputResolver;
+import com.example.my_bot.service.CommandAccessService;
+import com.example.my_bot.service.MemberService;
+import com.example.my_bot.service.VkKeyboardActionService;
+import com.example.my_bot.service.submanager.SubmanagerService;
+import com.example.my_bot.utils.TextUtils;
+import com.example.my_bot.vk.mapping.button.VkButtonConfig;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.vk.api.sdk.client.actors.GroupActor;
+import com.vk.api.sdk.exceptions.ApiException;
+import com.vk.api.sdk.exceptions.ClientException;
+import com.vk.api.sdk.objects.messages.KeyboardButtonColor;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+
+import static com.example.my_bot.enumeration.HandleAdminChatCommandStatus.*;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.*;
+import static com.example.my_bot.enumeration.key.ButtonPayloadKey.*;
+import static com.example.my_bot.utils.ChatUtils.convertToPeerId;
+import static com.example.my_bot.utils.KeyboardUtils.createButtonPayload;
+
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class AdminChatActionService {
+
+    private final ChatService chatService;
+    private final AdminChatService adminChatService;
+    private final MessageMapper messageMapper;
+    private final VkKeyboardActionService keyboardService;
+    private final VkChatClient vkChatClient;
+    private final CommandRegistry commandRegistry;
+    private final CommandAccessService commandAccessService;
+    private final MemberService memberService;
+    private final GroupActor theMainBotGroupActor;
+    private final SubmanagerService submanagerService;
+
+    private final static int MAX_CHAT_BUTTONS_PER_ONE_RAW = 3;
+
+    private final Cache<Long, String> sentCommandCache = Caffeine.newBuilder()
+            .expireAfterWrite(5, TimeUnit.MINUTES)
+            .build();
+
+
+    public HandleAdminChatCommandStatus handleCommand(@NonNull Command cmdAnnotation, @NonNull String fullCommandWithNoPrefix, @NonNull CommandRoutingData routingData) throws ClientException, ApiException {
+
+        long dataBaseChatId = routingData.getDataBaseChatId();
+
+        AdminChatDto adminChat = adminChatService.getAdminChatData(dataBaseChatId).orElse(null);
+        if(adminChat==null) return NOT_ADMIN_CHAT;
+
+        if(cmdAnnotation.adminChatCommandExecutionMode()==ONLY_IN_ADMIN_CHAT) return MUST_BE_EXECUTED_IN_ADMIN_CHAT;
+
+        routingData = new CommandRoutingData(routingData);
+        routingData.setResponsePeerId(convertToPeerId(routingData.getVkApiChatId()));
+        routingData.setResponderBot(routingData.getExecutorBot());
+
+        SendMessageDto sendMessage = messageMapper.toSendMessageDto(
+                "Выберите чат, в котором нужно применить эту команду.", routingData
+        );
+
+        List<VkButtonConfig> chatButtons = new ArrayList<>(
+                adminChat.getBoundChats().stream()
+                        .map(id -> chatService.getCachedChatDetails(id, false))
+                        .map(chat ->
+                                new VkButtonConfig(
+                                        chat.getChatTitle(),
+                                        KeyboardButtonColor.POSITIVE,
+                                        createButtonPayload(ADMIN_CHAT_EXECUTE_COMMAND_IN_ONE_BOUND_CHAT, chat.getChatId().toString())
+                                )
+                        )
+                        .toList()
+        );
+
+        if(chatButtons.size()>1&&cmdAnnotation.adminChatCommandExecutionMode()==ALL_BOUND_CHATS_AT_ONCE){
+            chatButtons.add(new VkButtonConfig(
+                            "Все привязанные чаты",
+                            KeyboardButtonColor.NEGATIVE,
+                            createButtonPayload(ADMIN_CHAT_EXECUTE_COMMAND_IN_ALL_BOUND_CHATS, "")
+                    )
+            );
+        }
+
+        chatButtons.add(new VkButtonConfig(
+                "Этот админ-чат",
+                KeyboardButtonColor.PRIMARY,
+                createButtonPayload(ADMIN_CHAT_EXECUTE_COMMAND_IN_THIS_ADMIN_CHAT, "")
+                )
+        );
+
+        sendMessage.setKeyboard(keyboardService.createAutoLayoutKeyboard(chatButtons, MAX_CHAT_BUTTONS_PER_ONE_RAW));
+        vkChatClient.sendText(sendMessage);
+
+        sentCommandCache.put(dataBaseChatId, fullCommandWithNoPrefix);
+
+        return VK_KEYBOARD_IS_SENT;
+    }
+
+
+    public void handleClickedAdminChatButton(@NonNull CommandRoutingData routingData, @NonNull ButtonPayloadKey key, @NonNull String value, long fromId) throws ClientException, ApiException {
+
+        long adminChatDataBaseChatId = routingData.getDataBaseChatId();
+
+        AdminChatDto adminChat = adminChatService.getAdminChatData(adminChatDataBaseChatId).orElse(null);
+        if(adminChat==null){
+            log.warn("admin chat button has been just clicked, but the chat {} is not an admin chat", adminChatDataBaseChatId);
+            return;
+        }
+
+        String fullCommandWithNoPrefix = sentCommandCache.asMap().remove(adminChat.getChatId());
+        if(fullCommandWithNoPrefix==null){
+            log.info("admin chat button has been clicked, but couldn't find the command that's required to be executed");
+            return;
+        }
+        String[] commandAndArgs = UserInputResolver.splitFullCommandIntoTwoElements(fullCommandWithNoPrefix);
+
+        Map.Entry<ChatCommand, Command> commandData = commandRegistry.getCommandWithTheAnnotation(commandAndArgs[0])
+                .orElseThrow(()->new UserCommandNotFoundException(commandAndArgs[0]));
+
+        Set<Long> chatsToExecuteIn;
+
+        if(key.equals(ADMIN_CHAT_EXECUTE_COMMAND_IN_THIS_ADMIN_CHAT)){
+            chatsToExecuteIn = Set.of(adminChatDataBaseChatId);
+        }
+        else if(key.equals(ADMIN_CHAT_EXECUTE_COMMAND_IN_ONE_BOUND_CHAT)){
+            if(!TextUtils.isValidLong(value)){
+                log.warn("admin chat button 'in one chat' has been clicked, but come chat id is invalid: {}", value);
+                return;
+            }
+            long chatToExecuteIn = Long.parseLong(value);
+
+            if(!adminChat.getBoundChats().contains(chatToExecuteIn)){
+                log.warn("admin chat button 'in one chat' has been clicked, but come chat {} is not bound to the admin chat {}", chatToExecuteIn, adminChat.getChatId());
+                return;
+            }
+            chatsToExecuteIn = Set.of(chatToExecuteIn);
+        }
+        else{
+            if(commandData.getValue().adminChatCommandExecutionMode()==ONLY_SINGLE_BOUND_CHAT_AT_ONCE){
+                log.warn("admin chat button 'in all chats' has been clicked, but the required command {} does not support such mode", commandData.getValue().mainCommandName());
+                return;
+            }
+            chatsToExecuteIn = adminChat.getBoundChats();
+        }
+
+        StringBuilder result = new StringBuilder();
+
+        routingData = new CommandRoutingData(routingData);
+        routingData.setResponsePeerId(convertToPeerId(routingData.getVkApiChatId()));
+        routingData.setResponderBot(routingData.getExecutorBot());
+
+        for (long currentChatToExecuteIn: chatsToExecuteIn){
+
+            ChatDetailsDto currentChatDetails = chatService.getCachedChatDetails(currentChatToExecuteIn, false);
+            result.append("\uD83D\uDCCB Чат «%s»: ".formatted(currentChatDetails.getChatTitle()));
+
+            int userRolePriority = memberService.getMemberRolePriority(currentChatToExecuteIn, fromId);
+            boolean canExecute = commandAccessService.checkCommandAuthorization(currentChatToExecuteIn, commandData.getValue().mainCommandName(),userRolePriority,fromId);
+            if(!canExecute){
+                result.append("у вас нет доступа к этой команде.\n");
+                continue;
+            }
+            CooldownResult cooldownResult = commandAccessService.checkCommandRateLimit(currentChatToExecuteIn,commandData.getValue().mainCommandName(),userRolePriority,fromId);
+            if(!cooldownResult.canExecuteCommand()){
+                result.append("временной лимит на эту команду.\n");
+                continue;
+            }
+
+            long vkApiChatId = currentChatToExecuteIn;
+            GroupActor executorBot = theMainBotGroupActor;
+
+            routingData.setDataBaseChatId(currentChatToExecuteIn);
+
+            if(currentChatDetails.getBoundSubmanagerId()!=null){
+                SubmanagerDto subInfo = submanagerService.getSubmanagerOrThrowIfAbsents(currentChatDetails.getBoundSubmanagerId());
+                vkApiChatId = chatService.getSubmanagerChatIdByMainChatId(subInfo.getGroupId(), currentChatToExecuteIn);
+                executorBot = subInfo.getGroupActor();
+            }
+
+            routingData.setVkApiChatId(vkApiChatId);
+            routingData.setExecutorBot(executorBot);
+
+            CommandExecutionStatus executionResult;
+            try{
+                executionResult = commandData.getKey().execute(
+                        messageMapper.toCommandMessageDto(routingData,fromId,fullCommandWithNoPrefix,0, false, false, chatsToExecuteIn.size()>1)
+                );
+            }catch (Exception e){
+                log.warn("error execution command {} in admin chat {}", commandData.getValue(),adminChat.getChatId(), e);
+                result.append("произошла неизвестная ошибка.\n");
+                continue;
+            }
+            result.append(executionResult.getDescription()).append("\n");
+        }
+
+        if(chatsToExecuteIn.size()>1){
+            routingData.setDataBaseChatId(adminChatDataBaseChatId);
+            vkChatClient.sendText(messageMapper.toSendMessageDto(result.toString(), routingData));
+        }
+    }
+
+
+
+}

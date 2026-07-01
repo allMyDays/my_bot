@@ -6,6 +6,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.enumeration.event.ReactionType;
 import com.example.my_bot.mapper.MessageMapper;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -16,11 +17,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
-import static com.example.my_bot.enumeration.DefaultRole.MEMBER;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_IN_ADMIN_CHAT;
 
 @Slf4j
-@Command(mainCommandName = "реакции", alternativeCommandNames = {"reactions"}, defaultRole = ADMINISTRATOR, eventable = true, onlyForConversations = false)
+@Command(mainCommandName = "реакции", alternativeCommandNames = {"reactions"}, defaultRole = ADMINISTRATOR, eventable = true, onlyForConversations = false, adminChatCommandExecutionMode = ONLY_IN_ADMIN_CHAT)
 @RequiredArgsConstructor
 public class ReactionsCommand implements ChatCommand {
 
@@ -38,7 +40,7 @@ public class ReactionsCommand implements ChatCommand {
     }
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         ReactionType[] reactions =ReactionType.values();
 
@@ -51,9 +53,10 @@ public class ReactionsCommand implements ChatCommand {
                     .append("\n");
 
         }
+
         sb.append("Слева указаны эмоджи, справа — ID реакции. Каждый тип можно использовать в событии.");
 
         vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(),commandMessage));
-
+        return SUCCESS;
     }
 }

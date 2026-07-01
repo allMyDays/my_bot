@@ -7,7 +7,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.enumeration.chat.SwitchChatSettingResult;
+import com.example.my_bot.enumeration.CommandExecutionStatus;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.GroupUtils;
@@ -19,11 +19,13 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 
+import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
+import static com.example.my_bot.enumeration.CommandExecutionStatus.VK_API_ERROR;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
-import static com.example.my_bot.enumeration.chat.SwitchChatSettingResult.ON;
+import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
-@Command(mainCommandName = "лсответы",alternativeCommandNames = {"dmresponses"}, defaultRole = MODERATOR, eventable = true)
+@Command(mainCommandName = "лсответы",alternativeCommandNames = {"dmresponses"}, defaultRole = MODERATOR, eventable = true, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 public class DMResponsesSwitchCommand implements ChatCommand {
 
     @Getter
@@ -55,7 +57,7 @@ public class DMResponsesSwitchCommand implements ChatCommand {
 
 
     @Override
-    public void execute(CommandMessageDto commandMessage) throws ClientException, ApiException{
+    public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException{
 
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
         long fromId = commandMessage.getFromId();
@@ -70,7 +72,7 @@ public class DMResponsesSwitchCommand implements ChatCommand {
                             .formatted(createMention(fromId), createMention(-theMainBotId), GroupUtils.createPrivateMessagesLink(theMainBotId))
             );
             vkChatClient.sendText(sendMessage);
-            return;
+            return VK_API_ERROR;
         }
         memberService.setDmResponsesSetting(chatId, fromId, !isEnabled);
 
@@ -84,13 +86,13 @@ public class DMResponsesSwitchCommand implements ChatCommand {
             sendMessage.setResponsePeerId(fromId);
             sendMessage.setResponderBot(theMainBotGroupActor);
             sendMessage.setReplyToMessageId(false);
-        }else{
+        }
+        else{
             sendMessage.setResponsePeerId(commandMessage.getCommandRoutingData().getOriginalEventPeerId());
             sendMessage.setResponderBot(commandMessage.getCommandRoutingData().getReceivedEventBot());
         }
 
         vkChatClient.sendText(sendMessage);
-
+        return SUCCESS;
     }
-
 }
