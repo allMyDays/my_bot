@@ -7,7 +7,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.MemberEntity;
-import com.example.my_bot.enumeration.CommandExecutionStatus;
+import com.example.my_bot.enumeration.command.CommandExecutionStatus;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.MemberService;
@@ -22,7 +22,7 @@ import org.springframework.data.domain.Page;
 
 import java.util.Set;
 
-import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
+import static com.example.my_bot.enumeration.command.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.*;
 import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 

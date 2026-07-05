@@ -17,6 +17,7 @@ import java.time.Instant;
         indexes = @Index(name = "idx_bound_chat", columnList = "bound_chat")
 )
 public class GlobalUserEntity {
+
     @Id
     private Long userId;
 

@@ -7,7 +7,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.TimerEntity;
-import com.example.my_bot.enumeration.CommandExecutionStatus;
+import com.example.my_bot.enumeration.command.CommandExecutionStatus;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.timer.TimerType;
 import com.example.my_bot.mapper.MessageMapper;
@@ -26,7 +26,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-import static com.example.my_bot.enumeration.CommandExecutionStatus.SUCCESS;
+import static com.example.my_bot.enumeration.command.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ONLY_SINGLE_BOUND_CHAT_AT_ONCE;
 import static com.example.my_bot.enumeration.timer.TimerType.*;

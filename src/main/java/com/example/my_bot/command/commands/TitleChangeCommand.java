@@ -7,7 +7,7 @@ import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.enumeration.CommandExecutionStatus;
+import com.example.my_bot.enumeration.command.CommandExecutionStatus;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.chat.ChatService;
 import com.vk.api.sdk.exceptions.ApiException;
@@ -19,7 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 
 import static com.example.my_bot.constant.MessageConstant.*;
-import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
+import static com.example.my_bot.enumeration.command.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.vk.enumeration.ChatErrorCode.YOU_ARE_NOT_CHAT_ADMIN;

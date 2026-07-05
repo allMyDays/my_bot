@@ -8,7 +8,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
-import com.example.my_bot.enumeration.CommandExecutionStatus;
+import com.example.my_bot.enumeration.command.CommandExecutionStatus;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.ban.BanException;
@@ -32,7 +32,7 @@ import java.time.Instant;
 import java.util.Optional;
 
 import static com.example.my_bot.constant.MessageConstant.*;
-import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
+import static com.example.my_bot.enumeration.command.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_MODERATOR;
 import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.createMention;

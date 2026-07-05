@@ -5,6 +5,7 @@ import com.example.my_bot.dto.command.UserCommandValidationResult;
 import com.example.my_bot.enumeration.key.ButtonPayloadKey;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -16,14 +17,18 @@ import java.util.stream.Collectors;
 public class CommandRegistry {
 
     private final Map<String, Map.Entry<ChatCommand, Command>> allCommandsWithTheAnnotations = new HashMap<>();
+    private final Map<Class<?>, Command> annotationByClass = new HashMap<>();
 
     @Autowired
     public CommandRegistry(List<ChatCommand> chatCommandList) {
 
         for (ChatCommand chatCommand : chatCommandList) {
 
-            Command annotation = chatCommand.getClass().getAnnotation(Command.class);
+            Class<?> targetClass = AopUtils.getTargetClass(chatCommand);
+            Command annotation = targetClass.getAnnotation(Command.class);
             if (annotation != null) {
+                annotationByClass.put(targetClass, annotation);
+
                 AbstractMap.SimpleEntry<ChatCommand, Command> value = new AbstractMap.SimpleEntry<>(chatCommand, annotation);
                 allCommandsWithTheAnnotations.put(annotation.mainCommandName().toLowerCase(), value);
 
@@ -49,6 +54,9 @@ public class CommandRegistry {
         return getCommandWithTheAnnotation(commandName.toLowerCase().trim()).map(Map.Entry::getValue);
     }
 
+    public Optional<Command> getCommandAnnotation(@NonNull Class<?> clazz) {
+        return Optional.ofNullable(annotationByClass.get(clazz));
+    }
 
     public Optional<String> getMainNameOfCommand(@NonNull String commandName) {
         return getCommandAnnotation(commandName.toLowerCase().trim()).map(Command::mainCommandName);

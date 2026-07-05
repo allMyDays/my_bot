@@ -3,8 +3,7 @@ package com.example.my_bot.command;
 
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.enumeration.CommandExecutionStatus;
-import com.example.my_bot.enumeration.DefaultRole;
+import com.example.my_bot.enumeration.command.CommandExecutionStatus;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 

@@ -9,7 +9,7 @@ import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.entity.MemberEntity;
-import com.example.my_bot.enumeration.CommandExecutionStatus;
+import com.example.my_bot.enumeration.command.CommandExecutionStatus;
 import com.example.my_bot.enumeration.DefaultRole;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.member.MemberException;
@@ -29,7 +29,7 @@ import org.springframework.data.domain.Page;
 import java.util.Set;
 
 import static com.example.my_bot.constant.MessageConstant.MEMBER_ARGUMENT_ABSENTS;
-import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
+import static com.example.my_bot.enumeration.command.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.enumeration.DefaultRole.MODERATOR;
 import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;

@@ -7,7 +7,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.entity.TimerEntity;
-import com.example.my_bot.enumeration.CommandExecutionStatus;
+import com.example.my_bot.enumeration.command.CommandExecutionStatus;
 import com.example.my_bot.exception.timer.TimerException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.timer.TimerService;
@@ -20,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 
 import static com.example.my_bot.constant.MessageConstant.*;
-import static com.example.my_bot.enumeration.CommandExecutionStatus.*;
+import static com.example.my_bot.enumeration.command.CommandExecutionStatus.*;
 import static com.example.my_bot.enumeration.DefaultRole.ADMINISTRATOR;
 import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
 import static com.example.my_bot.utils.TextUtils.isValidInteger;

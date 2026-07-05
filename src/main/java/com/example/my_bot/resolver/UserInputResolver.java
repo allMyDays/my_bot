@@ -137,18 +137,25 @@ public class UserInputResolver {
         return Optional.empty();
     }
 
-
-
-    
-    
-
-
-
-
-
-
-
-
+    /**
+     * Заменяет первое слово в строке на newFirstWord.
+     * Пример: replaceCommand("!напиши сука", "скажи") -> "скажи сука"
+     *
+     * @param text          исходная строка (может быть null или пустой)
+     * @param newFirstWord  новое первое слово
+     * @return строка с заменённым первым словом
+     */
+    public static String replaceCommand(@NonNull String text, @NonNull String newFirstWord){
+        if(text.isEmpty()) {
+            return newFirstWord;
+        }
+        int spaceIndex = text.indexOf(' ');
+        if (spaceIndex == -1) {
+            return newFirstWord;
+        } else {
+            return newFirstWord + text.substring(spaceIndex);
+        }
+    }
 
 }
 

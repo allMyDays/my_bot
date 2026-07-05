@@ -1,4 +1,4 @@
-package com.example.my_bot.enumeration;
+package com.example.my_bot.enumeration.command;
 
 public enum HandleAdminChatCommandStatus {
 
