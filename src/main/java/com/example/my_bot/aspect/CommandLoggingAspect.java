@@ -4,6 +4,7 @@ import com.example.my_bot.annotation.Command;
 import com.example.my_bot.command.CommandRegistry;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.service.CommandLogService;
+import com.example.my_bot.service.chat.AdminChatActionService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ public class CommandLoggingAspect {
 
     private final CommandLogService commandLogService;
     private final CommandRegistry commandRegistry;
+    private final AdminChatActionService adminChatActionService;
 
     @Around("execution(* com.example.my_bot.command.ChatCommand.execute(..))")
     public Object logCommand(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -31,21 +33,22 @@ public class CommandLoggingAspect {
         Optional<Command> cmdAnnotation = commandRegistry.getCommandAnnotation(clazz);
 
         Long dataBaseChatId = dto.getCommandRoutingData().getDataBaseChatId();
-
-        if(cmdAnnotation.isEmpty()||dataBaseChatId==null) {
-            return joinPoint.proceed();
-        }
-
         long fromId = dto.getFromId();
 
+        Object result = joinPoint.proceed();
+
+        if(cmdAnnotation.isEmpty()||dataBaseChatId==null){
+            return result;
+        }
+
         try{
-            Object result = joinPoint.proceed();
             commandLogService.saveNewCommandLog(dataBaseChatId, cmdAnnotation.get(), fromId);
+            adminChatActionService.sendMessageAboutAnUsedCommand(dataBaseChatId, cmdAnnotation.get(), fromId);
             return result;
 
-        }catch (Throwable t) {
-            log.error("Command {} failed for chat {}", cmdAnnotation.get().mainCommandName(), dataBaseChatId, t);
-            throw t;
+        }catch (Exception e) {
+            log.error("fail doing command {} actions", cmdAnnotation.get().mainCommandName(), e);
+            throw e;
         }
     }
 

@@ -2,6 +2,7 @@ package com.example.my_bot.repository.chat;
 
 import com.example.my_bot.entity.AdminChatEntity;
 import com.example.my_bot.entity.ChatEntity;
+import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -15,5 +16,10 @@ public interface AdminChatRepository extends JpaRepository<AdminChatEntity, Long
 
     @Transactional
     int deleteByChatId(long chatId);
+
+   /* @Query("SELECT a FROM AdminChatEntity a WHERE :chatId MEMBER OF a.boundChats ORDER BY a.chatId DESC")
+    Optional<AdminChatEntity> findLatestByBoundChatId(@Param("chatId") Long chatId);*/
+
+    Optional<AdminChatEntity> findTopByBoundChatsContainingOrderByChatIdDesc(long chatId);
 
 }

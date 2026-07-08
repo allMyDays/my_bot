@@ -19,6 +19,8 @@ import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.MessageLogService;
+import com.example.my_bot.service.chat.AdminChatActionService;
+import com.example.my_bot.service.chat.AdminChatService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.TextUtils;
@@ -70,6 +72,7 @@ public class EventExecutionService {
    private final VkCommunityClient vkCommunityClient;
    private final ChatService chatService;
    private final MessageLogService messageLogService;
+   private final AdminChatActionService adminChatActionService;
    private CommandDispatcher commandDispatcher;
 
    private final static String FROM_ID_PARAMETER = "%from_id%";
@@ -509,6 +512,7 @@ public class EventExecutionService {
            }
        }
        ChatEventType vkType = eventDto.getType().getChatEventType();
+
        if(eventDto.getFullCommand()!=null){
            String fullCommand = insertRequiredMemberIntoTheCommand(eventDto, data);
            try{
@@ -540,9 +544,11 @@ public class EventExecutionService {
                            vkChatClient.deleteOneMessage(data.getCommandRoutingData(), conversationMessageId)
                    );
                } catch (Exception e) {
-                   log.warn("chat {} error: could not delete not-chat-admin message. cmid: {}",chatId, conversationMessageId, e);
+                   log.info("chat {} error: could not delete message while event execution. cmid: {}",chatId, conversationMessageId, e);
                }
        }
+       adminChatActionService.sendMessageAboutAnExecutedEvent(chatId, eventDto.getType(), eventDto.getFullCommand(), fromId);
+
    }
     private int countForwardedMessages(List<ForeignMessage> fwMessages){
         if(fwMessages==null||fwMessages.isEmpty()){
@@ -588,7 +594,6 @@ public class EventExecutionService {
         return true;
     }
 
-
     private boolean isCurrentTimeInRequiredDailyRange(@NonNull LocalTime start, @NonNull LocalTime end, @NonNull LocalTime now){
         if(start.equals(end)){
             return true;
@@ -599,9 +604,11 @@ public class EventExecutionService {
             return !now.isBefore(start)||now.isBefore(end);
         }
     }
+
     private boolean isNewMember(@NonNull Instant now, @NonNull Instant memberJoinDate, int period){
         return !memberJoinDate.isBefore(now.minusSeconds(period));
     }
+
     private String insertRequiredMemberIntoTheCommand(@NonNull EventDto eventDto, @NonNull DataForEventExecution data){
         String fullEventCommand = eventDto.getFullCommand();
         if(fullEventCommand==null) return null;

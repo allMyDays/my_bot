@@ -26,7 +26,8 @@ import static com.example.my_bot.enumeration.DefaultRole.isDefaultRole;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class BanService {
+public class BanService{
+
     private final BanRepository banRepository;
     private final MemberService memberService;
     private final CaffeineCacheManager cacheManager;
@@ -36,12 +37,14 @@ public class BanService {
 
     @Transactional
     public Optional<Instant> createMemberBan(long chatId, long memberId, @Nullable String reason, @Nullable Long timePeriodSec, long fromId){
+
         if(memberId==fromId){
             throw new CannotApplyThisCommandToYourselfException();
         }
         memberService.checkMemberInteractionAbility(chatId, fromId, memberId,true);
         Instant now = Instant.now();
         Instant unbanAt=null;
+
         if(timePeriodSec!=null){
             if(timePeriodSec<MIN_BAN_PERIOD_IN_SECONDS) timePeriodSec = MIN_BAN_PERIOD_IN_SECONDS;
             if(timePeriodSec>MAX_BAN_PERIOD_IN_SECONDS) timePeriodSec = MAX_BAN_PERIOD_IN_SECONDS;

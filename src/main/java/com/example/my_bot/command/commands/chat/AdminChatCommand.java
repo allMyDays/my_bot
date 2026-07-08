@@ -78,17 +78,26 @@ public class AdminChatCommand implements ChatCommand {
 
             if(adminChat.isPresent()){
                 AtomicInteger ai = new AtomicInteger();
-                sendMessage.setText("Данный чат является админ-чатом для [%d] бесед:\n\n".formatted(adminChat.get().getBoundChats().size())+
-                        adminChat.get().getBoundChats().stream()
-                                .map(chatId-> chatService.getCachedChatDetails(chatId, false))
-                                .map(chat-> "%d. «%s» — %s\n".formatted(ai.incrementAndGet(), chat.getChatTitle(), chat.getChatCode()))
-                                .collect(Collectors.joining()));
+                sendMessage.setText(
+                        "Данный чат является админ-чатом для [%d] бесед:\n\n".formatted(adminChat.get().getBoundChats().size())+
+                                adminChat.get().getBoundChats().stream()
+                                        .map(chatId-> chatService.getCachedChatDetails(chatId, false))
+                                        .map(chat-> "%d. «%s» — %s\n".formatted(ai.incrementAndGet(), chat.getChatTitle(), chat.getChatCode()))
+                                        .collect(Collectors.joining()));
             }
             else{
-                sendMessage.setText(
-                        "Если хотите привязать админ-чат к данной беседе, " +
-                                "напишите в другом желаемом чате (который хотите сделать админ-чатом) команду «%s»."
-                                        .formatted(setAdminChatCommand));
+                StringBuilder sb = new StringBuilder();
+                adminChatService.findLatestAdminChatIdByBoundChatId(dataBaseChatId).ifPresent(chatId->{
+                                ChatDetailsDto chatDetails = chatService.getCachedChatDetails(chatId, false);
+                                sb.append(
+                                        "📋 Информация о последнем привязанном админ-чате к текущей беседе:\nНазвание: «%s».\nUID: %s\n❓Все уведомления из текущей беседы присылаются именно в этот админ-чат.\n\n"
+                                                .formatted(chatDetails.getChatTitle(), chatDetails.getChatCode())
+                                );
+                        });
+                sb.append("Если хотите привязать админ-чат к данной беседе, ")
+                        .append("напишите в другом желаемом чате (который хотите сделать админ-чатом) команду «%s».".formatted(setAdminChatCommand));
+
+                sendMessage.setText(sb.toString());
             }
             vkChatClient.sendText(sendMessage);
             return SUCCESS;

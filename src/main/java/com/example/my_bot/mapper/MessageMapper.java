@@ -23,9 +23,11 @@ public abstract class MessageMapper {
         CommandMessageDto commandMessageDto = toCommandMessageDto(commandRoutingData, message.getFromId(), message.getText(), message.getConversationMessageId(),replyToMessageId,false);
         if(message.getReplyMessage()!=null){
             commandMessageDto.setReplyOrFwdMessages(List.of(message.getReplyMessage()));
-        }else if(message.getFwdMessages()!=null){
+        }
+        else if(message.getFwdMessages()!=null){
             commandMessageDto.setReplyOrFwdMessages(message.getFwdMessages());
-        } return commandMessageDto;
+        }
+        return commandMessageDto;
 
     }
     public CommandMessageDto toCommandMessageDto(@NonNull CommandRoutingData commandRoutingData, long fromId, @Nullable String fullMessage, int conversationMessageId, boolean replyToMessageId, boolean eventOrTimerMode){

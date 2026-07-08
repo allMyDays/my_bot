@@ -43,7 +43,6 @@ public class AdminChatService {
     }
 
     public Optional<AdminChatDto> getAdminChatData(long chatId){
-
         return cacheManager.getAdminChatCache().get(chatId, key->
                 adminChatRepository.findById(key).map(chatMapper::toAdminChatDto)
         );
@@ -52,40 +51,43 @@ public class AdminChatService {
     @Transactional
     public void unBindChatFromAdminChat(long adminChatId, @NonNull String chatCode){
 
-        long chatId = chatService.findByChatCodeOrThrow(chatCode).getChatId();
+        long chatToUnbind = chatService.findByChatCodeOrThrow(chatCode).getChatId();
 
         AdminChatEntity adminChat = adminChatRepository.findById(adminChatId)
                 .orElseThrow(()->new AdminChatNotFoundException(adminChatId));
 
-        if(!adminChat.getBoundChats().contains(chatId)){
+        if(!adminChat.getBoundChats().contains(chatToUnbind)){
             throw new AdminChatException("К данному админ-чату не привязан указанный вами чат.");
         }
         if(adminChat.getBoundChats().size()==1){
             removeAdminChat(adminChatId);
             return;
         }
+        adminChat.getBoundChats().remove(chatToUnbind);
 
-        adminChat.getBoundChats().remove(chatId);
         cacheManager.getAdminChatCache().asMap().compute(adminChatId,(k,v)->
                 Optional.of(chatMapper.toAdminChatDto(adminChat))
         );
+        cacheManager.getAdminChatIdByBoundChatIdCache().invalidate(chatToUnbind);
     }
 
     public void removeAdminChat(long chatId){
+        AdminChatEntity adminChat = adminChatRepository.findById(chatId)
+                .orElseThrow(()->new AdminChatNotFoundException(chatId));
 
-        int deletedRaws = adminChatRepository.deleteByChatId(chatId);
-        if(deletedRaws==0) throw new AdminChatNotFoundException(chatId);
+        adminChatRepository.deleteByChatId(chatId);
 
         cacheManager.getAdminChatCache().asMap().compute(chatId,(k,v)->Optional.empty());
+        adminChat.getBoundChats()
+                .forEach(boundChat-> cacheManager.getAdminChatIdByBoundChatIdCache().invalidate(boundChat));
     }
 
     @Transactional
     public void setAdminChat(@NonNull String currentChatCode, long targetChatId, long fromId){
         // !админчат для 6fgf553vd
-        //(targetChat)(currentChat)
+        //(targetChat) (currentChat)
 
         ChatEntity currentChat = chatService.findByChatCodeOrThrow(currentChatCode);
-
         ChatEntity targetChat = chatService.findByChatIdOrThrow(targetChatId);
 
         if(Objects.equals(currentChat.getChatId(), targetChat.getChatId())){
@@ -117,6 +119,16 @@ public class AdminChatService {
         cacheManager.getAdminChatCache().asMap().compute(targetChatId,(k,v)->
                 Optional.of(chatMapper.toAdminChatDto(targetAdminChat))
         );
+        cacheManager.getAdminChatIdByBoundChatIdCache().asMap().compute(currentChat.getChatId(),(k,v)->
+                Optional.of(targetChat.getChatId())
+        );
+    }
+
+    public Optional<Long> findLatestAdminChatIdByBoundChatId(long boundChatId){
+        return cacheManager.getAdminChatIdByBoundChatIdCache().get(boundChatId, k->
+                        adminChatRepository.findTopByBoundChatsContainingOrderByChatIdDesc(boundChatId)
+                                .map(AdminChatEntity::getChatId)
+                );
     }
 
 }

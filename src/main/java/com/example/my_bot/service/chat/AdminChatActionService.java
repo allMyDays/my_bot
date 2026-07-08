@@ -8,29 +8,34 @@ import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.chat.AdminChatDto;
 import com.example.my_bot.dto.chat.ChatDetailsDto;
 import com.example.my_bot.dto.command.CommandRoutingData;
-import com.example.my_bot.dto.cooldown.CooldownResult;
 import com.example.my_bot.dto.submanager.SubmanagerDto;
 import com.example.my_bot.enumeration.command.CommandExecutionStatus;
 import com.example.my_bot.enumeration.command.HandleAdminChatCommandStatus;
+import com.example.my_bot.enumeration.event.ChatEventType;
+import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.enumeration.key.ButtonPayloadKey;
+import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.CommandAccessService;
+import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.VkKeyboardActionService;
 import com.example.my_bot.service.submanager.SubmanagerService;
+import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.TextUtils;
 import com.example.my_bot.vk.mapping.button.VkButtonConfig;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.*;
 import com.vk.api.sdk.client.actors.GroupActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import com.vk.api.sdk.objects.messages.KeyboardButtonColor;
+import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -41,6 +46,7 @@ import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.
 import static com.example.my_bot.enumeration.key.ButtonPayloadKey.*;
 import static com.example.my_bot.utils.ChatUtils.convertToPeerId;
 import static com.example.my_bot.utils.KeyboardUtils.createButtonPayload;
+import static com.example.my_bot.utils.TextUtils.createMention;
 
 
 @Slf4j
@@ -58,11 +64,22 @@ public class AdminChatActionService {
     private final MemberService memberService;
     private final GroupActor theMainBotGroupActor;
     private final SubmanagerService submanagerService;
+    private final GlobalUserService globalUserService;
 
     private final static int MAX_CHAT_BUTTONS_PER_ONE_RAW = 3;
 
     private final Cache<Long, String> sentCommandCache = Caffeine.newBuilder()
             .expireAfterWrite(5, TimeUnit.MINUTES)
+            .build();
+
+    private final Cache<Long, StringBuilder> messagesToSendToAdminChat = Caffeine.newBuilder()
+            .scheduler(Scheduler.systemScheduler())
+            .expireAfterWrite(10, TimeUnit.SECONDS)
+            .removalListener((Long key, StringBuilder value, RemovalCause cause)->{
+                if(cause==RemovalCause.EXPIRED){
+                    sendMessageToAdminChat(key, value.toString());
+                }
+            })
             .build();
 
 
@@ -221,6 +238,70 @@ public class AdminChatActionService {
             vkChatClient.sendText(messageMapper.toSendMessageDto(result.toString(), routingData));
         }
     }
+
+    @Async
+    public void sendMessageAboutAnUsedCommand(long boundChatId, @NonNull Command cmdAnnotation, long fromId){
+
+        Optional<Long> adminChatId = adminChatService.findLatestAdminChatIdByBoundChatId(boundChatId);
+        if(adminChatId.isEmpty()) return;
+
+        String message = "↪Команда «%s» была использована %s(%s).\n%s"
+                .formatted(cmdAnnotation.mainCommandName(), createMention(fromId), globalUserService.getUserFullNameInRequiredCase(fromId, NameCase.INSTRUMENTAL), buildChatSource(boundChatId));
+        putMessageToQueue(adminChatId.get(), message);
+    }
+
+    @Async
+    public void sendMessageAboutAnExecutedEvent(long boundChatId, @NonNull MyEventType eventType, @Nullable String executedCommand, long causerId){
+
+        Optional<Long> adminChatId = adminChatService.findLatestAdminChatIdByBoundChatId(boundChatId);
+        if(adminChatId.isEmpty()) return;
+
+        String message = "💥Было активировано событие «%s».🐤Участник, на которого оно сработало: %s(%s)\n↪Команда, которая была применена: %s\n%s"
+                .formatted(eventType.getDescription(), createMention(causerId), globalUserService.getUserFullNameInRequiredCase(causerId, NameCase.NOMINATIVE), executedCommand==null?"none":executedCommand, buildChatSource(boundChatId));
+
+        putMessageToQueue(adminChatId.get(), message);
+    }
+
+    private void sendMessageToAdminChat(long adminChatId, @NonNull String message){
+
+        ChatDetailsDto adminChatInfo = chatService.getCachedChatDetails(adminChatId, false);
+
+        CommandRoutingData routingData = new CommandRoutingData();
+        routingData.setDataBaseChatId(adminChatId);
+
+        long vkApiChatId = adminChatId;
+        GroupActor responderBot = theMainBotGroupActor;
+
+        if(adminChatInfo.getBoundSubmanagerId()!=null){
+            SubmanagerDto subInfo = submanagerService.getSubmanagerOrThrowIfAbsents(adminChatInfo.getBoundSubmanagerId());
+            vkApiChatId = chatService.getSubmanagerChatIdByMainChatId(subInfo.getGroupId(), adminChatId);
+            responderBot = subInfo.getGroupActor();
+        }
+        routingData.setVkApiChatId(vkApiChatId);
+        routingData.setResponderBot(responderBot);
+        routingData.setResponsePeerId(convertToPeerId(vkApiChatId));
+
+        try{
+            vkChatClient.sendText(messageMapper.toSendMessageDto(message, routingData));
+        }catch (Exception e){
+            log.warn("fail send message event to admin chat {}", adminChatId, e);
+        }
+    }
+
+    private void putMessageToQueue(long adminChatId, @NonNull String message){
+        messagesToSendToAdminChat.asMap().compute(adminChatId, (k, v)->{
+            StringBuilder sb = v==null?new StringBuilder():v;
+            sb.append("\n\n").append(message);
+            return sb;
+        });
+    }
+
+
+    private String buildChatSource(long boundChat){
+        return "❗Из чата «%s».".formatted(chatService.getCachedChatDetails(boundChat, false).getChatTitle());
+    }
+
+
 
 
 
