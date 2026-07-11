@@ -11,6 +11,7 @@ import com.example.my_bot.command.CommandDispatcher;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.event.DataForEventExecution;
 import com.example.my_bot.dto.event.EventDto;
+import com.example.my_bot.dto.event.ExecuteChatEventsResult;
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.MyEventType;
@@ -20,7 +21,6 @@ import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.MessageLogService;
 import com.example.my_bot.service.chat.AdminChatActionService;
-import com.example.my_bot.service.chat.AdminChatService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.TextUtils;
@@ -166,12 +166,12 @@ public class EventExecutionService {
         this.commandDispatcher = commandDispatcher;
     }
 
-    public void executeRequiredChatEvents(@NonNull DataForEventExecution data){
+    public ExecuteChatEventsResult executeRequiredChatEvents(@NonNull DataForEventExecution data){
 
         long chatId = data.getDataBaseChatId();
         long fromId = data.getFromId();
-
         int callerRole = memberService.getMemberRolePriority(chatId, fromId);
+
         ImmutableMap<ChatEventType, ImmutableSet<EventDto>> eventsCache = eventService.getCachedChatEvents(chatId);
         TimeZoneType chatTimeZone = chatService.getChatTimeZone(chatId);
         LocalTime currentDailyTime = LocalTime.now(chatTimeZone.getZoneOffset());
@@ -185,23 +185,29 @@ public class EventExecutionService {
                 case ACTION -> {
                     if(data.getAction()==null) continue;
                     eventExecutor = (newEvent) -> handleActionEvent(newEvent, data);
-                }case TEXT -> {
+                }
+                case TEXT -> {
                     if(data.getUserText()==null||data.getUserText().isEmpty()) continue;
                     eventExecutor = (newEvent) -> handleTextEvent(newEvent, data);
-
-                }case ATTACHMENTS -> {
+                }
+                case ATTACHMENTS -> {
                     if(data.getAttachments()==null||data.getAttachments().isEmpty()) continue;
                     var attachmentMap = data.getAttachments()
                             .stream()
                             .collect(Collectors.groupingBy(VkMessageAttachment::getType));
                     eventExecutor = (newEvent) -> handleAttachmentEvent(newEvent, data, attachmentMap);
-
-                }case FORWARDS -> {
+                }
+                case FORWARDS -> {
                     if(data.getFwMessages()==null||data.getFwMessages().isEmpty()) continue;
                     eventExecutor = (newEvent) -> handleFwdEvent(newEvent, data);
-                }case REACTION -> {
+                }
+                case REACTION -> {
                     if(data.getUserReaction()==null) continue;
                     eventExecutor = (newEvent) -> handleReactionEvent(newEvent, data);
+                }
+                case WARN_LIMIT_REACHED -> {
+                    if(!data.isWarnLimitReached()) continue;
+                    eventExecutor = (newEvent) -> executeEvent(newEvent, data,1);
                 }
             }
             requiredEvents = eventsCache.get(chatEventType);
@@ -214,19 +220,18 @@ public class EventExecutionService {
                     if(currentEvent.getType()==ANY_MESSAGE){
                         if(data.getAction()==null&&data.getUserReaction()==null){
                             executeEvent(currentEvent, data, 1);
-                        }continue;
+                        }
+                        continue;
                     }
                     if(eventExecutor!=null){
                         eventExecutor.accept(currentEvent);
                     }
                 }
             }
-            if(chatEventType==ACTION||chatEventType==REACTION){
-                return; // если текущее событие action или reaction, то не может быть text, attachment и т.д.
-
-              }
         }
+        return new ExecuteChatEventsResult(data.getExecutedEventsCounter());
     }
+
     private void handleActionEvent(@NonNull EventDto eventDto, @NonNull DataForEventExecution data){
         MyEventType eventType = eventDto.getType();
         if(eventType.getChatEventType()!=ACTION) return;
@@ -289,7 +294,8 @@ public class EventExecutionService {
         List<VkMessageAttachment> currentTypeAttachments;
         if (eventType==ATTACHMENT_QUANTITY){
             currentTypeAttachments = data.getAttachments();
-        }else{
+        }
+        else{
             if(vkTypeToExecute==null){
                 log.warn("attachment event {} returned empty Optional<MessageAttachmentType>", eventType);
                 return;
@@ -358,8 +364,8 @@ public class EventExecutionService {
                     if(!isAdvancedEvent) break;
                     index += lowerCaseArg.length();
                 }
-
-            }case STRICT_WORD_FILTER -> {
+            }
+            case STRICT_WORD_FILTER -> {
                 Pattern p = STRICT_WORD_FILTER_PATTERN_CACHE.get(arg,
                         a-> Pattern.compile("(?<!\\p{L}|\\p{N})" + Pattern.quote(arg) + "(?!\\p{L}|\\p{N})", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS)
                 );
@@ -368,17 +374,18 @@ public class EventExecutionService {
                         callQuantity++;
                         if(!isAdvancedEvent) break;
                 }
-            }case SHORT_MESSAGE ->{
+            }
+            case SHORT_MESSAGE ->{
                 if((attachments!=null&&!attachments.isEmpty())||userText.length()>=intArg) return;
                 callQuantity = 1;
-
-            }case MAXIMUM_SYMBOLS -> {
+            }
+            case MAXIMUM_SYMBOLS -> {
                 callQuantity = userText.length();
-
-            }case EMOJI_QUANTITY -> {
+            }
+            case EMOJI_QUANTITY -> {
                 callQuantity = TextUtils.countEmojis(userText);
-
-            }case ROW_QUANTITY -> {
+            }
+            case ROW_QUANTITY -> {
                 callQuantity = 1;
                 for(int i=0; i<userText.length(); i++){
                     if(userText.charAt(i)=='\n') callQuantity++;
@@ -526,8 +533,8 @@ public class EventExecutionService {
               );
               commandMessage.setDoNotSendTheMessage(eventDto.isSilent());
               commandDispatcher.dispatch(commandMessage);
-
-           }catch (Exception e){
+           }
+           catch (Exception e){
                log.warn("error while execution event {} in chat {}.", eventDto.getId(), chatId, e);
                try {
                    String message = "Ваше событие с командой «%s» завершилось с ошибкой. Возможно, вам следует его удалить."
@@ -537,13 +544,14 @@ public class EventExecutionService {
                    log.warn("chat {}: Failed to send notification about error while execution event {}", chatId, eventDto.getId(), ex);
                }
            }
-
-       }if(eventDto.isDelete()&&vkType!=ACTION&&!data.isTheMessageBeenDeleted()){
+           data.setExecutedEventsCounter(data.getExecutedEventsCounter()+1);
+       }
+       if(eventDto.isDelete()&&vkType!=ACTION&&!data.isTheMessageBeenDeleted()){
                try {
                    data.setTheMessageBeenDeleted(
                            vkChatClient.deleteOneMessage(data.getCommandRoutingData(), conversationMessageId)
                    );
-               } catch (Exception e) {
+               }catch (Exception e) {
                    log.info("chat {} error: could not delete message while event execution. cmid: {}",chatId, conversationMessageId, e);
                }
        }

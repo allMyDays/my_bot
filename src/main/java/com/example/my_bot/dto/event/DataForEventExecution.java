@@ -2,7 +2,6 @@ package com.example.my_bot.dto.event;
 
 import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.enumeration.event.ReactionType;
-import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.vk.mapping.action.VkAction;
 import com.example.my_bot.vk.mapping.attachment.VkMessageAttachment;
 import com.vk.api.sdk.objects.messages.ForeignMessage;
@@ -29,12 +28,16 @@ public class DataForEventExecution {
     private final ReactionType userReaction;
     private final Long fwdMessageOwnerId;
     private final boolean isSelfDestructingMessage;
+    private final boolean isWarnLimitReached;
     private final CommandRoutingData commandRoutingData;
+    
     @Setter
     private boolean theMessageBeenDeleted;
+    @Setter
+    private int executedEventsCounter=0;
 
 
-    public DataForEventExecution(long dataBaseChatId, long fromId, int conversationMessageId, @Nullable VkAction action, @Nullable List<VkMessageAttachment> attachments, @Nullable String userText, @Nullable List<ForeignMessage> fwMessages, @Nullable ForeignMessage replyMessage, @Nullable ReactionType userReaction, boolean isSelfDestructingMessage, @Nullable CommandRoutingData commandRoutingData) {
+    public DataForEventExecution(long dataBaseChatId, long fromId, int conversationMessageId, @Nullable VkAction action, @Nullable List<VkMessageAttachment> attachments, @Nullable String userText, @Nullable List<ForeignMessage> fwMessages, @Nullable ForeignMessage replyMessage, @Nullable ReactionType userReaction, boolean isSelfDestructingMessage, @Nullable CommandRoutingData commandRoutingData, boolean isWarnLimitReached) {
         this.dataBaseChatId = dataBaseChatId;
         this.fromId = fromId;
         this.conversationMessageId = conversationMessageId;
@@ -45,6 +48,7 @@ public class DataForEventExecution {
         this.replyMessage = replyMessage;
         this.userReaction = userReaction;
         this.isSelfDestructingMessage = isSelfDestructingMessage;
+        this.isWarnLimitReached = isWarnLimitReached;
 
         if(commandRoutingData!=null){
             this.commandRoutingData = new CommandRoutingData(commandRoutingData);

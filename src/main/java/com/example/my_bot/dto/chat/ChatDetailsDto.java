@@ -2,6 +2,7 @@ package com.example.my_bot.dto.chat;
 
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Column;
 import lombok.*;
 
 import java.time.Instant;
@@ -28,7 +29,11 @@ public class ChatDetailsDto {
 
     private TimeZoneType timeZoneType;
 
-    private Long banPeriodSeconds;
+    private Long banTimePeriodSec;
+
+    private Long warnTimePeriodSec;
+
+    private int warnMaxQuantity;
 
     private boolean autoUnban;
 
@@ -55,6 +60,6 @@ public class ChatDetailsDto {
     }
 
     public Optional<Long> getOptionalBanPeriod() {
-        return Optional.ofNullable(banPeriodSeconds);
+        return Optional.ofNullable(banTimePeriodSec);
     }
 }

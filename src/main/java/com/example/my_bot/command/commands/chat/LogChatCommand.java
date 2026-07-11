@@ -110,10 +110,6 @@ public class LogChatCommand implements ChatCommand {
                 vkChatClient.sendText(sendMessage);
                 return BUSINESS_LOGIC_ERROR;
             }
-
-            /*if(cacheValue==null){
-                cacheManager.getConfirmationCache().put(key, "");
-            }*/
             if(!boundChats.isEmpty()){  // это логчат
 
                 String key = ConfirmationCacheKeyBuilder.REMOVE_LOG_CHAT.buildKey(dataBaseChatId, fromId);

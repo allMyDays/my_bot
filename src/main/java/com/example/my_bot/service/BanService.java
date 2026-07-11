@@ -4,7 +4,6 @@ import com.example.my_bot.cache.key.ChatIdAndMemberIdKey;
 import com.example.my_bot.config.CaffeineCacheManager;
 import com.example.my_bot.dto.ban.MemberBanStatus;
 import com.example.my_bot.entity.BanEntity;
-import com.example.my_bot.entity.MemberEntity;
 import com.example.my_bot.exception.ban.UserHasNotBannedException;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.repository.BanRepository;
@@ -31,29 +30,27 @@ public class BanService{
     private final BanRepository banRepository;
     private final MemberService memberService;
     private final CaffeineCacheManager cacheManager;
-    private static final long MIN_BAN_PERIOD_IN_SECONDS = 60;
-    private static final long MAX_BAN_PERIOD_IN_SECONDS = 777_600_000;
+    public static final long MIN_BAN_TIME_PERIOD_SEC = 60;
+    public static final long MAX_BAN_TIME_PERIOD_SEC = 777_600_000;
 
 
     @Transactional
     public Optional<Instant> createMemberBan(long chatId, long memberId, @Nullable String reason, @Nullable Long timePeriodSec, long fromId){
 
-        if(memberId==fromId){
-            throw new CannotApplyThisCommandToYourselfException();
-        }
+        if(memberId==fromId) throw new CannotApplyThisCommandToYourselfException();
         memberService.checkMemberInteractionAbility(chatId, fromId, memberId,true);
+
         Instant now = Instant.now();
         Instant unbanAt=null;
 
         if(timePeriodSec!=null){
-            if(timePeriodSec<MIN_BAN_PERIOD_IN_SECONDS) timePeriodSec = MIN_BAN_PERIOD_IN_SECONDS;
-            if(timePeriodSec>MAX_BAN_PERIOD_IN_SECONDS) timePeriodSec = MAX_BAN_PERIOD_IN_SECONDS;
+            if(timePeriodSec< MIN_BAN_TIME_PERIOD_SEC) timePeriodSec = MIN_BAN_TIME_PERIOD_SEC;
+            if(timePeriodSec> MAX_BAN_TIME_PERIOD_SEC) timePeriodSec = MAX_BAN_TIME_PERIOD_SEC;
             unbanAt = now.plusSeconds(timePeriodSec);
         }
-        if(reason!=null){
-            reason= reason.trim();
-            reason= reason.isEmpty()?null:reason;
-        }
+
+        reason = reason==null||(reason = reason.trim()).isEmpty() ? null : reason;
+
         BanEntity newBan = banRepository.findByChatIdAndMemberId(chatId, memberId)
                 .orElse(new BanEntity());
 
@@ -113,17 +110,6 @@ public class BanService{
        ChatIdAndMemberIdKey key = new ChatIdAndMemberIdKey(banEntity.getChatId(), banEntity.getMemberId());
        cacheManager.getBanCache().put(key, banStatus);
    }
-
-   public long getMinBanPeriodInSeconds(){
-        return MIN_BAN_PERIOD_IN_SECONDS;
-   }
-
-   public long getMaxBanPeriodInSeconds(){
-        return MAX_BAN_PERIOD_IN_SECONDS;
-   }
-
-
-
 
 
 }

@@ -78,7 +78,7 @@ public class CommandDispatcher {
             Command cmdAnnotation = commandData.get().getValue();
 
             HandleAdminChatCommandStatus handleAdminChatCommandStatus=
-                    adminChatActionService.handleAdminChatCommand(cmdAnnotation, UserInputResolver.replaceCommand(commandMessage.getUserText(), cmdAnnotation.mainCommandName()),commandMessage.getCommandRoutingData());
+                    adminChatActionService.handleAdminChatCommand(cmdAnnotation, UserInputResolver.replaceCommand(commandMessage.getUserText(), cmdAnnotation.mainCommandName()),commandMessage.getCommandRoutingData(), commandMessage.isEventOrTimerMode());
 
             if(handleAdminChatCommandStatus==NOT_ADMIN_CHAT||handleAdminChatCommandStatus==MUST_BE_EXECUTED_IN_ADMIN_CHAT){
 

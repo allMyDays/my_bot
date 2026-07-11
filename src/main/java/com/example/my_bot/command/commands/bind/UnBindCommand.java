@@ -6,6 +6,7 @@ import com.example.my_bot.client.VkChatClient;
 import com.example.my_bot.command.ChatCommand;
 import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.SendMessageDto;
+import com.example.my_bot.dto.chat.ChatDetailsDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
 import com.example.my_bot.dto.member.ParseMemberInputResult;
 import com.example.my_bot.enumeration.command.CommandExecutionStatus;
@@ -16,6 +17,7 @@ import com.example.my_bot.exception.user.GlobalUserException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.GlobalUserService;
+import com.example.my_bot.service.chat.ChatService;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import lombok.Getter;
@@ -45,6 +47,8 @@ public class UnBindCommand implements ChatCommand {
 
     private final MessageMapper messageMapper;
 
+    private final ChatService chatService;
+
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
@@ -57,6 +61,7 @@ public class UnBindCommand implements ChatCommand {
     public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
         long fromId = commandMessage.getFromId();;
+        long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
 
         SendMessageDto sendMessage =  messageMapper.toSendMessageDto(commandMessage);
 
@@ -70,17 +75,24 @@ public class UnBindCommand implements ChatCommand {
             userToUnbind = commandMessage.getFromId();
         }
 
-        try {
-            userService.unBindChatFromUser(commandMessage.getCommandRoutingData().getDataBaseChatId(), fromId, userToUnbind);
-
-        }catch (MemberException | GlobalUserException e){
+        try{
+            userService.unBindChatFromUser(dataBaseChatId, fromId, userToUnbind);
+        }
+        catch (MemberException | GlobalUserException e){
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return BUSINESS_LOGIC_ERROR;
         }
-        sendMessage.setText("Вы успешно сняли с %s(%s) привязку этого чата.".formatted(createMention(userToUnbind),userToUnbind==fromId
-                         ? "себя"
-                         : userService.getUserFullNameInRequiredCase(userToUnbind, NameCase.DATIVE))
+
+        ChatDetailsDto chatDetails = chatService.getCachedChatDetails(dataBaseChatId, false);
+
+        sendMessage.setText("Вы успешно сняли с %s(%s) привязку чата «%s» с UID «%s»."
+                .formatted(
+                        createMention(userToUnbind),
+                        userToUnbind==fromId ? "себя" : userService.getUserFullNameInRequiredCase(userToUnbind, NameCase.DATIVE),
+                        chatDetails.getChatTitle(),
+                        chatDetails.getChatCode()
+                )
         );
 
         vkChatClient.sendText(sendMessage);

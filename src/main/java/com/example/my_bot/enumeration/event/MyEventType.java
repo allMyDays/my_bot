@@ -79,7 +79,11 @@ public enum MyEventType {
 
 
     ANY_REACTION("реакция","Любая реакция",REACTION, new AdvancedEventConfig(true, false)),
-    REACTION_FILTER("реакцияфильтр","Конкретная реакция",REACTION, INTEGER,1,500,  new AdvancedEventConfig(true, true));
+    REACTION_FILTER("реакцияфильтр","Конкретная реакция",REACTION, INTEGER,1,500,  new AdvancedEventConfig(true, true)),
+
+
+
+    WARN_LIMIT("пред", "Достижение лимита предупреждений", WARN_LIMIT_REACHED, new AdvancedEventConfig(false, false));
 
 
     @Getter

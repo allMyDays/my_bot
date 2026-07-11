@@ -76,7 +76,7 @@ public class BanCommand implements ChatCommand {
 
         long memberToBan;
         String reason=null;
-        Long banPeriodInSeconds;
+        Long banTimePeriodSec;
 
         // варианты:
         // !бан @durov
@@ -98,14 +98,14 @@ public class BanCommand implements ChatCommand {
                     vkChatClient.sendText(sendMessage);
                     return ARGUMENT_VALIDATION_ERROR;
                 }
-                banPeriodInSeconds = TimeUtils.toSecondsFromString(args[isFwd?0:1],args[isFwd?1:2]).orElse(null); //!бан @durov 2 часа или !бан 2 часа (пересланное смс)
-                if(banPeriodInSeconds==null){
+                banTimePeriodSec = TimeUtils.toSecondsFromString(args[isFwd?0:1],args[isFwd?1:2]).orElse(null); //!бан @durov 2 часа или !бан 2 часа (пересланное смс)
+                if(banTimePeriodSec==null){
                     sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
                     vkChatClient.sendText(sendMessage);
                     return ARGUMENT_VALIDATION_ERROR;
                 }
             }else{   // вечный бан
-                banPeriodInSeconds = chatService.getDefaultBanPeriod(dataBaseChatId).orElse(null);
+                banTimePeriodSec = chatService.getDefaultBanTimePeriod(dataBaseChatId).orElse(null);
             }
         }
         else{
@@ -125,7 +125,7 @@ public class BanCommand implements ChatCommand {
        String userName = globalUserService.getUserFullNameInRequiredCase(memberToBan, NameCase.NOMINATIVE);
 
        try{
-           bannedUntil = banService.createMemberBan(dataBaseChatId, memberToBan, reason, banPeriodInSeconds, fromId);
+           bannedUntil = banService.createMemberBan(dataBaseChatId, memberToBan, reason, banTimePeriodSec, fromId);
            vkChatClient.kickOneChatMember(commandMessage.getCommandRoutingData(), memberToBan);
 
        }catch (CommandException | MemberException | BanException e){

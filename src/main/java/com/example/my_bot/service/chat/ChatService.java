@@ -15,6 +15,7 @@ import com.example.my_bot.mapper.ChatMapper;
 import com.example.my_bot.repository.chat.ChatRepository;
 import com.example.my_bot.service.BanService;
 import com.example.my_bot.service.MemberService;
+import com.example.my_bot.service.WarnService;
 import com.example.my_bot.utils.ChatUtils;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -38,17 +39,15 @@ public class ChatService {
     private final CaffeineCacheManager cacheManager;
     private final ChatRepository chatRepository;
     private final ChatMapper chatMapper;
-    private final BanService banService;
     private final ChatService selfLink;
     private final MemberService memberService;
 
     private final static Set<Character> FORBIDDEN_PREFIXES = Set.of('*','@');
 
-    public ChatService(CaffeineCacheManager cacheManager, ChatRepository chatRepository, ChatMapper chatMapper, @Lazy BanService banService,@Lazy ChatService selfLink,@Lazy MemberService memberService) {
+    public ChatService(CaffeineCacheManager cacheManager, ChatRepository chatRepository, ChatMapper chatMapper, @Lazy ChatService selfLink, @Lazy MemberService memberService) {
         this.cacheManager = cacheManager;
         this.chatRepository = chatRepository;
         this.chatMapper = chatMapper;
-        this.banService = banService;
         this.selfLink = selfLink;
         this.memberService = memberService;
     }
@@ -216,32 +215,39 @@ public class ChatService {
     }
 
     @Transactional
-    public long setDefaultBanPeriod(long chatId, long banPeriodSeconds){
-        if(banPeriodSeconds>banService.getMaxBanPeriodInSeconds()){
-            banPeriodSeconds = banService.getMaxBanPeriodInSeconds();
-        }if(banPeriodSeconds<banService.getMinBanPeriodInSeconds()){
-            banPeriodSeconds = banService.getMinBanPeriodInSeconds();
+    public long setDefaultBanPeriod(long chatId, long banTimePeriodSec){
+        if(banTimePeriodSec>BanService.MAX_BAN_TIME_PERIOD_SEC){
+            banTimePeriodSec = BanService.MAX_BAN_TIME_PERIOD_SEC;
         }
-
+        if(banTimePeriodSec<BanService.MIN_BAN_TIME_PERIOD_SEC){
+            banTimePeriodSec = BanService.MIN_BAN_TIME_PERIOD_SEC;
+        }
         ChatEntity chat = findByChatIdOrThrow(chatId);
-        chat.setBanPeriodSeconds(banPeriodSeconds);
+        chat.setBanTimePeriodSec(banTimePeriodSec);
         putChatToCache(chatRepository.save(chat));
 
-        return banPeriodSeconds;
+        return banTimePeriodSec;
     }
 
     @Transactional
     public void disableDefaultBanPeriod(long chatId){
         ChatEntity chat = findByChatIdOrThrow(chatId);
-        if(chat.getBanPeriodSeconds()!=null){
-            chat.setBanPeriodSeconds(null);
+        if(chat.getBanTimePeriodSec()!=null){
+            chat.setBanTimePeriodSec(null);
             putChatToCache(chatRepository.save(chat));
         }
     }
 
-    public Optional<Long> getDefaultBanPeriod(long chatId){
+    public Optional<Long> getDefaultBanTimePeriod(long chatId){
         return getCachedChatDetails(chatId, false).getOptionalBanPeriod();
+    }
 
+    public Optional<Long> getDefaultWarnTimePeriod(long chatId){
+        return Optional.ofNullable(getCachedChatDetails(chatId, false).getWarnTimePeriodSec());
+    }
+
+    public int getWarnMaxQuantity(long chatId){
+        return getCachedChatDetails(chatId, false).getWarnMaxQuantity();
     }
 
     public boolean isAutoUnban(long chatId){
@@ -282,10 +288,12 @@ public class ChatService {
             chat.setPrefix(DEFAULT_CHAT_PREFIX);
             chat.setTimeZoneType(TimeZoneType.GMT_PLUS_3);
             chat.setChatCode(ChatUtils.generateNewChatCode());
+            chat.setWarnMaxQuantity(WarnService.DEFAULT_CHAT_WARN_QUANTITY);
+
             try {
                 chatRepository.saveAndFlush(chat);
                 return chat;
-            }catch (DataIntegrityViolationException e){
+            } catch (DataIntegrityViolationException e){
                 Throwable cause = e.getCause();
                 if(cause instanceof ConstraintViolationException ex){
                     String constrainName = ex.getConstraintName();

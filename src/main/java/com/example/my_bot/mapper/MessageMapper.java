@@ -98,10 +98,4 @@ public abstract class MessageMapper {
     public abstract SendMessageDto toSendMessageDto(@NonNull String text, long responsePeerId, @Nullable Long dataBaseChatId, @NonNull GroupActor responderBot);
 
 
-
-
-
-
-
-
 }

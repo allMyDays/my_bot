@@ -47,7 +47,13 @@ public class ChatEntity {
     private TimeZoneType timeZoneType;
 
     @Column(nullable = true)
-    private Long banPeriodSeconds;
+    private Long banTimePeriodSec;
+
+    @Column(nullable = true)
+    private Long warnTimePeriodSec;
+
+    @Column(nullable = false)
+    private int warnMaxQuantity;
 
     @Column(nullable = false)
     private boolean autoUnban;

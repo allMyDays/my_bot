@@ -83,7 +83,7 @@ public class AdminChatActionService {
             .build();
 
 
-    public HandleAdminChatCommandStatus handleAdminChatCommand(@NonNull Command cmdAnnotation, @NonNull String fullCommandWithNoPrefix, @NonNull CommandRoutingData routingData) throws ClientException, ApiException {
+    public HandleAdminChatCommandStatus handleAdminChatCommand(@NonNull Command cmdAnnotation, @NonNull String fullCommandWithNoPrefix, @NonNull CommandRoutingData routingData, boolean isEventOrTimerMode) throws ClientException, ApiException {
 
         Long dataBaseChatId = routingData.getDataBaseChatId();
         AdminChatDto adminChat;
@@ -91,7 +91,7 @@ public class AdminChatActionService {
         if(dataBaseChatId==null||(adminChat=adminChatService.getAdminChatData(dataBaseChatId).orElse(null))==null)
             return NOT_ADMIN_CHAT;
 
-        if(cmdAnnotation.adminChatCommandExecutionMode()==ONLY_IN_ADMIN_CHAT) return MUST_BE_EXECUTED_IN_ADMIN_CHAT;
+        if(cmdAnnotation.adminChatCommandExecutionMode()==ONLY_IN_ADMIN_CHAT||isEventOrTimerMode) return MUST_BE_EXECUTED_IN_ADMIN_CHAT;
 
         routingData = new CommandRoutingData(routingData);
         routingData.setResponsePeerId(convertToPeerId(routingData.getVkApiChatId()));
@@ -256,7 +256,7 @@ public class AdminChatActionService {
         Optional<Long> adminChatId = adminChatService.findLatestAdminChatIdByBoundChatId(boundChatId);
         if(adminChatId.isEmpty()) return;
 
-        String message = "💥Было активировано событие «%s».🐤Участник, на которого оно сработало: %s(%s)\n↪Команда, которая была применена: %s\n%s"
+        String message = "💥Было активировано событие «%s».\n🐤Участник, на которого оно сработало: %s(%s)\n↪Команда, которая была применена: %s\n%s"
                 .formatted(eventType.getDescription(), createMention(causerId), globalUserService.getUserFullNameInRequiredCase(causerId, NameCase.NOMINATIVE), executedCommand==null?"none":executedCommand, buildChatSource(boundChatId));
 
         putMessageToQueue(adminChatId.get(), message);

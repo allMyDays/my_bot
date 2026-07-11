@@ -132,7 +132,7 @@ public class AsyncEventHandler {
                 messageLogService.saveNewMessageLog(routingData.getDataBaseChatId(), fromId, conversationMessageId, action, message.getText(),false);
                 logChatActionService.forwardMessageToLogChat(routingData, chatDetails, message);
                 eventExecutionService.executeRequiredChatEvents(
-                        new DataForEventExecution(routingData.getDataBaseChatId(), fromId, conversationMessageId, action, message.getAttachments(), message.getText(), message.getFwdMessages(),message.getReplyMessage(),null,message.getExpireTTL()!=null, routingData)
+                        new DataForEventExecution(routingData.getDataBaseChatId(), fromId, conversationMessageId, action, message.getAttachments(), message.getText(), message.getFwdMessages(),message.getReplyMessage(),null,message.getExpireTTL()!=null, routingData, false)
                 );
             }
             if(chatDetails!=null){
@@ -181,7 +181,7 @@ public class AsyncEventHandler {
             }
 
         eventExecutionService.executeRequiredChatEvents(
-                new DataForEventExecution(routingData.getDataBaseChatId(), fromId, conversationMessageId, null, null, null, null, null, foundReaction.get(), false, routingData)
+                new DataForEventExecution(routingData.getDataBaseChatId(), fromId, conversationMessageId, null, null, null, null, null, foundReaction.get(), false, routingData, false)
         );
     }
 
