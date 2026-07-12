@@ -18,6 +18,7 @@ import com.example.my_bot.mapper.FullNameMapper;
 import com.example.my_bot.mapper.MemberMapper;
 import com.example.my_bot.repository.MemberRepository;
 import com.example.my_bot.service.chat.ChatService;
+import com.example.my_bot.utils.ChatUtils;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
@@ -93,6 +94,7 @@ public class MemberService {
         globalUserService.putFullNamesToTheDataBase(userFullNames);
 
         List<ConversationMember> currentChatMembers = response.getItems();
+
         Set<Long> vkUserIds = currentChatMembers.stream()
                 .map(ConversationMember::getMemberId)
                 .collect(Collectors.toSet());
@@ -109,7 +111,7 @@ public class MemberService {
             long memberId= vkMember.getMemberId();
             MemberEntity entity= currentChatMemberMap.get(memberId);
 
-            if(entity== null){
+            if(entity == null){
                 entity = new MemberEntity();
                 entity.setUserId(memberId);
                 entity.setChatId(dataBaseChatId);
@@ -118,22 +120,27 @@ public class MemberService {
                 entity.setInvitedById(vkMember.getInvitedBy());
             }
             entity.setPresenceType(IN_CHAT);
-            if (Boolean.TRUE.equals(vkMember.getIsOwner())) {
+
+            if(Boolean.TRUE.equals(vkMember.getIsOwner())){
                 entity.setRolePriority(CHAT_CREATOR.getRolePriority());
                 entity.setChatAdmin(true);
-            } else if (Boolean.TRUE.equals(vkMember.getIsAdmin())) {
+            }
+            else if(Boolean.TRUE.equals(vkMember.getIsAdmin())){
                 int requiredRoleToAssign = SENIOR_ADMINISTRATOR.getRolePriority();
                 if(entity.getRolePriority()<requiredRoleToAssign){
                     entity.setRolePriority(requiredRoleToAssign);
                 }
                 entity.setChatAdmin(true);
-            } else {
+            }
+            else{
                 entity.setChatAdmin(false);
-            }if(memberId==(theMainBotId *-1)){
-                entity.setRolePriority(CHAT_MANAGER_ROLE_PRIORITY);
-                // даю боту роль выше чем у создателя, чтобы его никто не мог наказывать
+            }
+
+            if(memberId==-theMainBotId){
+                entity.setRolePriority(CHAT_MANAGER_ROLE_PRIORITY); // даю боту роль выше чем у создателя, чтобы его никто не мог наказывать
             }
         }
+
         if(!newMembers.isEmpty()) {
             memberRepository.saveAll(newMembers);
         }
@@ -145,6 +152,7 @@ public class MemberService {
         Optional<MemberDto> member = getCachedMemberInfo(chatId, userId);
         return member.map(MemberDto::getRolePriority).orElse(MEMBER.getRolePriority());
     }
+
     public Optional<Instant> getFirstAppearance(long chatId, long userId){
         Optional<MemberDto> member = getCachedMemberInfo(chatId, userId);
         return member.map(MemberDto::getFirstAppearance);
@@ -208,7 +216,8 @@ public class MemberService {
 
         if(!missingUserIds.isEmpty()){
             throw new UserNeverBeenInChatException(missingUserIds);
-        }if(!toSave.isEmpty()){
+        }
+        if(!toSave.isEmpty()){
             memberRepository.saveAll(toSave);
         }
         if(!toPutInCache.isEmpty()){

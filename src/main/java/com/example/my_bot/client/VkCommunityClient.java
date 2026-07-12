@@ -168,7 +168,8 @@ public class VkCommunityClient {
                    .collect(Collectors.toSet());
     }
 
-    public Set<Long> getCommunityAdministrators(long groupId, @NonNull String groupToken) throws ClientException, ApiException {
+    public Set<Long> getAllCommunityAdministrators(long groupId, @NonNull String groupToken) throws ClientException, ApiException {
+
         groupId = Math.abs(groupId);
 
         GetMembersFilterResponse resp =  vkApiClient.groups().getMembersWithFilter(new GroupActor(groupId, groupToken), GetMembersFilter.MANAGERS)
@@ -185,4 +186,25 @@ public class VkCommunityClient {
                 .map(m->(long)m.getId())
                 .collect(Collectors.toSet());
     }
+
+    public Optional<Long> getCommunityCreator(long groupId, @NonNull String groupToken) throws ClientException, ApiException {
+
+        groupId = Math.abs(groupId);
+
+        GetMembersFilterResponse resp =  vkApiClient.groups().getMembersWithFilter(new GroupActor(groupId, groupToken), GetMembersFilter.MANAGERS)
+                .groupId(String.valueOf(groupId))
+                .execute();
+
+        if(resp==null||resp.getItems()==null){
+            log.warn("cannot get community {} administrators cause vk sent not full response {}", groupId, resp);
+            return Optional.empty();
+        }
+
+        return resp.getItems().stream()
+                .filter((m->m.getRole()==MemberRoleStatus.CREATOR))
+                .map(m->(long)m.getId())
+                .findFirst();
+    }
+
+
 }

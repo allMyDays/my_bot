@@ -153,7 +153,7 @@ public class SubmanagerCommand implements ChatCommand {
         }
         Set<Long> communityAdmins;
         try{
-            communityAdmins = vkCommunityClient.getCommunityAdministrators(subInfo.getGroupId(), subInfo.getToken());
+            communityAdmins = vkCommunityClient.getAllCommunityAdministrators(subInfo.getGroupId(), subInfo.getToken());
         }catch (ApiException e){
             log.warn("fail get submanager {} community admins by token",groupId, e);
             sendMessage.setText("Не удалось получить информацию о администраторах указанного сообщества-субменеджера. Попробуйте позже.");

@@ -26,6 +26,9 @@ public class WarnService {
 
     public static final long MIN_WARN_TIME_PERIOD_SEC = 60;
     public static final long MAX_WARN_TIME_PERIOD_SEC = 94_608_000;
+    public static final int MAX_WARN_QUANTITY = 100;
+    public static final int MIN_WARN_QUANTITY = 2;
+
     public static final int DEFAULT_CHAT_WARN_QUANTITY = 3;
 
 

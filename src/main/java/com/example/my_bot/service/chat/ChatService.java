@@ -245,6 +245,21 @@ public class ChatService {
     }
 
     @Transactional
+    public int setMaxWarnLimit(long chatId, int newLimit){
+        if(newLimit>WarnService.MAX_WARN_QUANTITY){
+            newLimit = WarnService.MAX_WARN_QUANTITY;
+        }
+        if(newLimit<WarnService.MIN_WARN_QUANTITY){
+            newLimit = WarnService.MIN_WARN_QUANTITY;
+        }
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+        chat.setWarnMaxQuantity(newLimit);
+        putChatToCache(chatRepository.save(chat));
+
+        return newLimit;
+    }
+
+    @Transactional
     public void disableDefaultBanTimePeriod(long chatId){
         ChatEntity chat = findByChatIdOrThrow(chatId);
         if(chat.getBanTimePeriodSec()!=null){
