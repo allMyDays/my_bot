@@ -185,7 +185,7 @@ public class AdminChatActionService {
             }
         }
 
-        StringBuilder result = new StringBuilder("📋 Результат выполнения команды:\n");
+        StringBuilder result = new StringBuilder("📋 Результат выполнения команды:");
 
         routingData = new CommandRoutingData(routingData);
         routingData.setResponsePeerId(convertToPeerId(routingData.getVkApiChatId()));
@@ -225,7 +225,8 @@ public class AdminChatActionService {
                 executionResult = commandData.getKey().execute(
                         messageMapper.toCommandMessageDto(routingData,fromId,fullCommandWithNoPrefix,0, false, false, chatsToExecuteIn.size()>1)
                 );
-            }catch (Exception e){
+            }
+            catch (Exception e){
                 log.warn("error execution command {} in admin chat {}", commandData.getValue(),adminChat.getChatId(), e);
                 result.append("‼ произошла неизвестная ошибка.");
                 continue;
@@ -233,10 +234,8 @@ public class AdminChatActionService {
             result.append(executionResult.getDescription());
         }
 
-        if(chatsToExecuteIn.size()>1){
-            routingData.setDataBaseChatId(adminChatDataBaseChatId);
-            vkChatClient.sendText(messageMapper.toSendMessageDto(result.toString(), routingData));
-        }
+        routingData.setDataBaseChatId(adminChatDataBaseChatId);
+        vkChatClient.sendText(messageMapper.toSendMessageDto(result.toString(), routingData));
     }
 
     @Async

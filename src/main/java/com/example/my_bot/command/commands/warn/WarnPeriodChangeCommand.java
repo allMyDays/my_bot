@@ -1,4 +1,4 @@
-package com.example.my_bot.command.commands.ban;
+package com.example.my_bot.command.commands.warn;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.client.VkChatClient;
@@ -19,14 +19,14 @@ import org.springframework.context.annotation.Lazy;
 
 import static com.example.my_bot.constant.MessageConstant.INVALID_TIME_PERIOD_MESSAGE;
 import static com.example.my_bot.constant.MessageConstant.NOT_ENOUGH_ARGUMENTS_MESSAGE;
-import static com.example.my_bot.enumeration.command.CommandExecutionStatus.ARGUMENT_VALIDATION_ERROR;
-import static com.example.my_bot.enumeration.command.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
 import static com.example.my_bot.enumeration.chat.AdminChatCommandExecutionMode.ALL_BOUND_CHATS_AT_ONCE;
+import static com.example.my_bot.enumeration.command.CommandExecutionStatus.ARGUMENT_VALIDATION_ERROR;
+import static com.example.my_bot.enumeration.command.CommandExecutionStatus.SUCCESS;
 
-@Command(mainCommandName = "срокбана",alternativeCommandNames = {"banPeriod"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = true, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
+@Command(mainCommandName = "срокпреда",alternativeCommandNames = {"времяпреда","warnPeriod"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = true, adminChatCommandExecutionMode = ALL_BOUND_CHATS_AT_ONCE)
 @RequiredArgsConstructor
-public class BanPeriodChangeCommand implements ChatCommand {
+public class WarnPeriodChangeCommand implements ChatCommand {
 
     @Getter
     private final CommandCooldown cooldown = new CommandCooldown(4,60*2);
@@ -50,13 +50,12 @@ public class BanPeriodChangeCommand implements ChatCommand {
 
         String[] args = commandMessage.getFirstRowArguments();
         long chatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
-        final String banCommandName = BanCommand.class.getAnnotation(Command.class).mainCommandName();
 
         SendMessageDto sendMessage = messageMapper.toSendMessageDto(commandMessage);
 
-        if(args.length==0){        // отключить стандартный срок бана
-            chatService.disableDefaultBanTimePeriod(chatId);
-            sendMessage.setText("✅Дефолтный срок бана был отключён. Теперь, при команде «%s» без аргументов времени, я буду выдавать вечный бан.".formatted(banCommandName));
+        if(args.length==0){        // отключить стандартный срок преда
+            chatService.disableDefaultWarnTimePeriod(chatId);
+            sendMessage.setText("✅ Теперь по умолчанию участникам будут выдаваться вечные предупреждения.");
             vkChatClient.sendText(sendMessage);
             return SUCCESS;
         }
@@ -66,22 +65,21 @@ public class BanPeriodChangeCommand implements ChatCommand {
             return ARGUMENT_VALIDATION_ERROR;
         }
 
-        Long banPeriodInSeconds = TimeUtils.toSecondsFromString(args[0],args[1]).orElse(null);
-        if(banPeriodInSeconds==null){
+        Long warnTimePeriodSec = TimeUtils.toSecondsFromString(args[0],args[1]).orElse(null);
+        if(warnTimePeriodSec==null){
             sendMessage.setText(INVALID_TIME_PERIOD_MESSAGE);
             vkChatClient.sendText(sendMessage);
             return ARGUMENT_VALIDATION_ERROR;
         }
 
-        long newPeriodSeconds = chatService.setDefaultBanTimePeriod(chatId, banPeriodInSeconds);
+        warnTimePeriodSec = chatService.setDefaultWarnTimePeriod(chatId, warnTimePeriodSec);
 
-        sendMessage.setText("✅Дефолтный срок бана был успешно установлен на %s Теперь, при команде «%s» без аргументов времени, я буду выдавать бан на этот период."
-                .formatted(TimeUtils.formatDurationFromSeconds(newPeriodSeconds,true),banCommandName));
+        sendMessage.setText("✅ Теперь по умолчанию участникам будут выдаваться предупреждения, которые удалятся сами через %s"
+                .formatted(TimeUtils.formatDurationFromSeconds(warnTimePeriodSec,true)));
 
         vkChatClient.sendText(sendMessage);
 
         return SUCCESS;
-
     }
 
 }

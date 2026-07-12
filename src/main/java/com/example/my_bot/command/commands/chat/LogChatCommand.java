@@ -9,6 +9,7 @@ import com.example.my_bot.config.CommandCooldown;
 import com.example.my_bot.dto.chat.ChatDetailsDto;
 import com.example.my_bot.dto.SendMessageDto;
 import com.example.my_bot.dto.command.CommandMessageDto;
+import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.entity.ChatEntity;
 import com.example.my_bot.enumeration.command.CommandExecutionStatus;
 import com.example.my_bot.enumeration.key.ConfirmationCacheKeyBuilder;
@@ -23,6 +24,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 
 import java.util.List;
@@ -39,26 +41,30 @@ import static com.example.my_bot.utils.TextUtils.isValidInteger;
 
 @Slf4j
 @Command(mainCommandName = "логчат", alternativeCommandNames = {"logchat"}, defaultRole = SENIOR_ADMINISTRATOR, eventable = false, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
-@RequiredArgsConstructor
 public class LogChatCommand implements ChatCommand {
 
     @Getter
     private final CommandCooldown cooldown = new CommandCooldown(4,60*2);
-    private final ChatService chatService;
-    private final MessageMapper messageMapper;
-    private final MessageLogService messageLogService;
-    private final CaffeineCacheManager cacheManager;
-    private VkChatClient vkChatClient;
 
     private final static String LOG_CHAT_MAIN_COMMAND = LogChatCommand.class.getAnnotation(Command.class).mainCommandName();
     private final static String FOR_ARGUMENT = "для";
     private final static String REMOVE_ARGUMENT = "удалить";
 
+    private final ChatService chatService;
+    private final MessageMapper messageMapper;
+    private final MessageLogService messageLogService;
+    private final CaffeineCacheManager cacheManager;
+    private final VkChatClient vkChatClient;
 
-    @Autowired
-    @Lazy
-    public void setVkChatClient(VkChatClient vkChatClient) {
+    private final long theMainBotId;
+
+    public LogChatCommand(ChatService chatService, MessageMapper messageMapper, MessageLogService messageLogService, CaffeineCacheManager cacheManager, @Lazy VkChatClient vkChatClient, @Value("${vk.main-bot.id}") long theMainBotId) {
+        this.chatService = chatService;
+        this.messageMapper = messageMapper;
+        this.messageLogService = messageLogService;
+        this.cacheManager = cacheManager;
         this.vkChatClient = vkChatClient;
+        this.theMainBotId = theMainBotId;
     }
 
 
@@ -66,7 +72,8 @@ public class LogChatCommand implements ChatCommand {
     public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException{
 
         String[] args = commandMessage.getFirstRowArguments();
-        long dataBaseChatId = commandMessage.getCommandRoutingData().getDataBaseChatId();
+        CommandRoutingData routingData = commandMessage.getCommandRoutingData();
+        long dataBaseChatId = routingData.getDataBaseChatId();
         long fromId = commandMessage.getFromId();
 
         ChatDetailsDto currentChat = chatService.getCachedChatDetails(dataBaseChatId,false);
@@ -146,12 +153,24 @@ public class LogChatCommand implements ChatCommand {
                 vkChatClient.sendText(sendMessage);
                 return BUSINESS_LOGIC_ERROR;
             }
-            long logChatApiId = currentChat.getBoundLogChat();
-            ChatDetailsDto logChat= chatService.getCachedChatDetails(currentChat.getBoundLogChat(), false);
+            boolean canForward = true;
 
-            if(logChat.getBoundSubmanagerId()!=null){
-                logChatApiId = chatService.getSubmanagerChatIdByMainChatId(logChat.getBoundSubmanagerId(), currentChat.getBoundLogChat());
+            ChatDetailsDto logChat= chatService.getCachedChatDetails(currentChat.getBoundLogChat(), false);
+            long logChatApiId = currentChat.getBoundLogChat();
+            canForward = routingData.getResponderBot().getGroupId().equals(theMainBotId);
+
+            Long boundSub = logChat.getBoundSubmanagerId();
+            if(boundSub!=null){
+                logChatApiId = chatService.getSubmanagerChatIdByMainChatId(boundSub, currentChat.getBoundLogChat());
+                canForward = routingData.getResponderBot().getGroupId().equals(boundSub);
             }
+
+            if(!canForward){
+                sendMessage.setText("Я не могу переслать сообщения из того логчата в текущий диалог, поскольку в том логчате работает другое сообщество.");
+                vkChatClient.sendText(sendMessage);
+                return BUSINESS_LOGIC_ERROR;
+            }
+
             List<Integer> requiredMessageIds =
                     messageLogService.findLastMessagesForwardedToLogChat(currentChat.getBoundLogChat(), Integer.parseInt(args[0]));
 
@@ -159,7 +178,7 @@ public class LogChatCommand implements ChatCommand {
             forward.setConversationMessageIds(requiredMessageIds);
             forward.setPeerId(convertToPeerId(logChatApiId));
             sendMessage.setForward(forward);
-            sendMessage.setText("Последние [%d] сообщений из привязанного логчата:".formatted(requiredMessageIds.size()));
+            sendMessage.setText("Последние [%d] сообщений, пересланных в привязанный логчат:".formatted(requiredMessageIds.size()));
             vkChatClient.sendText(sendMessage);
             return SUCCESS;
         }
@@ -187,7 +206,7 @@ public class LogChatCommand implements ChatCommand {
             return BUSINESS_LOGIC_ERROR;
         }
         sendMessage.setText(
-                "✅Вы успешно сделали текущий чат логчатом для беседы с кодом %s\nТеперь я буду пересылать сюда все сообщения из того чата."
+                "✅Вы успешно сделали текущий чат логчатом для беседы с кодом «%s».\nТеперь я буду пересылать сюда все сообщения из того чата."
                         .formatted(userChatCode)
         );
 

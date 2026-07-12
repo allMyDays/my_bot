@@ -215,7 +215,7 @@ public class ChatService {
     }
 
     @Transactional
-    public long setDefaultBanPeriod(long chatId, long banTimePeriodSec){
+    public long setDefaultBanTimePeriod(long chatId, long banTimePeriodSec){
         if(banTimePeriodSec>BanService.MAX_BAN_TIME_PERIOD_SEC){
             banTimePeriodSec = BanService.MAX_BAN_TIME_PERIOD_SEC;
         }
@@ -230,10 +230,34 @@ public class ChatService {
     }
 
     @Transactional
-    public void disableDefaultBanPeriod(long chatId){
+    public long setDefaultWarnTimePeriod(long chatId, long warnTimePeriodSec){
+        if(warnTimePeriodSec>WarnService.MAX_WARN_TIME_PERIOD_SEC){
+            warnTimePeriodSec = WarnService.MAX_WARN_TIME_PERIOD_SEC;
+        }
+        if(warnTimePeriodSec<WarnService.MIN_WARN_TIME_PERIOD_SEC){
+            warnTimePeriodSec = WarnService.MIN_WARN_TIME_PERIOD_SEC;
+        }
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+        chat.setWarnTimePeriodSec(warnTimePeriodSec);
+        putChatToCache(chatRepository.save(chat));
+
+        return warnTimePeriodSec;
+    }
+
+    @Transactional
+    public void disableDefaultBanTimePeriod(long chatId){
         ChatEntity chat = findByChatIdOrThrow(chatId);
         if(chat.getBanTimePeriodSec()!=null){
             chat.setBanTimePeriodSec(null);
+            putChatToCache(chatRepository.save(chat));
+        }
+    }
+
+    @Transactional
+    public void disableDefaultWarnTimePeriod(long chatId){
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+        if(chat.getWarnTimePeriodSec()!=null){
+            chat.setWarnTimePeriodSec(null);
             putChatToCache(chatRepository.save(chat));
         }
     }

@@ -62,4 +62,8 @@ public class ChatDetailsDto {
     public Optional<Long> getOptionalBanPeriod() {
         return Optional.ofNullable(banTimePeriodSec);
     }
+
+    public Optional<Long> getOptionalWarnPeriod() {
+        return Optional.ofNullable(warnTimePeriodSec);
+    }
 }

@@ -61,6 +61,8 @@ public class ChatSettingsShowCommand implements ChatCommand {
                 "\n ↪ Пересыл команд: " + (details.isMessageReplying()? on : off) +
                 "\n \uD83C\uDF0D Таймзона: " + details.getTimeZoneType().getStringType() +
                 "\n ⌚ Дефолтный срок бана: " + details.getOptionalBanPeriod().map(p -> TimeUtils.formatDurationFromSeconds(p, true)).orElse(off) +
+                "\n ⌚ Дефолтный срок предупреждения: " + details.getOptionalWarnPeriod().map(p -> TimeUtils.formatDurationFromSeconds(p, true)).orElse(off) +
+                "\n ↖ Макс. количество предупреждений: " +details.getWarnMaxQuantity()+
                 "\n \uD83D\uDD27 Авторазбан приглашенных: " + (details.isAutoUnban() ? on : off);
 
         if(submanagerService.isSubmanager(commandMessage.getCommandRoutingData().getExecutorBot())){
