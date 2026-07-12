@@ -14,6 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -79,17 +80,12 @@ public class WarnService {
         if(memberId==fromId) throw new CannotApplyThisCommandToYourselfException();
         memberService.checkMemberInteractionAbility(chatId, fromId, memberId,true);
 
-        int deletedRows = warnRepository.deleteLastMemberWarn(chatId, memberId);
+        int deletedRows = warnRepository.deleteLastActiveMemberWarn(chatId, memberId, Instant.now());
         return deletedRows>0;
     }
 
-    @Transactional
-    public void deleteWarnById(long id, long fromId){
-
-        warnRepository.findById(id).ifPresent(warn->{
-            if(warn.getMemberId()==fromId) throw new CannotApplyThisCommandToYourselfException();
-            memberService.checkMemberInteractionAbility(warn.getChatId(), fromId, warn.getMemberId(),true);
-        });
+    public List<WarnEntity> getMemberWarningsSortedInDesc(long chatId, long memberId){
+        return warnRepository.findActiveMemberWarningsSortedInDesc(chatId, memberId, Instant.now());
     }
 
     @Scheduled(fixedRate = 1_800_000)

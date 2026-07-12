@@ -139,9 +139,9 @@ public class MessageLogService{
             if(!roleService.roleExistsByPriority(chatId, roleLessThan)){
                 throw new RoleNotFoundException();
             }
-            requiredMembers = memberService.getAllCurrentChatMemberWithRoleLessThanAndFirstAppearanceBeforeThan(chatId, roleLessThan, thresholdDate);
+            requiredMembers = memberService.getAllCurrentChatMembersWithRoleLessThanAndFirstAppearanceBeforeThan(chatId, roleLessThan, thresholdDate);
         }else{
-            requiredMembers = memberService.getAllCurrentChatMemberWithFirstAppearanceBeforeThan(chatId, thresholdDate);
+            requiredMembers = memberService.getAllCurrentChatMembersWithFirstAppearanceBeforeThan(chatId, thresholdDate);
         }
         Map<Long, MessageLogRepository.MemberLastMessageProjection> lastMessagesMap =
                 messageRepository.findLastMessageOfRequiredMembers(chatId, requiredMembers).stream()

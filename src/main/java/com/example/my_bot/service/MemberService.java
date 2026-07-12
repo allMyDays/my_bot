@@ -241,11 +241,11 @@ public class MemberService {
         return memberRepository.findNotKickedNewMembersWithRoleLessThan(chatId,after,rolePriority, PageRequest.of(0, limit));
     }
 
-    public List<Long> getAllCurrentChatMemberWithFirstAppearanceBeforeThan(long chatId, @NonNull Instant thresholdDate){
+    public List<Long> getAllCurrentChatMembersWithFirstAppearanceBeforeThan(long chatId, @NonNull Instant thresholdDate){
         return memberRepository.findAllCurrentMemberWithFirstAppearanceBeforeThan(chatId, thresholdDate);
     }
 
-    public List<Long> getAllCurrentChatMemberWithRoleLessThanAndFirstAppearanceBeforeThan(long chatId, int rolePriority, @NonNull Instant thresholdDate){
+    public List<Long> getAllCurrentChatMembersWithRoleLessThanAndFirstAppearanceBeforeThan(long chatId, int rolePriority, @NonNull Instant thresholdDate){
         return memberRepository.findAllCurrentMemberWithRoleLessThanAndFirstAppearanceBeforeThan(chatId, rolePriority, thresholdDate);
     }
 

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
 @Repository
 public interface WarnRepository extends JpaRepository<WarnEntity, Long> {
@@ -27,8 +28,12 @@ public interface WarnRepository extends JpaRepository<WarnEntity, Long> {
     @Transactional
     @Query("DELETE FROM WarnEntity w " +
             "WHERE w.id = (SELECT MAX(w2.id) FROM WarnEntity w2 " +
-            "              WHERE w2.chatId = :chatId AND w2.memberId = :memberId)")
-    int deleteLastMemberWarn(@Param("chatId") Long chatId, @Param("memberId") Long memberId);
+            "              WHERE w2.chatId = :chatId " +
+            "                AND w2.memberId = :memberId " +
+            "                AND (w2.expiresAt IS NULL OR w2.expiresAt > :now))")
+    int deleteLastActiveMemberWarn(@Param("chatId") Long chatId,
+                                   @Param("memberId") Long memberId,
+                                   @Param("now") Instant now);
 
 
     @Modifying
@@ -38,9 +43,8 @@ public interface WarnRepository extends JpaRepository<WarnEntity, Long> {
     int deleteAllMemberWarns(@Param("chatId") Long chatId, @Param("memberId") Long memberId);
 
 
-
-
-
+    @Query("SELECT w FROM WarnEntity w WHERE w.chatId = :chatId AND w.memberId = :memberId AND (w.expiresAt IS NULL OR w.expiresAt > :now) ORDER BY w.id DESC")
+    List<WarnEntity> findActiveMemberWarningsSortedInDesc(@Param("chatId") Long chatId, @Param("memberId") Long memberId, @Param("now") Instant now);
 
 
 }
