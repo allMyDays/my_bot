@@ -1,4 +1,4 @@
-package com.example.my_bot.service;
+package com.example.my_bot.service.command;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.entity.CommandLogEntity;
@@ -23,13 +23,14 @@ import java.util.concurrent.CompletableFuture;
 public class CommandLogService {
 
     private final CommandLogRepository commandLogRepository;
+    private static final long CLEANUP_INTERVAL_MS = 86_400_000; // 24 часа
 
     @Async
-    public CompletableFuture<CommandLogEntity> saveNewCommandLog(long chatId, @NonNull Command cmdAnnotation, long fromId){
-        return CompletableFuture.completedFuture(
+    public void saveNewCommandLog(long chatId, @NonNull Command cmdAnnotation, long fromId){
+        CompletableFuture.completedFuture(
                 commandLogRepository.save(
                         new CommandLogEntity(chatId, fromId, cmdAnnotation.mainCommandName(), Instant.now())
-        ));
+                ));
     }
 
     public List<CommandLogEntity> getLastNCommandLogs(long chatId, int quantity){
@@ -37,12 +38,13 @@ public class CommandLogService {
     }
 
     @Transactional
-    @Scheduled(fixedRate = 86_400_000)
+    @Scheduled(fixedRate = CLEANUP_INTERVAL_MS)
     protected void deleteLogsOlderThanOneWeek(){
         try {
             int deletedRaws = commandLogRepository.deleteOldRecords(Instant.now().minus(7, ChronoUnit.DAYS));
             log.info("Deleted {} command log records older than 7 days", deletedRaws);
-        }catch (Exception e) {
+        }
+        catch (Exception e){
             log.error("Failed to delete old command logs", e);
         }
     }

@@ -14,11 +14,7 @@ import java.util.Objects;
 public class RoleDto {
 
     private final String roleName;
-
     private final int rolePriority;
-
-
-
 
     @Override
     public boolean equals(Object o) {

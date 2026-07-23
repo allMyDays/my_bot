@@ -14,6 +14,7 @@ import com.example.my_bot.resolver.UserInputResolver;
 import com.example.my_bot.service.*;
 import com.example.my_bot.service.chat.AdminChatActionService;
 import com.example.my_bot.service.chat.ChatService;
+import com.example.my_bot.service.command.CommandAccessService;
 import com.example.my_bot.utils.ChatUtils;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;

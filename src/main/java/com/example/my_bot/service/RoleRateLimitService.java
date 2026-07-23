@@ -10,9 +10,11 @@ import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.limit.RateLimitPeriodOutOfBoundsException;
 import com.example.my_bot.exception.limit.RateLimitUsageOutOfBoundsException;
 import com.example.my_bot.exception.limit.RateLimitWithThatCommandAndRoleAlreadyExistsException;
+import com.example.my_bot.exception.limit.TooManyRateLimitsException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.RateLimitMapper;
 import com.example.my_bot.repository.RoleRateLimitRepository;
+import com.example.my_bot.service.command.CommandAccessService;
 import com.example.my_bot.utils.TextUtils;
 import com.google.common.collect.ImmutableMap;
 import jakarta.transaction.Transactional;
@@ -35,27 +37,18 @@ public class RoleRateLimitService {
     private CommandRegistry commandRegistry;
 
     private final MemberService memberService;
-
     private final RoleService roleService;
-
     private final CaffeineCacheManager cacheManager;
-
     private final CommandAccessService commandService;
-
     private final RateLimitMapper rateLimitMapper;
-
     private final RoleRateLimitRepository roleRateLimitRepository;
 
-    private final static int MAX_CUSTOM_LIMITS = 20;
-
-    private final static int MIN_LIMIT_PERIOD_IN_SECONDS = 60;
-
     @Getter
-    private final static int MAX_LIMIT_PERIOD_IN_SECONDS = 86_400;
-
+    private final static int MAX_LIMIT_TIME_PERIOD_SEC = 86_400;
+    private final static int MIN_LIMIT_TIME_PERIOD_SEC = 60;
     private final static int MIN_LIMIT_USAGE = 1;
-
     private final static int MAX_LIMIT_USAGE = 100;
+    private final static int MAX_CUSTOM_LIMITS = 20;
 
 
     @Autowired
@@ -67,9 +60,16 @@ public class RoleRateLimitService {
     @Transactional
     public RoleRateLimitEntity createCommandRateLimit(long chatId, long fromId, @NonNull String userCommand, int rolePriority, int maxUsage, long periodInSeconds, boolean isPersonal){
 
-        if(periodInSeconds< MIN_LIMIT_PERIOD_IN_SECONDS ||periodInSeconds> MAX_LIMIT_PERIOD_IN_SECONDS){
-            throw new RateLimitPeriodOutOfBoundsException(MIN_LIMIT_PERIOD_IN_SECONDS, MAX_LIMIT_PERIOD_IN_SECONDS);
-        }if(maxUsage<MIN_LIMIT_USAGE||maxUsage>MAX_LIMIT_USAGE) {
+        int currentLimitSize = getCachedCustomRoleLimits(chatId).values().stream()
+                .mapToInt(map -> map.values().size())
+                .sum();
+        if(currentLimitSize >= MAX_CUSTOM_LIMITS){
+            throw new TooManyRateLimitsException();
+        }
+        if(periodInSeconds< MIN_LIMIT_TIME_PERIOD_SEC || periodInSeconds> MAX_LIMIT_TIME_PERIOD_SEC){
+            throw new RateLimitPeriodOutOfBoundsException(MIN_LIMIT_TIME_PERIOD_SEC, MAX_LIMIT_TIME_PERIOD_SEC);
+        }
+        if(maxUsage<MIN_LIMIT_USAGE||maxUsage>MAX_LIMIT_USAGE){
             throw new RateLimitUsageOutOfBoundsException(MIN_LIMIT_USAGE, MAX_LIMIT_USAGE);
         }
         RoleDto foundRole = roleService.getRoleByPriority(chatId, rolePriority)
@@ -80,6 +80,7 @@ public class RoleRateLimitService {
 
         String mainCommandName =  commandRegistry.getMainNameOfCommand(TextUtils.cutDefaultPrefix(userCommand))
                 .orElseThrow(()->new UserCommandNotFoundException(userCommand));
+
         boolean abilityCommandInteraction = commandService.checkCommandAuthorization(
                 chatId,mainCommandName, userRolePriority,fromId);
         if(!abilityCommandInteraction){
@@ -90,13 +91,16 @@ public class RoleRateLimitService {
         if(currentCommandRoleLimits!=null&&currentCommandRoleLimits.get(rolePriority)!=null){
            throw new RateLimitWithThatCommandAndRoleAlreadyExistsException(mainCommandName, foundRole.getRoleName());
         }
-        RoleRateLimitEntity savedLimit = roleRateLimitRepository.save(new RoleRateLimitEntity(
-                chatId, mainCommandName, rolePriority, isPersonal, maxUsage, (int)periodInSeconds
-                ));
+        RoleRateLimitEntity savedLimit = roleRateLimitRepository.save(
+                new RoleRateLimitEntity(
+                        chatId, mainCommandName, rolePriority, isPersonal, maxUsage, (int)periodInSeconds
+                )
+        );
 
         invalidateCommandLimitCache(chatId);
         return savedLimit;
     }
+
     @Transactional
     public RoleRateLimitEntity createCommandRateLimit(long chatId, long fromId, @NonNull String userCommand, @NonNull String roleName, int maxUsage, long periodInSeconds, boolean isPersonal){
         int rolePriority = roleService.getRoleByNameIgnoreCase(chatId, roleName.trim())
@@ -152,11 +156,6 @@ public class RoleRateLimitService {
 
     private void invalidateCommandLimitCache(long chatId){
         cacheManager.getRoleLimitCache().invalidate(chatId);
-    }
-
-
-    public static int getMaxCustomLimits() {
-        return MAX_CUSTOM_LIMITS;
     }
 
 }

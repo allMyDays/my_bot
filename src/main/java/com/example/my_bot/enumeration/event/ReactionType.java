@@ -98,14 +98,4 @@ public enum ReactionType {
         }
         return Optional.empty();
     }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
 }

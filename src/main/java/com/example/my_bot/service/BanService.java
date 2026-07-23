@@ -101,7 +101,7 @@ public class BanService{
     }
 
     @Scheduled(fixedRate = 1_800_000)
-    protected void deleteExpiredDbBans(){
+    public void deleteExpiredDbBans(){
         banRepository.deleteExpiredBans(Instant.now());
     }
 
@@ -110,6 +110,5 @@ public class BanService{
        ChatIdAndMemberIdKey key = new ChatIdAndMemberIdKey(banEntity.getChatId(), banEntity.getMemberId());
        cacheManager.getBanCache().put(key, banStatus);
    }
-
 
 }

@@ -17,7 +17,7 @@ import java.util.Set;
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(name = "event", indexes = @Index(name = "events_idx_chat_id", columnList = "chatId"))
+@Table(name = "event", indexes = @Index(name = "events_idx_chat_id", columnList = "chat_id"))
 @Check(constraints = "(ae_max_usage IS NULL AND ae_period_in_seconds IS NULL) OR (ae_max_usage IS NOT NULL AND ae_period_in_seconds IS NOT NULL)")
 @Check(constraints = "(start_day_time IS NULL AND end_day_time IS NULL) OR (start_day_time IS NOT NULL AND end_day_time IS NOT NULL)")
 @Check(constraints = "(role_priority IS NULL AND member_to_trigger IS NOT NULL) OR (role_priority IS NOT NULL AND member_to_trigger IS NULL)")
@@ -26,7 +26,7 @@ public class EventEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "chat_id")
     private Long chatId;
 
     @Column(nullable = false)

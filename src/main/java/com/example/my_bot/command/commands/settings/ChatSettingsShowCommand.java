@@ -66,7 +66,7 @@ public class ChatSettingsShowCommand implements ChatCommand {
                 "\n \uD83D\uDD27 Авторазбан приглашенных: " + (details.isAutoUnban() ? on : off);
 
         if(submanagerService.isSubmanager(commandMessage.getCommandRoutingData().getExecutorBot())){
-            sb+="\n \uD83D\uDD14 Субпосты: "+ (details.isSubPosts() ? on : off);
+            sb+="\n \uD83D\uDD14 Субпосты: "+ (details.isSubPostsEnabled() ? on : off);
         }
 
         sb+="\n\n\uD83D\uDDD3 Код чата: "+details.getChatCode();

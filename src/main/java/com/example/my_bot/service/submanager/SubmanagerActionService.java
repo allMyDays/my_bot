@@ -36,10 +36,7 @@ import static com.example.my_bot.utils.TextUtils.createMention;
 @Service
 public class SubmanagerActionService {
 
-    private final CryptoService cryptoService;
-    private final SubmanagerRepository submanagerRepository;
     private final CaffeineCacheManager cacheManager;
-    private final SubmanagerMapper submanagerMapper;
     private final ChatService chatService;
     private final VkChatClient vkChatClient;
     private final MessageMapper messageMapper;
@@ -47,20 +44,14 @@ public class SubmanagerActionService {
     private final long theMainBotId;
     private final GroupActor theMainBotGroupActor;
 
-    public SubmanagerActionService(CryptoService cryptoService,
-                                   SubmanagerRepository submanagerRepository,
-                                   CaffeineCacheManager cacheManager,
-                                   SubmanagerMapper submanagerMapper,
+    public SubmanagerActionService(CaffeineCacheManager cacheManager,
                                    ChatService chatService,
                                    @Lazy VkChatClient vkChatClient,
                                    MessageMapper messageMapper,
                                    @Value("${vk.main-bot.id}") long theMainBotId,
                                    @Qualifier("theMainBotGroupActor") GroupActor theMainBotGroupActor){
 
-        this.cryptoService = cryptoService;
-        this.submanagerRepository = submanagerRepository;
         this.cacheManager = cacheManager;
-        this.submanagerMapper = submanagerMapper;
         this.chatService = chatService;
         this.vkChatClient = vkChatClient;
         this.messageMapper = messageMapper;
@@ -123,7 +114,7 @@ public class SubmanagerActionService {
 
         if(fromId!=-subInfo.getGroupId()) return;
 
-        List<ChatEntity> requiredChats = chatService.findChatsByBoundSubmanagerAndSubPostsTrue(subInfo.getGroupId());
+        List<ChatEntity> requiredChats = chatService.findChatsByBoundSubmanagerIdAndSubPostsEnabled(subInfo.getGroupId());
 
         for(ChatEntity chat: requiredChats){
             long submanagerChatId;
@@ -142,20 +133,5 @@ public class SubmanagerActionService {
             }
         }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 }

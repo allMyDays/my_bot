@@ -7,11 +7,10 @@ import com.example.my_bot.enumeration.timer.TimerType;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.CommandArgumentTooLongException;
 import com.example.my_bot.exception.command.CommandInitAnnotationAbsentsException;
-import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.timer.*;
 import com.example.my_bot.repository.TimerRepository;
 import com.example.my_bot.resolver.UserInputResolver;
-import com.example.my_bot.service.CommandAccessService;
+import com.example.my_bot.service.command.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.chat.ChatService;
 import jakarta.annotation.Nullable;
@@ -80,8 +79,8 @@ public class TimerService {
         );
         timerExecutionService.putTimerToSchedulerIfExecutionIsNear(savedTimer);
         return savedTimer;
-
     }
+
     @Transactional
     public TimerEntity createEachTimer(long chatId, long intervalInSeconds, @NonNull String fullCommand, long fromId){
 
@@ -90,7 +89,8 @@ public class TimerService {
         if(intervalInSeconds<MIN_INTERVAL_BETWEEN_EXECUTING){
             throw new TimerIntervalOutOfBoundsException("Нельзя создать таймер, который выполняется чаще чем раз в %s"
                     .formatted(FORMATTED_MIN_INTERVAL));
-        }if(intervalInSeconds>MAX_INTERVAL_BETWEEN_EXECUTING){
+        }
+        if(intervalInSeconds>MAX_INTERVAL_BETWEEN_EXECUTING){
             throw new TimerIntervalOutOfBoundsException("Максимальный интервал для данного типа таймера — %s"
                     .formatted(FORMATTED_MAX_INTERVAL));
         }
@@ -104,8 +104,8 @@ public class TimerService {
         );
         timerExecutionService.putTimerToSchedulerIfExecutionIsNear(savedTimer);
         return savedTimer;
-
     }
+
     @Transactional
     public TimerEntity createDailyTimer(long chatId, @NonNull LocalTime dailyTime, @NonNull String fullCommand, long fromId){
 
@@ -134,27 +134,29 @@ public class TimerService {
 
    @Transactional
     public Instant incrementNextExecutionAndExecutionCounter(long timerId){
-        TimerEntity timer = timerRepository.findById(timerId)
-                .orElseThrow(()->new TimerNotFoundException(timerId));
+       TimerEntity timer = timerRepository.findById(timerId)
+               .orElseThrow(()->new TimerNotFoundException(timerId));
 
-        if(timer.getType()==ONCE){
-            throw new IllegalTimerTypeException(ONCE);
-        }
-        int nextExecutionCounter = timer.getExecutionCounter()+1;
-        Optional<Integer> customLimit = timer.getOptionalCustomExecutionLimit();
-        if(nextExecutionCounter>=SYSTEM_MAX_EXECUTION_LIMIT||(customLimit.isPresent()&&nextExecutionCounter>=customLimit.get())){
-            throw new TimerHasReachedExecutionLimitException();
-        }
+       if(timer.getType()==ONCE){
+           throw new IllegalTimerTypeException(ONCE);
+       }
+       int nextExecutionCounter = timer.getExecutionCounter()+1;
+       Optional<Integer> customLimit = timer.getOptionalCustomExecutionLimit();
+       if(nextExecutionCounter>=SYSTEM_MAX_EXECUTION_LIMIT||(customLimit.isPresent()&&nextExecutionCounter>=customLimit.get())){
+           throw new TimerHasReachedExecutionLimitException();
+       }
        Instant newNextExecution;
        Instant now = Instant.now();
 
        if(timer.getType()==EACH){
            newNextExecution = now.plusSeconds(timer.getIntervalSeconds());  //всегда приплюсовываю к текущему моменту
-       }else {
+       }
+       else {
            newNextExecution = timer.getNextExecution();
            do{
              newNextExecution = newNextExecution.plus(1, ChronoUnit.DAYS);
-           }while (newNextExecution.isBefore(now));  // догоняю ежедневный таймер, если он отстал
+           }
+           while (newNextExecution.isBefore(now));  // догоняю ежедневный таймер, если он отстал
        }
         timer.setNextExecution(newNextExecution);
         timer.setExecutionCounter(timer.getExecutionCounter()+1);
@@ -172,16 +174,19 @@ public class TimerService {
         Optional<Integer> currentCustomLimit = timer.getOptionalCustomExecutionLimit();
         if((currentCustomLimit.isPresent()&&currentCustomLimit.get()==newLimit)){
             throw new TimerAlreadyHasThatExecutionLimitException();
-        }if(newLimit>SYSTEM_MAX_EXECUTION_LIMIT){
+        }
+        if(newLimit>SYSTEM_MAX_EXECUTION_LIMIT){
             throw new IncorrectTimerExecutionLimitException(
                     "Максимальный лимит срабатывания для таймеров — %d.".formatted(SYSTEM_MAX_EXECUTION_LIMIT)
             );
-        }if(newLimit<=timer.getExecutionCounter()){
+        }
+        if(newLimit<=timer.getExecutionCounter()){
             throw new IncorrectTimerExecutionLimitException(
                     "Данный таймер уже успел выполниться %d раз, поэтому выберите более высокое число в качестве лимита срабатывания."
                             .formatted(timer.getExecutionCounter())
             );
-        }timer.setCustomExecutionLimit(newLimit);
+        }
+        timer.setCustomExecutionLimit(newLimit);
     }
 
     @Transactional
@@ -210,8 +215,8 @@ public class TimerService {
 
         if(excludedTimerIds==null||excludedTimerIds.isEmpty()){
             return timerRepository.findAllTimersWithNextExecutionLessThan(requiredDateTime);
-        } return timerRepository.findAllTimersWithNextExecutionLessThan(requiredDateTime, excludedTimerIds);
-
+        }
+        return timerRepository.findAllTimersWithNextExecutionLessThan(requiredDateTime, excludedTimerIds);
     }
 
     private void checkTimersLimitAndCommandConditions(long chatId, long fromId, @NonNull String fullCommand){
@@ -227,20 +232,22 @@ public class TimerService {
         if(!annotation.eventable()){
             throw new CannotUseThisCommandForTimerException(annotation.mainCommandName());
         }
+
         int userRolePriority = memberService.getMemberRolePriority(chatId, fromId);
         boolean accessToCmd = commandAccessService.checkCommandAuthorization(chatId, userCommand, userRolePriority, fromId);
         if(!accessToCmd){
             throw new CommandAccessDeniedException(fromId,userCommand);
         }
     }
+
     private void checkNextExecutionDateCondition(@NonNull Instant nextExecution){
         if(nextExecution.minusSeconds(MIN_INTERVAL_BETWEEN_EXECUTING).isBefore(Instant.now())){
             throw new TimerDateOutOfBoundsException("Создать можно только таймер с датой, которая будет минимум через %s от текущей даты."
                     .formatted(FORMATTED_MIN_INTERVAL));
-        }if(nextExecution.isAfter(MAX_DATE_FOR_ONCE_TIMER)){
+        }
+        if(nextExecution.isAfter(MAX_DATE_FOR_ONCE_TIMER)){
             throw new TimerDateOutOfBoundsException("Вы ввели дату, которая находится слишком далеко в будущем. Выберите более раннюю дату.");
         }
-
     }
 
 }

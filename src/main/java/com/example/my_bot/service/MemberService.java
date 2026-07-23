@@ -176,9 +176,11 @@ public class MemberService {
         if (member!=null) {
             member.setPresenceType(IN_CHAT);
             member.setChatAdmin(false);
-        } else {
+        }
+        else {
            member = memberRepository.save(new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, IN_CHAT, invitedById, Instant.now()));
-        } putMemberToCache(chatId, member);
+        }
+        putMemberToCache(chatId, member);
     }
 
     @Transactional
@@ -205,11 +207,13 @@ public class MemberService {
                     member.setPresenceType(presenceType);
                     toPutInCache.add(member);
                 }
-            } else if(createIfAbsent){
+            }
+            else if(createIfAbsent){
                 member= new MemberEntity(chatId, userId, MEMBER.getRolePriority(), false, presenceType, null, Instant.now());
                 toSave.add(member);
                 toPutInCache.add(member);
-            }else{
+            }
+            else{
                 missingUserIds.add(userId);
             }
         }

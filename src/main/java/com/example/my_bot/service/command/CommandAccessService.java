@@ -1,4 +1,4 @@
-package com.example.my_bot.service;
+package com.example.my_bot.service.command;
 
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.command.ChatCommand;
@@ -9,6 +9,7 @@ import com.example.my_bot.dto.command.CommandAuthorizationResult;
 import com.example.my_bot.dto.cooldown.CooldownResult;
 import com.example.my_bot.dto.limit.RoleRateLimitDto;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
+import com.example.my_bot.service.RoleRateLimitService;
 import com.example.my_bot.service.permission.MemberPermissionService;
 import com.example.my_bot.service.permission.RolePermissionService;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -17,9 +18,7 @@ import com.github.benmanes.caffeine.cache.Expiry;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
@@ -73,7 +72,6 @@ public class CommandAccessService {
         this.roleRateLimitService = roleRateLimitService;
     }
 
-
     public CommandAuthorizationResult checkCommandsAuthorization(
             long chatId, @NonNull Set<String> userCommands, int userRolePriority, long fromId){
 
@@ -93,19 +91,23 @@ public class CommandAccessService {
                 if(currentUserPersonalPermission!=null){
                     if(currentUserPersonalPermission){
                         allowed.add(normalizedCommand);
-                    }else{
+                    }
+                    else{
                         forbidden.add(normalizedCommand);
-                    }continue;
+                    }
+                    continue;
                 }
             }
             Integer roleToExecute = customRolePermissions.get(normalizedCommand);
             if(roleToExecute!=null){
                 if(roleToExecute>userRolePriority){
                     forbidden.add(normalizedCommand);
-                }else{
+                }
+                else{
                     allowed.add(normalizedCommand);
                 }
-            }else{
+            }
+            else{
                 Optional<Command> annotationOptional = commandRegistry.getCommandAnnotation(normalizedCommand);
                 if(annotationOptional.isEmpty()){
                     log.error("chat {} error: could not find required @Command annotation for normalized string command: {}",chatId, normalizedCommand);
@@ -115,7 +117,8 @@ public class CommandAccessService {
                 Command annotation = annotationOptional.get();
                 if(annotation.defaultRole().getRolePriority()>userRolePriority){
                     forbidden.add(normalizedCommand);
-                }else{
+                }
+                else{
                     allowed.add(normalizedCommand);
                 }
             }
@@ -143,7 +146,8 @@ public class CommandAccessService {
         Integer roleToExecute = customRolePermissions.get(normalizedCommand);
         if(roleToExecute!=null){
             return roleToExecute <= userRolePriority;
-        }else{
+        }
+        else{
             Optional<Command> annotationOptional = commandRegistry.getCommandAnnotation(normalizedCommand);
             if(annotationOptional.isEmpty()){
                 log.error("chat {} error: could not find required @Command annotation for normalized string command: {}",chatId, normalizedCommand);
@@ -162,7 +166,7 @@ public class CommandAccessService {
         String normalizedCommand = chatCommand.getValue().mainCommandName();
 
         CommandCooldown defaultCooldown = chatCommand.getKey().getCooldown();
-        if (defaultCooldown == null) {
+        if(defaultCooldown == null) {
             throw new IllegalStateException("CommandCooldown not found for " + normalizedCommand);
         }
 
@@ -178,24 +182,22 @@ public class CommandAccessService {
         CooldownInfo customInfo = null;
         String customKey = null;
 
-        if (roleLimit.isPresent()) {
+        if(roleLimit.isPresent()) {
             customKey = roleLimit.get().isPersonal()
                     ? CUSTOM_ROLE_COOLDOWN.buildRolePersonalKey(chatId, fromId, normalizedCommand, roleLimit.get().getEntityId())
                     : CUSTOM_ROLE_COOLDOWN.buildRoleKey(chatId, normalizedCommand, userRolePriority, roleLimit.get().getEntityId());
 
             customInfo = probeCooldown(customKey, roleLimit.get().getTimePeriodSec(), roleLimit.get().getMaxUsage(), now);
         }
-
         boolean defaultFull = defaultInfo.full;
         boolean customFull = customInfo != null && customInfo.full;
 
-        if (!defaultFull && !customFull) {
+        if(!defaultFull && !customFull) {
             addCall(defaultKey, defaultCooldown.getSeconds(), now);
 
-            if (customInfo != null) {
+            if(customInfo != null){
                 addCall(customKey, roleLimit.get().getTimePeriodSec(), now);
             }
-
             CooldownResult result = new CooldownResult();
             result.setCanExecuteCommand(true);
             return result;
@@ -204,18 +206,17 @@ public class CommandAccessService {
         CooldownResult result = new CooldownResult();
         result.setCanExecuteCommand(false);
 
-        if (defaultFull && !customFull) {
+        if(defaultFull && !customFull){
             result.setLeftCDSeconds(defaultInfo.leftSeconds);
             result.setCanSendCDMessageToUser(defaultInfo.canSendMessage);
             return result;
         }
 
-        if (!defaultFull && customFull) {
+        if(!defaultFull && customFull){
             result.setLeftCDSeconds(customInfo.leftSeconds);
             result.setCanSendCDMessageToUser(customInfo.canSendMessage);
             return result;
         }
-
         result.setLeftCDSeconds(Math.max(defaultInfo.leftSeconds, customInfo.leftSeconds));
         result.setCanSendCDMessageToUser(defaultInfo.canSendMessage || customInfo.canSendMessage);
         return result;
@@ -228,7 +229,7 @@ public class CommandAccessService {
             CooldownData data = (existing != null) ? existing : new CooldownData(cdSeconds);
             Deque<Long> calls = data.calls;
 
-            while (!calls.isEmpty() && calls.peekFirst() < now - cdMillis) {
+            while(!calls.isEmpty() && calls.peekFirst() < now - cdMillis){
                 calls.pollFirst();
             }
 
@@ -236,19 +237,17 @@ public class CommandAccessService {
             long leftSeconds = 0;
             boolean canSendMessage = false;
 
-            if (full) {
+            if(full){
                 Long oldest = calls.peekFirst();
-                if (oldest != null) {
+                if(oldest != null){
                     leftSeconds = Math.max(0, (oldest + cdMillis - now) / 1000);
                 }
-
                 long lastMsg = data.lastSentCDMessageInMillis;
-                if (lastMsg == 0 || now - lastMsg > MILLISECONDS_BETWEEN_SENDING_COOLDOWN_MESSAGE_TO_USER) {
+                if(lastMsg == 0 || now - lastMsg > MILLISECONDS_BETWEEN_SENDING_COOLDOWN_MESSAGE_TO_USER) {
                     data.lastSentCDMessageInMillis = now;
                     canSendMessage = true;
                 }
             }
-
             data.probeFull = full;
             data.probeLeftSeconds = leftSeconds;
             data.probeCanSendMessage = canSendMessage;
@@ -274,12 +273,12 @@ public class CommandAccessService {
 
     private Optional<RoleRateLimitDto> getRoleLimit(long chatId, String command, int rolePriority) {
         ImmutableMap<String, ImmutableMap<Integer, RoleRateLimitDto>> allLimits = roleRateLimitService.getCachedCustomRoleLimits(chatId);
-        if (allLimits == null) {
+        if(allLimits == null){
             return Optional.empty();
         }
 
         ImmutableMap<Integer, RoleRateLimitDto> commandLimits = allLimits.get(command);
-        if (commandLimits == null) {
+        if(commandLimits == null){
             return Optional.empty();
         }
 

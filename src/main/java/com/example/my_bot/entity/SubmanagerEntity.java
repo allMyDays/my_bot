@@ -26,5 +26,4 @@ public class SubmanagerEntity {
     @Column(nullable = false, unique = true, columnDefinition = "TEXT")
     private String secretKey;
 
-
 }

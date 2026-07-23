@@ -17,8 +17,7 @@ public class CryptoService {
     private final static String ENCRYPTION_ALGORITHM = "AES";
 
     public CryptoService(@Value("${security.encryption-key}") String key){
-        this.secretKey =
-                new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), ENCRYPTION_ALGORITHM);
+        this.secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), ENCRYPTION_ALGORITHM);
     }
 
     public String encrypt(@NonNull String value){
@@ -30,8 +29,8 @@ public class CryptoService {
                     value.getBytes(StandardCharsets.UTF_8)
             );
             return Base64.getEncoder().encodeToString(encrypted);
-
-        }catch (Exception e){
+        }
+        catch (Exception e){
             throw new RuntimeException(e);
         }
     }
@@ -46,7 +45,8 @@ public class CryptoService {
 
             return new String(decrypted, StandardCharsets.UTF_8);
 
-        }catch (Exception e){
+        }
+        catch (Exception e){
             throw new RuntimeException(e);
         }
     }

@@ -34,5 +34,4 @@ public class BanEntity {
 
     @Column(nullable = false)
     private Long bannedBy;
-
 }

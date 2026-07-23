@@ -10,7 +10,7 @@ import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfExce
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.repository.permission.MemberPermissionRepository;
-import com.example.my_bot.service.CommandAccessService;
+import com.example.my_bot.service.command.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.utils.TextUtils;
 import com.google.common.collect.ImmutableMap;
@@ -30,17 +30,14 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MemberPermissionService {
 
+    private final MemberService memberService;
+    private final MemberPermissionRepository memberPermissionRepository;
+    private final CaffeineCacheManager cacheManager;
+    private final CommandAccessService commandService;
+
     private CommandRegistry commandRegistry;
 
-    private final MemberService memberService;
-
-    private final MemberPermissionRepository memberPermissionRepository;
-
-    private final CaffeineCacheManager cacheManager;
-
     private final static int MAX_CUSTOM_MEMBER_PERMISSIONS_COUNT = 20;
-
-    private final CommandAccessService commandService;
 
 
     @Autowired
@@ -98,22 +95,25 @@ public class MemberPermissionService {
                 }
                 commandsToSave.add(new MemberPermissionEntity(chatId,currentCommand, targetUserId,allow));
                 newPermissionsAvailableSize--;
-            }else if(!requiredPermission.equals(allow)){
+            }
+            else if(!requiredPermission.equals(allow)){
                     commandsToUpdate.add(currentCommand);
-            }else{
+            }
+            else{
                 result.getHasRequiredPermissionAlready().add(currentCommand);
                 continue;
-            }result.getAccepted().add(currentCommand);
+            }
+            result.getAccepted().add(currentCommand);
         }
         if(!commandsToSave.isEmpty()){
-            memberPermissionRepository.saveAll(commandsToSave);}
+            memberPermissionRepository.saveAll(commandsToSave);
+        }
         if(!commandsToUpdate.isEmpty()){
             memberPermissionRepository.updateUserPermissionsForRequiredCommands(chatId, commandsToUpdate, targetUserId, allow);
         }
         invalidateMemberPermissionCache(chatId);  // обновляю кеш разрешений
 
         return result;
-
     }
 
     @Transactional
@@ -137,7 +137,6 @@ public class MemberPermissionService {
        invalidateMemberPermissionCache(chatId);
 
     }
-
 
     public ImmutableMap<String, ImmutableMap<Long, Boolean>> getCachedCustomMemberPermissions(long chatId) {
         return cacheManager.getMemberPermissionCache().get(chatId, id -> {
@@ -165,6 +164,7 @@ public class MemberPermissionService {
     private void invalidateMemberPermissionCache(long chatId){
         cacheManager.getMemberPermissionCache().invalidate(chatId);
     }
+
     public static int getMaxCustomMemberPermissionsCount() {
         return MAX_CUSTOM_MEMBER_PERMISSIONS_COUNT;
     }

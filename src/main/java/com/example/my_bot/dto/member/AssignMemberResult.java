@@ -13,7 +13,4 @@ public class AssignMemberResult {
     RoleDto previousRole;
 
     RoleDto newRole;
-
-
-
 }

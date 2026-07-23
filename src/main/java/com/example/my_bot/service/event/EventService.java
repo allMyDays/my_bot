@@ -25,7 +25,7 @@ import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.mapper.EventMapper;
 import com.example.my_bot.repository.EventRepository;
 import com.example.my_bot.resolver.UserInputResolver;
-import com.example.my_bot.service.CommandAccessService;
+import com.example.my_bot.service.command.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.utils.ChatUtils;
@@ -190,7 +190,6 @@ public class EventService {
         }
         invalidateEventsCache(event.getChatId());
         return event;
-
     }
 
     @Transactional
@@ -213,6 +212,7 @@ public class EventService {
         invalidateEventsCache(event.getChatId());
         return event;
     }
+
     @Transactional
     public EventEntity removeDailyWorkTime(long eventId, long fromId){
         EventEntity event = eventRepository.findById(eventId)
@@ -269,6 +269,7 @@ public class EventService {
         invalidateEventsCache(event.getChatId());
         return event;
     }
+
     @Transactional
     public EventEntity removeNewMembersTimePeriod(long eventId, long fromId){
 
@@ -378,6 +379,7 @@ public class EventService {
         invalidateEventsCache(event.getChatId());
         return event;
     }
+
     @Transactional
     public EventEntity setNewRole(long eventId, @NonNull String newRoleName, long fromId){
 
@@ -415,7 +417,6 @@ public class EventService {
 
     public int countChatEvents(long chatId){
        return Math.toIntExact(getCachedChatEvents(chatId).values().stream().mapToLong(Set::size).sum());
-
     }
 
     private String validateEventArgument(long chatId, @NonNull MyEventType eventType, @Nullable String userArgument){
@@ -464,10 +465,10 @@ public class EventService {
                     }
                 }
             }
-
-        } return userArgument;
-
+        }
+        return userArgument;
     }
+
     @Transactional
     public void deleteEventById(long eventId, long fromId){
         EventEntity event = eventRepository.findById(eventId)
@@ -493,6 +494,7 @@ public class EventService {
         });
 
     }
+
     public Set<EventDto> getChatEventsWithRequiredTypes(long chatId, @NonNull Set<MyEventType> typeSet){
 
         HashSet<EventDto> eventsToReturn = new HashSet<>();
@@ -528,7 +530,6 @@ public class EventService {
 
     public boolean isEventRoleHighEnough(int eventRole, int memberRole){
         return memberRole<=eventRole;
-
     }
 
     private void checkEventAuthorization(@NonNull EventEntity eventEntity, long fromId){
@@ -541,6 +542,7 @@ public class EventService {
 
         }
     }
+
     private void checkUserFullCommand(long chatId, long fromId, @NonNull String fullCommand){
 
         String userCommand = UserInputResolver.splitFullCommandIntoTwoElements(fullCommand)[0];
@@ -558,9 +560,11 @@ public class EventService {
             throw new CommandAccessDeniedException(fromId,userCommand);
         }
     }
+
     public boolean isEventACommandEvent(@NonNull EventEntity event){
         return Objects.equals(event.getRolePriority(), CHAT_MANAGER_ROLE_PRIORITY);
     }
+
     public boolean isEventACommandEvent(@NonNull EventDto event){
         return Objects.equals(event.getRolePriority(), CHAT_MANAGER_ROLE_PRIORITY);
     }

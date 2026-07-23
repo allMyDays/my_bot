@@ -13,6 +13,7 @@ import java.util.Optional;
 @AllArgsConstructor
 @NoArgsConstructor
 @Setter
+@Getter
 public class CommandMessageDto{
 
     @Getter

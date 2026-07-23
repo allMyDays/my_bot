@@ -265,9 +265,10 @@ public class EventExecutionService {
                  if(memberId!=null) fromId = memberId;
                  GroupIdAndUserIdKey key = new GroupIdAndUserIdKey(Long.parseLong(eventDto.getArgument()), fromId);
                  boolean isMember = Boolean.TRUE.equals(COMMUNITY_SUBSCRIPTIONS_CACHE.get(key, k ->{
-                         try {
+                         try{
                              return vkCommunityClient.isCommunityMember(k.groupId(), k.userId());
-                         } catch (Exception e){
+                         }
+                         catch (Exception e){
                              log.warn("error execute method isCommunityMember, group: {}; user {}", eventDto.getArgument(), k.userId());
                              return false;
                          }
@@ -313,7 +314,8 @@ public class EventExecutionService {
                 int duration = voiceMessage.getDuration();
                 if(eventType==MyEventType.SHORT_VOICE_MESSAGE) {
                     if(duration>=intArg) return;
-                }else{
+                }
+                else{
                     if(duration<=intArg) return;
                 }
                 executeEvent(eventDto, data,1);
@@ -324,7 +326,8 @@ public class EventExecutionService {
                 VideoType videoType = video.getType();
                 if(eventType==MyEventType.VIDEO_MESSAGE) {
                     if(videoType!=VideoType.VIDEO_MESSAGE) return;
-                }else{
+                }
+                else{
                     if(videoType!=VideoType.SHORT_VIDEO) return;
                 }
                 executeEvent( eventDto, data, 1);
@@ -575,10 +578,11 @@ public class EventExecutionService {
         Long memberToTrigger = currentEvent.getMemberToTrigger();
         if(memberToTrigger!=null){  // личное событие
             if(memberToTrigger!=fromId) return false;
-
-        }else if(!eventService.isEventRoleHighEnough(currentEvent.getRolePriority(), callerRole)){
+        }
+        else if(!eventService.isEventRoleHighEnough(currentEvent.getRolePriority(), callerRole)){
             return false;
         }
+
         if(currentEvent.getExceptionalMembers().contains(fromId)){  // не личное событие, но есть участники-исключения
             return false;
         }
@@ -608,7 +612,8 @@ public class EventExecutionService {
         }
         if(start.isBefore(end)) {// 08:00–23:00
             return !now.isBefore(start)&&now.isBefore(end);
-        }else{ // 23:00–08:00
+        }
+        else{ // 23:00–08:00
             return !now.isBefore(start)||now.isBefore(end);
         }
     }
@@ -640,13 +645,16 @@ public class EventExecutionService {
                 String replacement=null;
                 if(data.getFwdMessageOwnerId()!=null){
                     replacement = createMemberLink(data.getFwdMessageOwnerId());
-                }else if(eventType==REACTION_FILTER||eventType==ANY_REACTION){
+                }
+                else if(eventType==REACTION_FILTER||eventType==ANY_REACTION){
                      Long reactionOwnerId =messageLogService.getMessageOwnerId(data.getDataBaseChatId(), data.getConversationMessageId()).orElse(null);
                      if(reactionOwnerId!=null) replacement = createMemberLink(reactionOwnerId);
 
-                }else if(data.getUserText()!=null){
+                }
+                else if(data.getUserText()!=null){
                     replacement = UserInputResolver.getRequiredCommandArgument(data.getUserText(),2).orElse(null);
                 }
+
                 if(replacement!=null){
                    fullEventCommand = matcher.replaceFirst(replacement);
                 }

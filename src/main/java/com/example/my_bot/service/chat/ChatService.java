@@ -27,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 
 import static com.example.my_bot.enumeration.DefaultRole.SENIOR_ADMINISTRATOR;
 import static com.example.my_bot.utils.ChatUtils.DEFAULT_CHAT_PREFIX;
@@ -39,16 +41,14 @@ public class ChatService {
     private final CaffeineCacheManager cacheManager;
     private final ChatRepository chatRepository;
     private final ChatMapper chatMapper;
-    private final ChatService selfLink;
     private final MemberService memberService;
 
     private final static Set<Character> FORBIDDEN_PREFIXES = Set.of('*','@');
 
-    public ChatService(CaffeineCacheManager cacheManager, ChatRepository chatRepository, ChatMapper chatMapper, @Lazy ChatService selfLink, @Lazy MemberService memberService) {
+    public ChatService(CaffeineCacheManager cacheManager, ChatRepository chatRepository, ChatMapper chatMapper, @Lazy MemberService memberService) {
         this.cacheManager = cacheManager;
         this.chatRepository = chatRepository;
         this.chatMapper = chatMapper;
-        this.selfLink = selfLink;
         this.memberService = memberService;
     }
 
@@ -77,7 +77,7 @@ public class ChatService {
                 return chatMapper.toChatDetailsDto(optionalChat.get());
             }
             if(createIfAbsent){
-                ChatEntity newEntity = selfLink.createNewChatWithStandardSettings(id);
+                ChatEntity newEntity = createNewChatWithStandardSettings(id);
                 return chatMapper.toChatDetailsDto(newEntity);
             }else{
                 throw new ChatEntityNotFoundException(id);
@@ -149,50 +149,17 @@ public class ChatService {
 
     @Transactional
     public SwitchChatSettingResult switchSilentRestriction(long chatId){
-        ChatEntity chat = findByChatIdOrThrow(chatId);
-
-        SwitchChatSettingResult resultToReturn;
-        if(chat.isSilentRestriction()){
-            chat.setSilentRestriction(false);
-            resultToReturn = SwitchChatSettingResult.OFF;
-        }else{
-            chat.setSilentRestriction(true);
-            resultToReturn = SwitchChatSettingResult.ON;
-        }
-        putChatToCache(chatRepository.save(chat));
-        return resultToReturn;
+        return toggleBooleanSetting(chatId, ChatEntity::isSilentRestriction, ChatEntity::setSilentRestriction);
     }
 
     @Transactional
     public SwitchChatSettingResult switchMessageReplying(long chatId){
-        ChatEntity chat = findByChatIdOrThrow(chatId);
-
-        SwitchChatSettingResult resultToReturn;
-        if(chat.isMessageReplying()){
-            chat.setMessageReplying(false);
-            resultToReturn = SwitchChatSettingResult.OFF;
-        }else{
-            chat.setMessageReplying(true);
-            resultToReturn = SwitchChatSettingResult.ON;
-        }
-        putChatToCache(chatRepository.save(chat));
-        return resultToReturn;
+        return toggleBooleanSetting(chatId, ChatEntity::isMessageReplying, ChatEntity::setMessageReplying);
     }
 
     @Transactional
     public SwitchChatSettingResult switchSubPosts(long chatId){
-        ChatEntity chat = findByChatIdOrThrow(chatId);
-
-        SwitchChatSettingResult resultToReturn;
-        if(chat.isSubPosts()){
-            chat.setSubPosts(false);
-            resultToReturn = SwitchChatSettingResult.OFF;
-        }else{
-            chat.setSubPosts(true);
-            resultToReturn = SwitchChatSettingResult.ON;
-        }
-        putChatToCache(chatRepository.save(chat));
-        return resultToReturn;
+        return toggleBooleanSetting(chatId, ChatEntity::isSubPostsEnabled, ChatEntity::setSubPostsEnabled);
     }
 
     public boolean isSilentRestriction(long chatId){
@@ -295,20 +262,7 @@ public class ChatService {
 
     @Transactional
     public SwitchChatSettingResult switchAutoUnban(long chatId){
-
-        ChatEntity chat = findByChatIdOrThrow(chatId);
-
-        SwitchChatSettingResult resultToReturn;
-        if(chat.isAutoUnban()){
-            chat.setAutoUnban(false);
-            resultToReturn = SwitchChatSettingResult.OFF;
-        }else{
-            chat.setAutoUnban(true);
-            resultToReturn = SwitchChatSettingResult.ON;
-        }
-        putChatToCache( chatRepository.save(chat));
-        return resultToReturn;
-
+        return toggleBooleanSetting(chatId, ChatEntity::isAutoUnban, ChatEntity::setAutoUnban);
     }
 
     @Transactional
@@ -395,8 +349,8 @@ public class ChatService {
         putChatToCache(chat);
     }
 
-    public List<ChatEntity> findChatsByBoundSubmanagerAndSubPostsTrue(long submanagerId){
-        return chatRepository.findChatsByBoundSubmanagerAndSubPostsTrue(Math.abs(submanagerId));
+    public List<ChatEntity> findChatsByBoundSubmanagerIdAndSubPostsEnabled(long submanagerId){
+        return chatRepository.findChatsByBoundSubmanagerAndSubPostsEnabled(Math.abs(submanagerId));
     }
 
     @Transactional
@@ -431,6 +385,14 @@ public class ChatService {
         cacheManager.getSubmanagerChatIdByMainChatIdCache().asMap().compute(
                 new GroupIdAndChatIdKey(submanagerId, dataBaseChatId), (k,v)-> Optional.empty()
         );
+    }
+
+    private SwitchChatSettingResult toggleBooleanSetting(long chatId, Predicate<ChatEntity> getter, BiConsumer<ChatEntity, Boolean> setter){
+        ChatEntity chat = findByChatIdOrThrow(chatId);
+        boolean newValue = !getter.test(chat);
+        setter.accept(chat, newValue);
+        putChatToCache(chatRepository.save(chat));
+        return newValue ? SwitchChatSettingResult.ON : SwitchChatSettingResult.OFF;
     }
 
 }

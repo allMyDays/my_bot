@@ -12,7 +12,7 @@ import com.example.my_bot.enumeration.TimeZoneType;
 import com.example.my_bot.enumeration.command.CommandExecutionStatus;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.mapper.MessageMapper;
-import com.example.my_bot.service.CommandLogService;
+import com.example.my_bot.service.command.CommandLogService;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.chat.ChatService;
 import com.example.my_bot.utils.TimeUtils;

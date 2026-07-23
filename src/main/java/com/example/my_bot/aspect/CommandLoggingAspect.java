@@ -3,7 +3,7 @@ package com.example.my_bot.aspect;
 import com.example.my_bot.annotation.Command;
 import com.example.my_bot.command.CommandRegistry;
 import com.example.my_bot.dto.command.CommandMessageDto;
-import com.example.my_bot.service.CommandLogService;
+import com.example.my_bot.service.command.CommandLogService;
 import com.example.my_bot.service.chat.AdminChatActionService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +43,7 @@ public class CommandLoggingAspect {
 
         try{
             commandLogService.saveNewCommandLog(dataBaseChatId, cmdAnnotation.get(), fromId);
-            adminChatActionService.sendMessageAboutAnUsedCommand(dataBaseChatId, cmdAnnotation.get(), fromId);
+            adminChatActionService.sendMessageAboutAUsedCommand(dataBaseChatId, cmdAnnotation.get(), fromId);
             return result;
 
         }catch (Exception e) {

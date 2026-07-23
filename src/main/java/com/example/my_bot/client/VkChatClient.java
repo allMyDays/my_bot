@@ -164,12 +164,13 @@ public class VkChatClient{
             if(type==DomainResolvedType.USER){
                 long value = response.getObjectId();
                 return Optional.of(value);
-            }if(type==DomainResolvedType.GROUP){
+            }
+            if(type==DomainResolvedType.GROUP){
                 long value = response.getObjectId()*-1L;
                 return Optional.of(value);
             }
-
-        }return  Optional.empty();
+        }
+        return  Optional.empty();
     }
 
     public void kickOneChatMember(@NonNull CommandRoutingData commandRoutingData, long memberId) throws ClientException, ApiException{
@@ -327,6 +328,7 @@ public class VkChatClient{
         cimd.ifPresent(id-> messageLogService.markMessagesAsDeleted(commandRoutingData.getDataBaseChatId(), Set.of(id)));
         return cimd.isPresent();
     }
+
     public boolean deleteOneMessageInTheMainBotPrivateMessages(long userId, int conversationMessageId) throws ClientException, ApiException {
         List<DeleteFullResponse> response = vkApiClient.messages()
                 .deleteFull(theMainBotGroupActor)
@@ -403,9 +405,6 @@ public class VkChatClient{
         return Optional.of(response.getItems().get(0).getChatSettings().getTitle());
     }
 
-
-
-
     private <T> List<List<T>> partitionList(List<T> list, int size) {
         List<List<T>> partitions = new ArrayList<>();
         for (int i = 0; i < list.size(); i += size) {
@@ -413,8 +412,6 @@ public class VkChatClient{
         }
         return partitions;
     }
-
-
 
 
 }

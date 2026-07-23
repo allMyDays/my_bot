@@ -15,8 +15,8 @@ import java.util.Optional;
 @Setter
 @NoArgsConstructor
 @Table(indexes = {
-        @Index(name = "timer_idx_chat_id", columnList = "chatId"),
-        @Index(name = "idx_next_execution", columnList = "nextExecution")
+        @Index(name = "timer_idx_chat_id", columnList = "chat_id"),
+        @Index(name = "idx_next_execution", columnList = "next_execution")
 })
 @Check(constraints = "(type != 'EACH') OR (type = 'EACH' AND interval_seconds IS NOT NULL)")
 public class TimerEntity {
@@ -38,10 +38,10 @@ public class TimerEntity {
     @Column(nullable = true, columnDefinition = "TEXT")
     private String fullCommand;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "next_execution")
     private Instant nextExecution;
 
-    @Column(nullable = true)
+    @Column(nullable = true, name = "interval_seconds")
     private Long intervalSeconds;  // период в секундах для типа "каждые"
 
     @Column(nullable = true)

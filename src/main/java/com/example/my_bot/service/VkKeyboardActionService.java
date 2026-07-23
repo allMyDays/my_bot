@@ -35,7 +35,6 @@ public class VkKeyboardActionService {
         this.adminChatActionService = adminChatActionService;
     }
 
-
     public Keyboard createAutoLayoutKeyboard(@NonNull List<VkButtonConfig> buttons, int buttonsPerRow){
         // Проверка лимитов
         if(buttons.size()>MAX_CREATABLE_BUTTONS){
@@ -82,8 +81,6 @@ public class VkKeyboardActionService {
         return createAutoLayoutKeyboard(buttons, MAX_BUTTONS_PER_ONE_ROW);
     }
 
-
-
     public void handleClickedButton(@NonNull String messageText, @NonNull String buttonPayload, @NonNull CommandRoutingData routingData, long fromId) throws ClientException, ApiException {
 
         long theBotId = routingData.getReceivedEventBot().getGroupId();
@@ -105,13 +102,6 @@ public class VkKeyboardActionService {
             }
         }
 
-
     }
-
-
-
-
-
-
 
 }

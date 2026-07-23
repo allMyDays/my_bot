@@ -2,7 +2,6 @@ package com.example.my_bot.dto.chat;
 
 import com.example.my_bot.enumeration.TimeZoneType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.Column;
 import lombok.*;
 
 import java.time.Instant;
@@ -45,7 +44,7 @@ public class ChatDetailsDto {
 
     private Long submanagerChatId;
 
-    private boolean isSubPosts;
+    private boolean isSubPostsEnabled;
 
 
 

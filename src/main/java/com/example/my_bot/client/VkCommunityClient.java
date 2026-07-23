@@ -68,8 +68,8 @@ public class VkCommunityClient {
                     .execute();
 
             return response!=null&&response.getValue()==1;
-
-        }catch(ApiExtendedException ex){
+        }
+        catch(ApiExtendedException ex){
             int errorCode = ex.getErrorRaw().getErrorCode();
             if(NO_GROUP_MEMBERS_ACCESS.getCodes().contains(errorCode)){
                 // доступ к списку участников закрыт или группа заблокирована
@@ -133,7 +133,8 @@ public class VkCommunityClient {
                 .groupId(groupId)
                 .serverId(serverId)
                 .execute();
-        }catch(ApiException e){
+        }
+        catch(ApiException e){
             if(CALLBACK_SERVER_IS_NOT_FOUND.getCodes().contains(e.getCode())){
                 return true; // сервер ранее уже был удалён кем-то
             }

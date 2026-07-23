@@ -73,7 +73,8 @@ public class TimerExecutionService {
         ScheduledFuture<?> future = cacheManager.getTimerTasksCache().getIfPresent(timerId);
         if(future==null){
             log.info("timer {} does not have ScheduledFuture link in cache TimerTasksCache", timerId);
-        }else{
+        }
+        else{
             future.cancel(false);
             cacheManager.getTimerTasksCache().invalidate(timerId);
         }
@@ -117,7 +118,8 @@ public class TimerExecutionService {
                 commandDispatcher.dispatch(
                         messageMapper.toCommandMessageDto(commandRoutingData, timer.getCreatorId(), timer.getFullCommand(), CONVERSATION_MESSAGE_ID,false,true)
                 );
-            }catch (Exception e) {
+            }
+            catch (Exception e) {
                 log.warn("error while execution timer {} in chat {}, the timer is gonna be deleted.",timerId,dataBaseChatId, e);
                 deleteTimerAndSendNotification(
                         timerId, timer.getFullCommand(), dataBaseChatId, "Ваш таймер с командой «%s» завершился с ошибкой, поэтому был удалён.", commandRoutingData
@@ -127,19 +129,22 @@ public class TimerExecutionService {
             try{
                 if(timer.getType()==ONCE){
                     timerService.deleteTimerById(timerId); // удаляю одноразовый таймер
-                }else{     // обновляю дату следующего срабатывания для многоразового таймера
+                }
+                else{     // обновляю дату следующего срабатывания для многоразового таймера
                     Instant newNextExecution = timerService.incrementNextExecutionAndExecutionCounter(timerId);
                     if(Duration.between(Instant.now(), newNextExecution).toHours()>=12){
                         // отменяю многоразовый таймер потому-что следующий вызов только через 12 часов и более
                         cancelTaskAndRemoveFromCache(timerId);
                     }
                 }
-            }catch(TimerHasReachedExecutionLimitException e){
+            }
+            catch(TimerHasReachedExecutionLimitException e){
                 deleteTimerAndSendNotification(
                         timerId, timer.getFullCommand(), dataBaseChatId, "Ваш таймер с командой «%s» достиг конца своего жизненного цикла и был удалён.", commandRoutingData
                 );
 
-            }catch (Exception e){
+            }
+            catch (Exception e){
                 log.error("error updating timer {} info after it's just been executed in chat {}: ",timerId,dataBaseChatId, e);
                 deleteTimerAndSendNotification(
                         timerId, timer.getFullCommand(), dataBaseChatId, "Таймер с командой «%s» сломан и был удалён.", commandRoutingData
@@ -174,11 +179,11 @@ public class TimerExecutionService {
         for(TimerEntity timer: timersToProcess){
             if(timerTasksCache.getIfPresent(timer.getId())!=null){
                 log.warn("method getAllTimersWithNextExecutionLessThan returned timerId {} that's already in ScheduledExecutor", timer.getId());
-            }else{
+            }
+            else{
             putTimerToScheduler(timer);
             }
 
         }
     }
-
 }

@@ -11,19 +11,17 @@ import com.example.my_bot.dto.command.CommandRoutingData;
 import com.example.my_bot.dto.submanager.SubmanagerDto;
 import com.example.my_bot.enumeration.command.CommandExecutionStatus;
 import com.example.my_bot.enumeration.command.HandleAdminChatCommandStatus;
-import com.example.my_bot.enumeration.event.ChatEventType;
 import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.enumeration.key.ButtonPayloadKey;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.resolver.UserInputResolver;
-import com.example.my_bot.service.CommandAccessService;
+import com.example.my_bot.service.command.CommandAccessService;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.VkKeyboardActionService;
 import com.example.my_bot.service.submanager.SubmanagerService;
-import com.example.my_bot.utils.ChatUtils;
 import com.example.my_bot.utils.TextUtils;
 import com.example.my_bot.vk.mapping.button.VkButtonConfig;
 import com.github.benmanes.caffeine.cache.*;
@@ -136,7 +134,6 @@ public class AdminChatActionService {
         return VK_KEYBOARD_IS_SENT;
     }
 
-
     public void handleClickedAdminChatButton(@NonNull CommandRoutingData routingData, @NonNull ButtonPayloadKey key, @NonNull String value, long fromId) throws ClientException, ApiException {
 
         long adminChatDataBaseChatId = routingData.getDataBaseChatId();
@@ -239,7 +236,7 @@ public class AdminChatActionService {
     }
 
     @Async
-    public void sendMessageAboutAnUsedCommand(long boundChatId, @NonNull Command cmdAnnotation, long fromId){
+    public void sendMessageAboutAUsedCommand(long boundChatId, @NonNull Command cmdAnnotation, long fromId){
 
         Optional<Long> adminChatId = adminChatService.findLatestAdminChatIdByBoundChatId(boundChatId);
         if(adminChatId.isEmpty()) return;
@@ -282,7 +279,8 @@ public class AdminChatActionService {
 
         try{
             vkChatClient.sendText(messageMapper.toSendMessageDto(message, routingData));
-        }catch (Exception e){
+        }
+        catch (Exception e){
             log.warn("fail send message event to admin chat {}", adminChatId, e);
         }
     }
@@ -295,13 +293,8 @@ public class AdminChatActionService {
         });
     }
 
-
     private String buildChatSource(long boundChat){
         return "❗Из чата «%s».".formatted(chatService.getCachedChatDetails(boundChat, false).getChatTitle());
     }
-
-
-
-
 
 }

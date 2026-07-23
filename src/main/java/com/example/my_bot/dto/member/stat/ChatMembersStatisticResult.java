@@ -34,10 +34,4 @@ public class ChatMembersStatisticResult{
     public void addMemberStat(@NonNull MemberStatisticDto memberStatisticDto){
         memberStatisticDtoList.add(memberStatisticDto);
     }
-
-
-
-
-
-
 }

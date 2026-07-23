@@ -25,19 +25,17 @@ import static com.example.my_bot.enumeration.DefaultRole.isDefaultRole;
 @Service
 @RequiredArgsConstructor
 public class RoleService {
+
     private final RoleRepository roleRepository;
-
     private final RoleMapper roleMapper;
-
     private final MemberService memberService;
-
     private final CaffeineCacheManager cacheManager;
 
-    private final int MIN_CREATABLE_ROLE_PRIORITY = -100;
-    private final int MAX_CREATABLE_ROLE_PRIORITY =  99;
-    private final int MIN_CREATABLE_ROLE_NAME_LENGTH = 3;
-    private final int MAX_CREATABLE_ROLE_NAME_LENGTH = 30;
-    private final int MAX_CUSTOM_ROLES_COUNT = 10;
+    public final static int MIN_CREATABLE_ROLE_PRIORITY = -100;
+    public final static int MAX_CREATABLE_ROLE_PRIORITY =  99;
+    private final static int MIN_CREATABLE_ROLE_NAME_LENGTH = 3;
+    private final static int MAX_CREATABLE_ROLE_NAME_LENGTH = 30;
+    private final static int MAX_CUSTOM_ROLES_COUNT = 10;
 
 
     @Transactional
@@ -58,7 +56,8 @@ public class RoleService {
 
         if(isDefaultRole(rolePriority)){
             throw new DuplicateRolePriorityException(rolePriority);
-        }if(isDefaultRole(roleName.toLowerCase())){
+        }
+        if(isDefaultRole(roleName.toLowerCase())){
             throw new DuplicateRoleNameException(
                     "Данное Название является зарезервированным для системной роли, вы не можете создать роль с таким названием."
             );
@@ -68,9 +67,11 @@ public class RoleService {
         for(Map.Entry<Integer, String> entry: getAllRolesWithNoSorting(chatId).entrySet()){
             if(!isDefaultRole(entry.getKey())){
                 createdRolesCounter++;
-            }if(entry.getKey()==rolePriority){
+            }
+            if(entry.getKey()==rolePriority){
                 throw new DuplicateRolePriorityException(rolePriority);
-            }if(entry.getValue().equalsIgnoreCase(roleName)){
+            }
+            if(entry.getValue().equalsIgnoreCase(roleName)){
                 throw new DuplicateRoleNameException("Роль с названием «%s» уже существует.".formatted(roleName));
             }
         }
@@ -80,8 +81,8 @@ public class RoleService {
         RoleEntity savedRole = roleRepository.save(new RoleEntity(chatId, rolePriority, roleName));
         invalidateRoleCache(chatId);
         return savedRole;
-
     }
+
     @Transactional
     public RoleDto renameRole(long chatId, long fromId, int existingRolePriority, @NonNull String newRoleName){
 
@@ -130,8 +131,8 @@ public class RoleService {
         RoleDto roleToReturn = roleMapper.toDto(roleRepository.save(roleToSave));
         invalidateRoleCache(chatId);
         return roleToReturn;
-
     }
+
     @Transactional
     public RoleDto renameRole(long chatId, long fromId, @NonNull String existingRoleName, @NonNull String newRoleName){
 
@@ -139,7 +140,6 @@ public class RoleService {
                 .orElseThrow(RoleNotFoundException::new).getRolePriority();
 
         return renameRole(chatId, fromId, rolePriority, newRoleName);
-
     }
 
     @Transactional
@@ -164,7 +164,6 @@ public class RoleService {
         }
         invalidateRoleCache(chatId);
         return roleToReAssign;
-
     }
 
     @Transactional
@@ -192,6 +191,7 @@ public class RoleService {
         }
         return new RoleDto(foundRole.getValue(), foundRole.getKey());
     }
+
     public RoleDto findTheNearestHighestRole(long chatId, int rolePriority){
 
         TreeMap<Integer, String> allSortedRoles = getAllRolesSortedInDescendingOrder(chatId);
@@ -199,12 +199,10 @@ public class RoleService {
         Map.Entry<Integer, String> foundRole = allSortedRoles.lowerEntry(rolePriority);
 
         if(foundRole==null){
-                throw new RoleNotFoundException();
+            throw new RoleNotFoundException();
         }
         return new RoleDto(foundRole.getValue(), foundRole.getKey());
     }
-
-
 
     public TreeMap<Integer, String> getAllRolesSortedInDescendingOrder(long chatId){
         TreeMap<Integer, String> sortedReverse = new TreeMap<>(Comparator.reverseOrder());
@@ -222,15 +220,11 @@ public class RoleService {
             resultMap.putIfAbsent(defaultRole.getRolePriority(), defaultRole.getRoleName());
 
         } return resultMap;
-
     }
 
     public Optional<String> getRoleName(long chatId, int rolePriority){
-
        return getRoleByPriority(chatId, rolePriority).map(RoleDto::getRoleName);
-
     }
-
 
     public Optional<RoleDto> getRoleByPriority(long chatId, int rolePriority){
 
@@ -258,7 +252,8 @@ public class RoleService {
            if(role.getValue().equalsIgnoreCase(roleName)){
                return Optional.of(new RoleDto(role.getValue(), role.getKey()));
            }
-       }return Optional.empty();
+       }
+       return Optional.empty();
 
     }
 

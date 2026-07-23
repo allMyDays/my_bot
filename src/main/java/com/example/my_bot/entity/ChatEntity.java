@@ -70,7 +70,9 @@ public class ChatEntity {
     @Column(name = "submanager_chat_id", nullable = true)
     private Long submanagerChatId;
 
-    @Column(nullable = true)
-    private boolean isSubPosts;
+    private boolean isSubPostsEnabled;
 
+    public ChatEntity(Long chatId) {
+        this.chatId = chatId;
+    }
 }

@@ -11,7 +11,7 @@ import com.example.my_bot.enumeration.member.MemberPresenceType;
 import com.example.my_bot.enumeration.user.NameCase;
 import com.example.my_bot.mapper.MessageMapper;
 import com.example.my_bot.service.BanService;
-import com.example.my_bot.service.CommandAccessService;
+import com.example.my_bot.service.command.CommandAccessService;
 import com.example.my_bot.service.GlobalUserService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.vk.mapping.action.VkAction;
@@ -21,7 +21,6 @@ import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
 import jakarta.annotation.Nullable;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -127,7 +126,8 @@ public class ChatActionService {
 
             try {
                 memberService.synchronizeChatMembers(routingData);
-            }catch (Exception e){
+            }
+            catch (Exception e){
                 log.warn("chat {} error while auto synchronization",chatDto,e);
                 return;
             }
@@ -173,14 +173,16 @@ public class ChatActionService {
                 try {
                     vkChatClient.kickOneChatMember(commandRoutingData, memberId);
                     hasBeenKicked = true;
-                } catch (ClientException | ApiException e) {
+                }
+                catch (ClientException | ApiException e) {
                     log.warn("chat {} error: cannot remove banned member {} that just has been linked. ",dataBaseChatId, memberId, e);
                     message +=" Однако возникла ошибка при попытке исключить этого пользователя: "+e.getMessage();
                 }
             }
             try {
                 vkChatClient.sendText(messageMapper.toSendMessageDto(message, convertToPeerId(commandRoutingData.getVkApiChatId()),dataBaseChatId, commandRoutingData.getExecutorBot()));
-            } catch (ClientException | ApiException e) {
+            }
+            catch (ClientException | ApiException e) {
                 log.warn("chat {} error: cannot send info about banned member {} that just has been linked. ",dataBaseChatId, memberId, e);
             }
         return hasBeenKicked;
@@ -199,14 +201,13 @@ public class ChatActionService {
 
         try{
             vkChatClient.sendText(messageMapper.toSendMessageDto(WELCOME_MESSAGE, convertToPeerId(dataBaseChatId),dataBaseChatId, theMainBotGroupActor));
-        }catch (ClientException|ApiException e){
+        }
+        catch (ClientException|ApiException e){
             log.warn("chat {} error: couldn't send welcome message after the bot's just been added", dataBaseChatId);
         }
         return true;
 
     }
-
-
 }
 
 

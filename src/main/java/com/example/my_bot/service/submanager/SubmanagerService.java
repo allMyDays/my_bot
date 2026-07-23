@@ -62,15 +62,9 @@ public class SubmanagerService {
 
     public SubmanagerDto getSubmanagerOrThrowIfAbsents(long groupId){
 
-        long finalGroupId = Math.abs(groupId);
-        Optional<SubmanagerDto> foundSub =  cacheManager.getSubmanagerInfoCache().get(finalGroupId, key->{
-            Optional<SubmanagerEntity> entity = submanagerRepository.findById(key);
-            return entity.map(submanagerMapper::toSubmanagerDto);
-          }
-        );
-        return foundSub.orElseThrow(()->{
-            log.warn("cannot find submanager data by group id {}", finalGroupId);
-            return new SubmanagerNotFoundException(finalGroupId);
+        return getOptionalSubmanager(groupId).orElseThrow(()->{
+            log.warn("cannot find submanager data by group id {}", groupId);
+            return new SubmanagerNotFoundException(groupId);
         });
     }
 
@@ -83,14 +77,10 @@ public class SubmanagerService {
                 }
         );
     }
-    
 
     public boolean isSubmanager(@NonNull GroupActor groupActor){
         return !Objects.equals(groupActor.getGroupId(), theMainBotGroupActor.getGroupId())
                 && !Objects.equals(groupActor.getAccessToken(), theMainBotGroupActor.getAccessToken());
     }
-
-
-
 
 }

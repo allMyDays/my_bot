@@ -34,7 +34,7 @@ import static com.example.my_bot.enumeration.command.CommandExecutionStatus.ARGU
 import static com.example.my_bot.enumeration.command.CommandExecutionStatus.SUCCESS;
 import static com.example.my_bot.utils.TextUtils.createMention;
 
-@Command(mainCommandName = "преды", alternativeCommandNames = {"warnings"}, defaultRole = MODERATOR, eventable = true, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
+@Command(mainCommandName = "предлист", alternativeCommandNames = {"преды","warnings"}, defaultRole = MODERATOR, eventable = true, adminChatCommandExecutionMode = ONLY_SINGLE_BOUND_CHAT_AT_ONCE)
 public class WarnListShowCommand implements ChatCommand {
 
     @Getter

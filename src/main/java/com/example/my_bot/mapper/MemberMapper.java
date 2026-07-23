@@ -12,9 +12,4 @@ public abstract class MemberMapper {
     public abstract MemberDto toMemberDto(MemberEntity memberEntity);
 
     public abstract List<MemberDto> toMemberDtoList(List<MemberEntity> memberEntities);
-
-
-
-
-
 }

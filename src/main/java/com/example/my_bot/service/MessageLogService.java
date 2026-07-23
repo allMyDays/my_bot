@@ -40,7 +40,7 @@ public class MessageLogService{
     private final RoleService roleService;
     private final long theMainBotId;
 
-    private final ConcurrentMap<Long, Set<MessageLogEntity>> temporaryMessagesCache = new ConcurrentHashMap<>();
+    final ConcurrentMap<Long, Set<MessageLogEntity>> temporaryMessagesCache = new ConcurrentHashMap<>();
 
     private final static int INTERVAL_BETWEEN_SAVING_MESSAGES_INTO_DATA_BASE_SEC = 60;
 
@@ -140,7 +140,8 @@ public class MessageLogService{
                 throw new RoleNotFoundException();
             }
             requiredMembers = memberService.getAllCurrentChatMembersWithRoleLessThanAndFirstAppearanceBeforeThan(chatId, roleLessThan, thresholdDate);
-        }else{
+        }
+        else{
             requiredMembers = memberService.getAllCurrentChatMembersWithFirstAppearanceBeforeThan(chatId, thresholdDate);
         }
         Map<Long, MessageLogRepository.MemberLastMessageProjection> lastMessagesMap =
@@ -244,14 +245,5 @@ public class MessageLogService{
         loadRequiredChatMessagesIntoTheDatabase(chatId);
         messageRepository.markMessagesAsDeleted(chatId, conversationMessageIds);
     }
-
-
-
-
-
-
-
-
-
 
 }

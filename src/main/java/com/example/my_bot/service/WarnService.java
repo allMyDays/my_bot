@@ -93,6 +93,4 @@ public class WarnService {
         warnRepository.deleteExpiredWarns(Instant.now());
     }
 
-
-
 }

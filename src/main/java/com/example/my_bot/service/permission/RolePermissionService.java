@@ -11,7 +11,7 @@ import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.role.RoleNotFoundException;
 import com.example.my_bot.repository.permission.RolePermissionRepository;
-import com.example.my_bot.service.CommandAccessService;
+import com.example.my_bot.service.command.CommandAccessService;
 import com.example.my_bot.service.MemberService;
 import com.example.my_bot.service.RoleService;
 import com.example.my_bot.utils.TextUtils;
@@ -99,23 +99,27 @@ public class RolePermissionService {
                 }
                 commandsToSave.add(new RolePermissionEntity(chatId, currentCommand,rolePriority));
                 newPermissionsAvailableSize--;
-            }else if(existingPermissionRolePriority!=rolePriority){
+            }
+            else if(existingPermissionRolePriority!=rolePriority){
                     commandsToUpdate.add(currentCommand);
-            }else{
+            }
+            else{
                 result.getHasRequiredPermissionAlready().add(currentCommand);
                 continue;
-            }result.getAccepted().add(currentCommand);
+            }
+            result.getAccepted().add(currentCommand);
         }
         if(!commandsToSave.isEmpty()){
-            permissionRepository.saveAll(commandsToSave);}
+            permissionRepository.saveAll(commandsToSave);
+        }
         if(!commandsToUpdate.isEmpty()){
             permissionRepository.updateRolePermissionForRequiredCommands(chatId, commandsToUpdate, rolePriority);
         }
         invalidateRolePermissionCache(chatId);  // обновляю кеш разрешений
 
         return result;
-
     }
+
     @Transactional
     public RolePermissionSettingResult allowCommandForRole(long chatId, long fromId, @NonNull Set<String> userCommands, @NonNull String roleName){
         int rolePriority = roleService.getRoleByNameIgnoreCase(chatId, roleName)
@@ -139,7 +143,6 @@ public class RolePermissionService {
         permissionRepository.deleteRolePermissionForOneCommand(chatId, mainCommandName);
 
         invalidateRolePermissionCache(chatId);
-
     }
 
     @SuppressWarnings("ConstantConditions")
@@ -156,6 +159,7 @@ public class RolePermissionService {
     private void invalidateRolePermissionCache(long chatId){
         cacheManager.getRolePermissionCache().invalidate(chatId);
     }
+
     public static int getMaxCustomRolePermissionsCount() {
         return MAX_CUSTOM_ROLE_PERMISSIONS_COUNT;
     }
