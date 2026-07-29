@@ -12,3 +12,4 @@ public class ExecuteChatEventsResult {
         this.executedEventsCounter = executedEventsCounter;
     }
 }
+

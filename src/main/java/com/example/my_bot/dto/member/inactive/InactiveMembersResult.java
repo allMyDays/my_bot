@@ -13,6 +13,7 @@ public class InactiveMembersResult {
     @Setter
     private int totalInactiveQuantity;
 
+    @Setter
     private List<InactiveMemberDto> inactiveMembers = new ArrayList<>();
 
     @Setter
@@ -21,10 +22,4 @@ public class InactiveMembersResult {
     public void addNewInactiveMember(long fromId, @Nullable  Instant lastMessageAt){
         inactiveMembers.add(new InactiveMemberDto(fromId, lastMessageAt));
     }
-
-
-
-
-
-
 }

@@ -72,10 +72,5 @@ public class KickCommunitiesCommand implements ChatCommand {
                         .formatted(kickedCommunities.size(), allRequiredCommunities.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName()),commandMessage)
         );
         return SUCCESS;
-
-
-
-
-
     }
 }

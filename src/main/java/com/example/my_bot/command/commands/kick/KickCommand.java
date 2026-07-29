@@ -49,8 +49,6 @@ public class KickCommand implements ChatCommand {
         this.vkChatClient = vkChatClient;
     }
 
-
-
     @Override
     public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 

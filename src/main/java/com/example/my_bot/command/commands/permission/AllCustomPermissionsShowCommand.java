@@ -82,7 +82,8 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
         sb.append("В чате установлено (%d/%d) кастомных ограничений команд для ролей".formatted(rolePermissions.size(), getMaxCustomRolePermissionsCount()));
         if(memberPermissionSize.get()!=0){
             sb.append(" и (%d/%d) персональных ограничений для участников".formatted(memberPermissionSize.get(),getMaxCustomMemberPermissionsCount()));
-        }sb.append(":\n");
+        }
+        sb.append(":\n");
 
         Map<Integer, String> roleMap = roleService.getAllRolesWithNoSorting(chatId);
 
@@ -91,7 +92,8 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
             String roleName = roleMap.get(entry.getKey());
             if(roleName!=null){
                 sb.append("\nРоль «%s» (приоритет %d):".formatted(roleName,entry.getKey()));
-            }else{
+            }
+            else{
                 sb.append("\nРоль с приоритетом %d:".formatted(entry.getKey()));
             }
             for(String command: entry.getValue()){
@@ -111,8 +113,5 @@ public class AllCustomPermissionsShowCommand implements ChatCommand {
         vkChatClient.sendText(messageMapper.toSendMessageDto(sb.toString(), commandMessage));
         return SUCCESS;
     }
-
-
-
 
 }

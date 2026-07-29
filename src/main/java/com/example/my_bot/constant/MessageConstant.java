@@ -11,8 +11,6 @@ public class MessageConstant {
 
     public static final String NOT_VALID_INTEGER_MESSAGE = "Указанный вами аргумент не является корректным числовым значением.";
 
-    public static final String CANNOT_USE_THIS_COMMAND_IN_PERSONAL_DIALOGUE = "Эту команду можно использовать только в групповых чатах.";
-
     public static final String THIS_COMMAND_IS_ONLY_FOR_CHATS_WITH_SUBMANAGERS = "Данную команду можно использовать только в чатах с субменеджерами.";
 
     public static final String MEMBER_ARGUMENT_ABSENTS = "Необходимо указать участника, к которому вы хотите применить эту команду.";

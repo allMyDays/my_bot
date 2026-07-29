@@ -104,7 +104,8 @@ public class WarnCommand implements ChatCommand {
                     vkChatClient.sendText(sendMessage);
                     return ARGUMENT_VALIDATION_ERROR;
                 }
-            }else{
+            }
+            else{
                 // вечный пред
                 warnTimePeriodSec = chatService.getDefaultWarnTimePeriod(dataBaseChatId).orElse(null);
             }
@@ -145,7 +146,8 @@ public class WarnCommand implements ChatCommand {
                if(!memberService.isChatAdmin(dataBaseChatId, memberToWarn)){
                    try{
                        vkChatClient.kickOneChatMember(commandMessage.getCommandRoutingData(), memberToWarn);
-                   }catch(Exception e){
+                   }
+                   catch(Exception e){
                        log.info("chat {}: couldn't remove member {} after warn limit has been reached", dataBaseChatId, memberToWarn);
                        return VK_API_ERROR;
                    }

@@ -28,6 +28,7 @@ public class ChatMembersStatisticResult{
     @Setter
     private Instant end;
 
+    @Setter
     private List<MemberStatisticDto> memberStatisticDtoList = new ArrayList<>();
 
 

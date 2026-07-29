@@ -64,20 +64,19 @@ public class SynchronizeCommand implements ChatCommand {
 
         try{
             memberService.synchronizeChatMembers(routingData);
-        }catch (ApiException e){
+        }
+        catch (ApiException e){
             if(NO_CHAT_ACCESS.getCodes().contains(e.getCode())){
                 sendMessage.setText(THE_BOT_HAS_NO_CHAT_ACCESS_ERROR);
-            }else{
+            }
+            else{
                 sendMessage.setText("Произошла ошибка: "+e.getMessage());
             }
             vkChatClient.sendText(sendMessage);
             return VK_API_ERROR;
         }
-
-        vkChatClient.sendText(
-                messageMapper.toSendMessageDto("✅Информация чата была синхронизирована с моей базой данных.",commandMessage));
+        vkChatClient.sendText(messageMapper.toSendMessageDto("✅Информация чата была синхронизирована с моей базой данных.",commandMessage));
 
         return SUCCESS;
-
     }
 }

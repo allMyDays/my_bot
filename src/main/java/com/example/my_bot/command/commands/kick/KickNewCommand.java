@@ -113,6 +113,5 @@ public class KickNewCommand implements ChatCommand {
                 .formatted(kickedCommunities.size(), allRequiredMembers.getTotalElements(), KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRoleName(), dateToShow));
         vkChatClient.sendText(sendMessage);
         return BUSINESS_LOGIC_ERROR;
-
     }
 }

@@ -54,7 +54,6 @@ public class SilentRestrictionSwitchCommand implements ChatCommand {
         );
         return CommandExecutionStatus.SUCCESS;
 
-
     }
 
 }

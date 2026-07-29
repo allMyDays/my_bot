@@ -111,5 +111,4 @@ public class WarnListShowCommand implements ChatCommand {
 
         return SUCCESS;
     }
-
 }

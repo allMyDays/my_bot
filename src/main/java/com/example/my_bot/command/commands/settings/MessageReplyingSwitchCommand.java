@@ -58,7 +58,5 @@ public class MessageReplyingSwitchCommand implements ChatCommand {
 
         vkChatClient.sendText(sendMessage);
         return SUCCESS;
-
     }
-
 }

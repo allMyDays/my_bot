@@ -112,7 +112,8 @@ public class AllEventsShowCommand implements ChatCommand {
             if(memberToTrigger!=null){  // личное событие
                 forRoleOrMember = "%s(%s)"
                         .formatted(createMention(memberToTrigger), globalUserService.getUserFullNameInRequiredCase(memberToTrigger, NameCase.GENITIVE));
-            }else{
+            }
+            else{
                 String roleName = roleService.getRoleName(chatId, currentEvent.getRolePriority()).orElse(null);
                 forRoleOrMember = "роли %s и ниже".formatted(roleName!=null?"«"+roleName+"»":"с приоритетом "+currentEvent.getRolePriority());
             }
@@ -192,6 +193,7 @@ public class AllEventsShowCommand implements ChatCommand {
         vkChatClient.sendText(sendMessage);
         return SUCCESS;
     }
+
     private String addRequiredActionEmojis(@NonNull EventDto eventDto){
         return (eventDto.isDelete()?"\uD83D\uDDD1":"")+
                 (eventDto.isReply()?"↪":"")+

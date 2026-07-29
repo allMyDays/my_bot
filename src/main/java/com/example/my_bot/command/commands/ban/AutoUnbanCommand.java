@@ -40,7 +40,6 @@ public class AutoUnbanCommand implements ChatCommand {
         this.vkChatClient = vkChatClient;
     }
 
-
     @Override
     public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 

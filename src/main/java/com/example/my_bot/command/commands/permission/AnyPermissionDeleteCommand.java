@@ -99,7 +99,5 @@ public class AnyPermissionDeleteCommand implements ChatCommand {
 
         vkChatClient.sendText(sendMessage);
         return SUCCESS;
-
     }
-
 }

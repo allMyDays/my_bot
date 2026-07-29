@@ -98,7 +98,8 @@ public class RoleRateLimitCreateCommand implements ChatCommand {
 
         if(createdLimit.isPersonal()){
             result+="\n❗Лимит будет считаться индивидуально на каждого участника с указанной ролью.";
-        }else{
+        }
+        else{
             result+="\n❗Вы не указали параметр «личный», поэтому лимит будет общим на всех участников с указанной ролью.";
         }
 

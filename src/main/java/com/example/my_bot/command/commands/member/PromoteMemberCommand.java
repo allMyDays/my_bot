@@ -96,7 +96,6 @@ public class PromoteMemberCommand implements ChatCommand {
 
         vkChatClient.sendText(sendMessage);
         return CommandExecutionStatus.SUCCESS;
-
     }
 
 }

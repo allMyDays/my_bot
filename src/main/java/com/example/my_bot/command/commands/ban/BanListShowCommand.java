@@ -101,5 +101,4 @@ public class BanListShowCommand implements ChatCommand {
 
         return SUCCESS;
     }
-
 }

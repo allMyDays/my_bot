@@ -92,5 +92,4 @@ public class ImmunitiesShowCommand implements ChatCommand {
         return SUCCESS;
 
     }
-
 }

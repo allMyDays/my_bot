@@ -24,6 +24,4 @@ public class RoleRateLimitDto {
 
     private int timePeriodSec;
 
-
-
 }

@@ -81,5 +81,4 @@ public class WarnPeriodChangeCommand implements ChatCommand {
 
         return SUCCESS;
     }
-
 }

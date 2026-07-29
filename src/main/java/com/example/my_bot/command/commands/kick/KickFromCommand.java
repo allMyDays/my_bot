@@ -63,8 +63,6 @@ public class KickFromCommand implements ChatCommand {
         this.vkChatClient = vkChatClient;
     }
 
-
-
     @Override
     public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 
@@ -77,7 +75,8 @@ public class KickFromCommand implements ChatCommand {
         ParseMemberInputResult inputResult = userInputResolver.getMemberIdByAnyInput(commandMessage, 0);
         if(inputResult.getMemberId().isPresent()){
             inviterId = inputResult.getMemberId().get();
-        }else{
+        }
+        else{
             sendMessage.setText(MEMBER_ARGUMENT_ABSENTS);
             vkChatClient.sendText(sendMessage);
             return ARGUMENT_VALIDATION_ERROR;

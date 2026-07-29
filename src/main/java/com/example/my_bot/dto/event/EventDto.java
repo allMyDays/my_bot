@@ -3,12 +3,12 @@ package com.example.my_bot.dto.event;
 import com.example.my_bot.enumeration.event.MyEventType;
 import com.google.common.collect.ImmutableSet;
 import jakarta.annotation.Nullable;
-import lombok.*;
+import lombok.Getter;
+import lombok.NonNull;
 
 import java.time.LocalTime;
 import java.util.Objects;
 import java.util.Set;
-
 
 @Getter
 public class EventDto {

@@ -63,6 +63,4 @@ public enum TimeZoneType {
     public static Optional<TimeZoneType> findZoneByStringType(@NonNull String type){
         return Optional.ofNullable(stringTypeMAP.get(type.trim().toLowerCase()));
     }
-
-
 }

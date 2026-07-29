@@ -108,13 +108,12 @@ public class AssignMemberCommand implements ChatCommand {
         AssignMemberResult assignResult;
 
         try{
-
-         if(isNumber(roleToGive)){
-            assignResult= memberService.assignNewRoleToMember(chatId, userToAssign,Integer.parseInt(roleToGive), commandMessage.getFromId());
-         }
-         else{
-            assignResult = memberService.assignNewRoleToMember(chatId, userToAssign,roleToGive, commandMessage.getFromId());
-         }
+            if(isNumber(roleToGive)){
+                assignResult= memberService.assignNewRoleToMember(chatId, userToAssign,Integer.parseInt(roleToGive), commandMessage.getFromId());
+            }
+            else{
+                assignResult = memberService.assignNewRoleToMember(chatId, userToAssign,roleToGive, commandMessage.getFromId());
+            }
         }
         catch(MemberException | RoleException | CommandException e){
             sendMessage.setText(e.getMessage());

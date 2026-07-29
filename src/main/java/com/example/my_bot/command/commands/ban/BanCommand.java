@@ -104,7 +104,8 @@ public class BanCommand implements ChatCommand {
                     vkChatClient.sendText(sendMessage);
                     return ARGUMENT_VALIDATION_ERROR;
                 }
-            }else{   // вечный бан
+            }
+            else{   // вечный бан
                 banTimePeriodSec = chatService.getDefaultBanTimePeriod(dataBaseChatId).orElse(null);
             }
         }
@@ -127,13 +128,13 @@ public class BanCommand implements ChatCommand {
        try{
            bannedUntil = banService.createMemberBan(dataBaseChatId, memberToBan, reason, banTimePeriodSec, fromId);
            vkChatClient.kickOneChatMember(commandMessage.getCommandRoutingData(), memberToBan);
-
-       }catch (CommandException | MemberException | BanException e){
+       }
+       catch (CommandException | MemberException | BanException e){
            sendMessage.setText(e.getMessage());
            vkChatClient.sendText(sendMessage);
            return BUSINESS_LOGIC_ERROR;
-
-       }catch (ApiException e){
+       }
+       catch (ApiException e){
            if(!USER_NOT_FOUND_IN_CHAT.getCodes().contains(e.getCode())){
                // скорее всего дали бан тому, кого в чате никогда не было, чтобы он не смог присоединиться
              sendMessage.setText(

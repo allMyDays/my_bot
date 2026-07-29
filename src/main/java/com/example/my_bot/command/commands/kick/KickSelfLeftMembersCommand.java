@@ -51,7 +51,6 @@ public class KickSelfLeftMembersCommand implements ChatCommand {
     }
 
 
-
     @Override
     public CommandExecutionStatus execute(CommandMessageDto commandMessage) throws ClientException, ApiException {
 

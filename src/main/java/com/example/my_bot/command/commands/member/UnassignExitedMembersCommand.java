@@ -51,6 +51,5 @@ public class UnassignExitedMembersCommand implements ChatCommand {
 
         vkChatClient.sendText(messageMapper.toSendMessageDto(message,commandMessage));
         return SUCCESS;
-
     }
 }

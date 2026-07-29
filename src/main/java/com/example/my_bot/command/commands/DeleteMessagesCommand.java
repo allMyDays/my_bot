@@ -116,7 +116,8 @@ public class DeleteMessagesCommand implements ChatCommand {
             if(args.length==1){
                 // !чистка @durov
                 timePeriodSec = DEFAULT_DELETION_TIME_PERIOD_SEC;
-            }else{
+            }
+            else{
                 // !чистка @durov 2 часа
                timePeriodSec = TimeUtils.toSecondsFromString(args[1],args[2]).orElse(null);
                if(timePeriodSec==null){
@@ -137,7 +138,8 @@ public class DeleteMessagesCommand implements ChatCommand {
                 return BUSINESS_LOGIC_ERROR;
             }
 
-        }else{
+        }
+        else{
             // !чистка 3 дня
             timePeriodSec = TimeUtils.toSecondsFromString(args[0],args[1]).orElse(null);
             if(timePeriodSec==null){

@@ -98,9 +98,5 @@ public class DemoteMemberCommand implements ChatCommand {
         vkChatClient.sendText(sendMessage);
         return SUCCESS;
 
-
-
     }
-
-
 }

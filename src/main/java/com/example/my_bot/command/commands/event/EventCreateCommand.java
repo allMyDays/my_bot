@@ -63,14 +63,11 @@ public class EventCreateCommand implements ChatCommand {
     private final static String SILENT_PARAMETER = "&silent";
     private final static Pattern SILENT_PARAMETER_PATTERN =  Pattern.compile(SILENT_PARAMETER, Pattern.CASE_INSENSITIVE);
 
-
-
     @Autowired
     @Lazy
     public void setVkChatClient(VkChatClient vkChatClient) {
         this.vkChatClient = vkChatClient;
     }
-
 
 
     @Override
@@ -143,11 +140,13 @@ public class EventCreateCommand implements ChatCommand {
         try{
             if(isValidInteger(eventRole)){
                 createdEvent = eventService.createNewEvent(chatId, foundEventType, Integer.parseInt(eventRole), eventArgument, fullCommand, fromId, delete,reply,silent);
-            }else{
+            }
+            else{
                 // предполагается что ввели название роли
                 createdEvent = eventService.createNewEvent(chatId, foundEventType, eventRole, eventArgument, fullCommand, fromId, delete,reply,silent);
             }
-        }catch (RoleException | EventException | CommandException e) {
+        }
+        catch (RoleException | EventException | CommandException e) {
             sendMessage.setText(e.getMessage());
             vkChatClient.sendText(sendMessage);
             return CommandExecutionStatus.BUSINESS_LOGIC_ERROR;
@@ -175,7 +174,8 @@ public class EventCreateCommand implements ChatCommand {
                     if(type.getAdvancedEventConfig().isCanBeAdvancedEvent()){
                         message+="\n\n❓Событие реагирует только на одно сообщение от участника. Если хотите больше сообщений, событие нужно расширить.";
                     }
-                }else{
+                }
+                else{
                     message+="\n\n❓Команда, которую вы указали, будет активироваться от имени того, кто спровоцировал событие, а не от имени создателя события (как в обычном событии).";
 
                 }
