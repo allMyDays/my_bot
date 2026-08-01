@@ -82,5 +82,4 @@ public interface MessageLogRepository extends JpaRepository<MessageLogEntity, Lo
         Long getTotalSymbols();
     }
 
-
 }

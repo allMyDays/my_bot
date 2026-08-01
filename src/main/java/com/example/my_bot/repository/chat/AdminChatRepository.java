@@ -17,9 +17,6 @@ public interface AdminChatRepository extends JpaRepository<AdminChatEntity, Long
     @Transactional
     int deleteByChatId(long chatId);
 
-   /* @Query("SELECT a FROM AdminChatEntity a WHERE :chatId MEMBER OF a.boundChats ORDER BY a.chatId DESC")
-    Optional<AdminChatEntity> findLatestByBoundChatId(@Param("chatId") Long chatId);*/
-
     Optional<AdminChatEntity> findTopByBoundChatsContainingOrderByChatIdDesc(long chatId);
 
 }

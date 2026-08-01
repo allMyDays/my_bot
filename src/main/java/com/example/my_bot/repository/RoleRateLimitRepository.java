@@ -11,5 +11,4 @@ public interface RoleRateLimitRepository extends JpaRepository<RoleRateLimitEnti
 
     List<RoleRateLimitEntity> findByChatId(Long chatId);
 
-
 }

@@ -33,5 +33,4 @@ public interface RoleRepository extends JpaRepository<RoleEntity, Long> {
 
     @Modifying
     int deleteByChatIdAndRolePriority(Long chatId, int rolePriority);
-
 }

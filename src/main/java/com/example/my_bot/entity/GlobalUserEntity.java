@@ -39,7 +39,6 @@ public class GlobalUserEntity {
 
     private String fullNameInAbl;
 
-
     public GlobalUserEntity(Long userId) {
         this.userId = userId;
     }

@@ -26,5 +26,4 @@ public interface ChatRepository extends JpaRepository<ChatEntity, Long> {
     @Query("SELECT c FROM ChatEntity c WHERE c.boundSubmanagerId=:submanagerId AND c.isSubPostsEnabled = true ")
     List<ChatEntity> findChatsByBoundSubmanagerAndSubPostsEnabled(Long submanagerId);
 
-
 }

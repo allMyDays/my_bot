@@ -30,5 +30,4 @@ public interface RolePermissionRepository extends JpaRepository<RolePermissionEn
                                           @Param("commandName") String commandName);
 
 
-
 }

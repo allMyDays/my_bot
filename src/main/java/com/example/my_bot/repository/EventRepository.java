@@ -15,7 +15,6 @@ import java.util.Set;
 @Repository
 public interface EventRepository extends JpaRepository<EventEntity, Long> {
 
-
     long countByChatId(Long chatId);
 
     List<EventEntity> findByChatId(long chatId);

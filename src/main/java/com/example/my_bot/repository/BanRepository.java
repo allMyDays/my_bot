@@ -34,6 +34,4 @@ public interface BanRepository extends JpaRepository<BanEntity, Long> {
     @Query("SELECT b FROM BanEntity b WHERE b.chatId = :chatId AND b.bannedUntil IS NOT NULL AND b.bannedUntil > :now")
     Page<BanEntity> getAllChatTemporaryBans(@Param("chatId") long chatId, @Param("now") Instant now, Pageable pageable);
 
-
-
 }
