@@ -33,7 +33,7 @@ public class KeyboardUtils {
                     return Optional.of(new AbstractMap.SimpleEntry<>(keyOpt.get(), value));
                 }
             }
-        } catch (Exception e) {
+        }catch (Exception e) {
             log.warn("error extracting key and value from button payload: {}", payloadString);
         }
         return Optional.empty();
@@ -44,9 +44,4 @@ public class KeyboardUtils {
     public static boolean isClickedButtonBelongsToRequiredBot(@NonNull String messageText, long botId){
         return messageText.trim().startsWith("[club%d|".formatted(Math.abs(botId)));
     }
-
-
-
-
-
 }

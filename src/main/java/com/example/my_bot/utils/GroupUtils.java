@@ -19,6 +19,7 @@ public class GroupUtils{
     public static boolean isGroupToken(@NonNull String token){
         return GROUP_TOKEN_PATTERN.matcher(token.trim()).matches();
     }
+
     public static String createPrivateMessagesLink(long groupId){
         return "vk.me/club"+Math.abs(groupId);
     }
@@ -33,7 +34,4 @@ public class GroupUtils{
                         StringBuilder::append)
                 .toString();
     }
-
-
-
 }

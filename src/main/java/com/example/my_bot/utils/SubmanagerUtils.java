@@ -19,12 +19,4 @@ public class SubmanagerUtils {
         return str.matches("\\[club\\d{1,10}\\|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\]");
     }
 
-
-
-
-
-
-
-
-
 }
