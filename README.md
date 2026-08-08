@@ -85,8 +85,8 @@
 Все эти аргументы также **гибко настраиваются**.
 
 <p >
-  <img src="./screenshot/event/event1.png" width="300">
-  <img src="./screenshot/event/event2.png" width="214">
+  <img src="./screenshot/event/event1.png" width="800">
+  <img src="./screenshot/event/event2.png" width="650">
 </p>
 
 ---
