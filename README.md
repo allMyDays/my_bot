@@ -142,7 +142,7 @@
 3. Следуйте дальнейшим инструкциям бота.
 
 <p>
-  <img src="./screenshot/adminchat/adminchat1.png" width="1500">
+  <img src="./screenshot/adminchat/adminchat.png" width="2000">
   <img src="./screenshot/adminchat/adminchat2.png" width="750">
 </p>
 
