@@ -8,6 +8,7 @@ import com.example.my_bot.enumeration.timer.TimerType;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.CommandArgumentTooLongException;
 import com.example.my_bot.exception.command.CommandInitAnnotationAbsentsException;
+import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.timer.*;
 import com.example.my_bot.repository.TimerRepository;
 import com.example.my_bot.service.command.CommandAccessService;
@@ -151,7 +152,7 @@ class TimerServiceTest {
             given(commandRegistry.getCommandAnnotation(userCommand)).willReturn(Optional.empty());
             LocalDateTime executionDate = LocalDateTime.now().plusHours(2);
             assertThatThrownBy(() -> timerService.createOnceTimer(chatId, executionDate, fullCommand, fromId))
-                    .isInstanceOf(CommandInitAnnotationAbsentsException.class);
+                    .isInstanceOf(UserCommandNotFoundException.class);
         }
 
         @Test
