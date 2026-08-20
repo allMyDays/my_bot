@@ -46,7 +46,9 @@ vk:
   main-bot:
    id: 194191149
    token:
-  encryption-key:
+
+security:
+ encryption-key:
     A9sK2mP8xQ4nT7vW1yZ5cR3uB6hJ0eLf
 
 
