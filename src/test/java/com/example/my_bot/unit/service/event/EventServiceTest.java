@@ -14,6 +14,7 @@ import com.example.my_bot.enumeration.event.MyEventType;
 import com.example.my_bot.enumeration.member.MemberPresenceType;
 import com.example.my_bot.exception.command.CannotApplyThisCommandToYourselfException;
 import com.example.my_bot.exception.command.CommandInitAnnotationAbsentsException;
+import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.event.*;
 import com.example.my_bot.exception.member.UserNeverBeenInChatException;
 import com.example.my_bot.exception.role.RoleAccessDeniedException;
@@ -200,7 +201,7 @@ class EventServiceTest {
 
             given(commandRegistry.getCommandAnnotation(userCommand)).willReturn(Optional.empty());
             assertThatThrownBy(() -> eventService.createNewEvent(chatId, WORD_FILTER, rolePriority, "arg", fullCommand, fromId, false, false, false))
-                    .isInstanceOf(CommandInitAnnotationAbsentsException.class);
+                    .isInstanceOf(UserCommandNotFoundException.class);
         }
 
         @Test
@@ -848,10 +849,9 @@ class EventServiceTest {
            event.setRolePriority(rolePriority);
            given(eventRepository.findById(eventId)).willReturn(Optional.of(event));
            doNothing().when(roleService).checkRoleInteractionAbility(chatId, rolePriority, fromId);
-           // Мокаем, что команда не зарегистрирована
            given(commandRegistry.getCommandAnnotation(userCommand)).willReturn(Optional.empty());
            assertThatThrownBy(() -> eventService.setNewCommand(eventId, fullCommand, fromId))
-                   .isInstanceOf(CommandInitAnnotationAbsentsException.class);
+                   .isInstanceOf(UserCommandNotFoundException.class);
        }
    }
 

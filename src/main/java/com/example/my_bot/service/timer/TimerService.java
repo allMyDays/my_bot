@@ -7,6 +7,7 @@ import com.example.my_bot.enumeration.timer.TimerType;
 import com.example.my_bot.exception.command.CommandAccessDeniedException;
 import com.example.my_bot.exception.command.CommandArgumentTooLongException;
 import com.example.my_bot.exception.command.CommandInitAnnotationAbsentsException;
+import com.example.my_bot.exception.command.UserCommandNotFoundException;
 import com.example.my_bot.exception.timer.*;
 import com.example.my_bot.repository.TimerRepository;
 import com.example.my_bot.resolver.UserInputResolver;
@@ -228,7 +229,8 @@ public class TimerService {
             throw new CommandArgumentTooLongException(TIMER_COMMAND_ARGUMENT_MAX_LENGTH);
         }
         Command annotation = commandRegistry.getCommandAnnotation(userCommand).orElseThrow(()->
-                new CommandInitAnnotationAbsentsException(userCommand));
+                new UserCommandNotFoundException(userCommand)
+        );
         if(!annotation.eventable()){
             throw new CannotUseThisCommandForTimerException(annotation.mainCommandName());
         }

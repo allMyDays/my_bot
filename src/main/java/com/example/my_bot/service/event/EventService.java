@@ -550,7 +550,8 @@ public class EventService {
             throw new CommandArgumentTooLongException(EVENT_COMMAND_ARGUMENT_MAX_LENGTH);
         }
         Command annotation = commandRegistry.getCommandAnnotation(userCommand).orElseThrow(()->
-                new CommandInitAnnotationAbsentsException(userCommand));
+                new UserCommandNotFoundException(userCommand)
+        );
         if(!annotation.eventable()){
             throw new CannotUseThisCommandForEventException(annotation.mainCommandName());
         }

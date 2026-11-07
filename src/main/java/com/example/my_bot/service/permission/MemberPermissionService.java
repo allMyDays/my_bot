@@ -66,6 +66,7 @@ public class MemberPermissionService {
 
         UserCommandValidationResult commandNormalizationResult = commandRegistry.getMainNamesOfRequiredCommands(userCommands);
         result.setNotFound(commandNormalizationResult.getNotFoundCommands());
+
         if(userCommands.size()==result.getNotFound().size()){
             return result;
         }

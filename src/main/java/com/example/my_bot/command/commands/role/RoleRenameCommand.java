@@ -77,7 +77,7 @@ public class RoleRenameCommand implements ChatCommand {
             return CommandExecutionStatus.BUSINESS_LOGIC_ERROR;
         }
 
-        sendMessage.setText("✅Вы успешно переименовали указанную роль с приоритетом %d в «%s»."
+        sendMessage.setText("✅Вы успешно переименовали роль с приоритетом %d в «%s»."
                 .formatted(editedRole.getRolePriority(), editedRole.getRoleName()));
 
         vkChatClient.sendText(sendMessage);

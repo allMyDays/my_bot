@@ -82,16 +82,15 @@ public class KickFromCommand implements ChatCommand {
             return ARGUMENT_VALIDATION_ERROR;
         }
 
-
         if(inviterId!=commandMessage.getFromId()){
-        try{
-            memberService.checkMemberInteractionAbility(dataBaseChatId, commandMessage.getFromId(), inviterId,true);
-        }
-        catch (MemberException e){
-            sendMessage.setText(e.getMessage());
-            vkChatClient.sendText(sendMessage);
-            return BUSINESS_LOGIC_ERROR;
-          }
+            try{
+                memberService.checkMemberInteractionAbility(dataBaseChatId, commandMessage.getFromId(), inviterId,true);
+            }
+            catch (MemberException e){
+                sendMessage.setText(e.getMessage());
+                vkChatClient.sendText(sendMessage);
+                return BUSINESS_LOGIC_ERROR;
+            }
         }
 
         Page<MemberEntity> allRequiredMembers = memberService.getNotKickedMembersInvitedByAndWithRoleLessThan(dataBaseChatId, inviterId, KICK_MEMBERS_WITH_ROLE_LESS_THAN.getRolePriority(), MEMBERS_LIMIT_AT_ONE_USAGE);
